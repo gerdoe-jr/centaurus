@@ -85,9 +85,11 @@ uint8_t* CroBuffer::Dereference(uint32_t& size)
 
 void CroBuffer::Alloc(uint32_t size)
 {
+    if (size == 0) return;
+
     if (IsEmpty()) m_pData = (uint8_t*)malloc(m_uSize + size);
-    else m_pData = (uint8_t*)realloc(m_pData, m_uSize + size);
-    m_uSize += size;
+    else m_pData = (uint8_t*)realloc(m_pData, size);
+    m_uSize = size;
 }
 
 void CroBuffer::Write(uint8_t* data, uint32_t size)
@@ -99,6 +101,68 @@ void CroBuffer::Write(uint8_t* data, uint32_t size)
     if (!m_pData) throw std::runtime_error("CroBuffer !m_pData");
     memcpy(m_pData+m_uSize, data, size);
     m_uSize += size;
+}
+
+/* CroFileBuffer */
+
+CroFileBuffer::CroFileBuffer(CroFile& file, crofile_type type)
+    : m_File(file), m_Type(type)
+{
+    m_Id = 0;
+    m_iVersion = m_File.GetVersion();
+
+    m_uFileOffset = 0;
+    m_uBufferSize = 0;
+}
+
+//TODO: CroFileBuffer::CroFileBuffer(CroFileBuffer&& other)
+
+CroFileBuffer::~CroFileBuffer()
+{
+}
+
+void CroFileBuffer::Assign(uint64_t startOff, uint64_t size,
+        record_id idx)
+{
+    m_uFileOffset = startOff;
+    m_uBufferSize = size;
+
+    if (idx) m_Id = idx;
+
+    Alloc(GetBufferSize());
+}
+
+void CroFileBuffer::Read()
+{
+    uint64_t read = m_File.ReadBuffer(this, m_uFileOffset, m_Type);
+    if (read < GetBufferSize())
+        throw std::runtime_error("read < GetBufferSize()");
+}
+
+uint64_t CroFileBuffer::GetStartOffset() const
+{
+    return m_uFileOffset;
+}
+
+uint64_t CroFileBuffer::GetEndOffset() const
+{
+    return GetStartOffset() + GetBufferSize();
+}
+
+crofile_offset_type CroFileBuffer::CheckOffset(uint64_t offset) const
+{
+    if (offset >= GetStartOffset() && offset < GetEndOffset())
+        return CROFILE_OFFSET_OK;
+    else if (offset < GetStartOffset() || offset > GetEndOffset())
+        return CROFILE_OFFSET_OUTSIDE;
+    else return CROFILE_OFFSET_INVALID;
+}
+
+uint8_t* CroFileBuffer::DataPointer(uint64_t offset) const
+{
+    if (CheckOffset(offset) != CROFILE_OFFSET_OK)
+        throw std::runtime_error("CheckOffse !CROFILE_OFFSET_OK");
+    return GetFileData() + offset;
 }
 
 /* RecordEntry */
@@ -152,41 +216,53 @@ bool RecordEntry::IsActive() const
     return GetOffset() && GetSize();
 }
 
-/* RecordTable */
+/* CroEntryTable */
 
-RecordTable::RecordTable(record_id index, int version,
+CroEntryTable::CroEntryTable(CroFile& file, record_id idx,
         unsigned count)
-    : CroEntry(index, version)
+    : CroFileBuffer(file, CROFILE_TAD)
 {
-    m_uCount = count;
-    if (m_uCount)
-        Alloc(m_uCount * GetRecordSize());
+    Assign(CalcOffset(idx), count * GetEntrySize(),
+            idx);
 }
 
-unsigned RecordTable::GetRecordSize() const
+CroEntryTable::CroEntryTable(CroEntryTable& other)
+    : CroFileBuffer(file, CROFILE_TAD)
 {
-    return Is4A() ? TAD_V4_SIZE : TAD_V3_SIZE;
 }
 
-void RecordTable::SetRecordCount(unsigned count)
+unsigned CroEntryTable::GetEntrySize() const
 {
-    m_uCount = count;
+    if (Is4A()) return TAD_V4_SIZE;
+    else return TAD_V3_SIZE;
 }
 
-unsigned RecordTable::GetRecordCount() const
+uint64_t CroEntryTable::CalcOffset(record_id idx) const
 {
-    return m_uCount;
+    return (Is4A() ? TAD_V4_BASE : TAD_V3_BASE)
+        + GetEntrySize() * idx;
 }
 
-RecordEntry RecordTable::GetRecordEntry(record_id i)
+void CroEntryTable::SetEntryCount(unsigned count)
+{
+    Assign(CalcOffset(Id()), count * GetEntrySize(),
+            Id());
+}
+
+unsigned CroEntryTable::GetEntryCount() const
+{
+    return GetBufferSize() / GetEntrySize();
+}
+
+RecordEntry CroEntryTable::GetRecordEntry(record_id i)
 {
     return RecordEntry(Id() + i, Version(),
-            GetTableData() + (i * GetRecordSize()));
+            DataPointer(i * GetEntrySize()));
 }
 
-bool RecordTable::FirstActiveRecord(record_off i, RecordEntry& entry)
+bool CroEntryTable::FirstActiveRecord(record_off i, RecordEntry& entry)
 {
-    for (; i < GetRecordCount(); i++)
+    for (; i < GetEntryCount(); i++)
     {
         entry = GetRecordEntry(i);
         if (entry.IsActive())
@@ -196,84 +272,147 @@ bool RecordTable::FirstActiveRecord(record_off i, RecordEntry& entry)
     return false;
 }
 
-uint32_t RecordTable::BlockRecordCount(record_off i, unsigned sizeLimit)
+bool CroEntryTable::RecordTableRange(record_off i, record_off* pStart,
+        record_off* pEnd, unsigned sizeLimit)
 {
     RecordEntry start;
     if (!FirstActiveRecord(i, start))
-        return 0;
+        return false;
 
+    uint64_t prevOffset = start.GetOffset();
+    unsigned size = start.GetSize();
     RecordEntry end;
-    record_off off;
-    printf("records %u\n", GetRecordCount());
-    /*for (off = start.Id() - Id(); off <= GetRecordCount(); off++)
+    record_off off = i;
+
+    if (Id()+i > 1)
     {
-        end = GetRecordEntry(off);
+        RecordEntry prev = GetRecordEntry(i-1);
+        if (prev.IsActive())
+        {
+            if (start.GetOffset() < prev.GetOffset())
+            {
+                *pEnd = *pStart = i;
+                return true;
+            }
+        }
+    }
+
+    while (size < sizeLimit)
+    {
+        if (off == GetEntryCount())
+        {
+            off--;
+            break;
+        }
+
+        end = GetRecordEntry(++off);
         if (!end.IsActive())
             continue;
-
-        unsigned size = start.GetSize() + (unsigned)
-            (end.GetOffset() - start.GetOffset());
-        if (size >= sizeLimit)
+        if (end.GetOffset() < prevOffset)
+        {
+            off--;
             break;
-    }*/
+        }
+        prevOffset = end.GetOffset();
+        size = (unsigned)(end.GetOffset() - start.GetOffset());
+    }
 
-    printf("[%u,\t%u]\t%016llx\t%016llx\n", i, off,
-            start.GetOffset(), end.GetOffset());
-    return off - i;
+    *pStart = start.Id() - Id();
+    *pEnd = off;
+    return true;
 }
 
-/* BlockTable */
+/* CroRecord */
 
-BlockTable::BlockTable(RecordTable& record, record_id i,
-        unsigned count)
-    : m_Record(record)
+CroRecord::CroRecord(record_id i, CroEntryTable& entries,
+        CroRecordTable& records)
+    : m_Entries(entries), m_Records(records)
 {
-    m_Id = record.Id() + i;
-    m_iVersion = record.Version();
-    m_uCount = count;
-
-    RecordEntry start = m_Record.GetRecordEntry(i);
-    RecordEntry end = m_Record.GetRecordEntry(i
-            + GetBlockTableCount());
-    m_uTableOffset = start.GetOffset();
-    m_uTableSize = end.GetOffset() - m_uTableOffset;
-
-    Alloc(m_uTableSize);
+    m_Id = m_Records.Id() + i;
 }
 
-uint64_t BlockTable::GetBlockTableOffset() const
+record_off CroRecord::EntryOffset()
 {
-    return m_uTableOffset;
+    return Id() - m_Entries.Id();
 }
 
-uint64_t BlockTable::GetBlockTableSize() const
+record_off CroRecord::RecordOffset()
 {
-    return m_uTableSize;
+    return Id() - m_Records.Id();
 }
 
-/* CroBlock */
-
-CroBlock::CroBlock(uint8_t* data, uint32_t size,
-            int version, bool first)
-    : CroBuffer(data, size)
+uint64_t CroRecord::NextBlockOffset(uint8_t* block)
 {
-    m_iVersion = version;
-    m_bFirst = first;
+    if (Is4A()) return TAD_V4_OFFSET(*(uint64_t*)block);
+    else return TAD_V3_OFFSET(*(uint32_t*)block);
 }
 
-uint64_t CroBlock::GetNextBlock() const
+uint32_t CroRecord::BlockSize(uint8_t* block)
 {
-    return *(uint64_t*)GetData();
+    if (Is4A()) return TAD_V4_FSIZE(*(uint32_t*)(block+0x08));
+    else return TAD_V3_FSIZE(*(uint32_t*)(block+0x04));
 }
 
-uint32_t CroBlock::GetBlockSize() const
+uint8_t* CroRecord::BlockData(uint8_t* block, bool first)
 {
-    return *(uint32_t*)(GetData()+0x08);
+    if (Is4A()) return block + (first ? 0x0C : 0x08);
+    else return block + (first ? 0x08 : 0x04);
 }
 
-uint8_t* CroBlock::GetBlockData() const
+uint8_t* CroRecord::FirstBlock(uint32_t* pSize, uint64_t* pNext)
 {
-    return GetData()+0x0C;
+    RecordEntry entry = m_Entries.GetRecordEntry(EntryOffset());
+    if (!entry.IsActive())
+        return NULL;
+
+    *pSize = entry.GetSize();
+    return m_Records.DataPointer(entry.GetOffset());
+}
+
+/* CroRecordTable */
+
+CroRecordTable::CroRecordTable(CroFile& file, CroEntryTable& entries)
+    : CroFileBuffer(file, CROFILE_DAT),
+    m_Entries(entries)
+{
+    m_Start = m_End = 0;
+}
+
+void CroRecordTable::SetRange(record_off start, record_off end)
+{
+    uint64_t size;
+    uint64_t startOffset, endOffset;
+
+    m_Start = start;
+    m_End = end;
+
+    RecordEntry entry = m_Entries.GetRecordEntry(m_Start);
+    startOffset = entry.GetOffset();
+
+    if (m_Start == m_End)
+    {
+        endOffset = startOffset + std::min(
+                entry.GetSize(), (uint32_t)4096);
+    }
+    else
+    {
+        entry = m_Entries.GetRecordEntry(m_End);
+        endOffset = entry.GetOffset();
+    }
+
+    size = endOffset - startOffset + entry.GetSize();
+    Assign(Id() + start, startOffset, size);
+}
+
+void CroRecordTable::GetRange(record_off* pStart, record_off* pEnd) const
+{
+    *pStart = m_Start;
+    *pEnd = m_End;
+}
+
+unsigned CroRecordTable::GetRecordCount() const
+{
+    return m_End - m_Start + 1;
 }
 
 /* CroFile */
@@ -441,6 +580,16 @@ void CroFile::Close()
     }
 }
 
+void CroFile::Reset()
+{
+    SetError();
+
+    fseek(m_fDat, 0L, SEEK_SET);
+    fseek(m_fTad, 0L, SEEK_SET);
+
+    m_bEOB = false;
+}
+
 crofile_status CroFile::SetError(crofile_status st,
         const std::string& msg)
 {
@@ -498,6 +647,49 @@ void CroFile::Decrypt(uint8_t* pBlock, unsigned size,
     }
 }
 
+FILE* CroFile::GetFile(crofile_type type) const
+{
+    switch (type)
+    {
+        case CROFILE_DAT: return m_fDat;
+        case CROFILE_TAD: return m_fTad;
+    }
+
+    return NULL;
+}
+
+uint64_t CroFile::GetFileSize(crofile_type type) const
+{
+    switch (type)
+    {
+        case CROFILE_DAT: return m_DatSize;
+        case CROFILE_TAD: return m_TadSize;
+    }
+
+    return 0;
+}
+
+uint64_t CroFile::ReadBuffer(CroBuffer* out, uint64_t offset,
+        crofile_type type)
+{
+    FILE* fFile = GetFile(type);
+
+    uint32_t size = out->GetSize();
+    if (size > GetFileSize(type) - offset)
+    {
+        SetError("size > GetFileSize(type) - offset");
+        return 0;
+    }
+
+    _fseeki64(fFile, offset, SEEK_SET);
+    uint64_t read = fread(out->GetData(), size, 1, fFile);
+    if (read < size)
+        SetError("read < size");
+    if (ferror(fFile))
+        UpdateError(CROFILE_FREAD, "ferror");
+    return read;
+}
+
 unsigned CroFile::EstimateEntryCount() const
 {
     return (m_TadSize - m_uTadRecordSize) / m_uTadRecordSize;
@@ -523,34 +715,32 @@ uint32_t CroFile::GetOptimalEntryCount() const
     else return std::min(CROFILE_TABLE_SIZE, uTadSize) / TAD_V3_SIZE;
 }
 
-RecordTable CroFile::LoadRecordTable(record_id idx, unsigned burst)
+CroEntryTable CroFile::LoadEntryTable(record_id idx, unsigned burst)
 {
     if (idx == 0) m_bEOB = false;
-    if (burst == 0) return RecordTable(0, 0, 0);
-    if (IsEndOfEntries()) return RecordTable(0, 0, 0);
+    if (burst == 0) return CroEntryTable(*this, 0, 0);
+    if (IsEndOfEntries()) return CroEntryTable(*this, 0, 0);
     if (burst > EstimateEntryCount())
         burst = EstimateEntryCount();
-    RecordTable table = RecordTable(idx, GetVersion(), burst);
 
-    uint64_t base = m_iVersion >= 4 ? TAD_V4_BASE : TAD_V3_BASE;
-    uint64_t off = base + (idx-1)*table.GetRecordSize();
-    _fseeki64(m_fTad, off, SEEK_SET);
-    unsigned uCount = fread(table.GetTableData(), table.GetRecordSize(),
-            table.GetRecordCount(), m_fTad);
-    if (ferror(m_fTad))
-        SetError("LoadRecordTable ferror");
+    CroEntryTable entries = CroEntryTable(*this, idx, burst);
+    entries.Read();
 
-    return table;
+    return entries;
 }
 
-BlockTable CroFile::LoadBlockTable(RecordTable& record, record_id i)
+/*BlockTable CroFile::LoadBlockTable(RecordTable& record, record_id i)
 {
-    uint32_t count = record.BlockRecordCount(i, CROFILE_TABLE_SIZE);
-    BlockTable block = BlockTable(record, i, count);
-
-    _fseeki64(m_fDat, block.GetBlockTableOffset(), SEEK_SET);
-    fread(block.GetBlockTableData(), block.GetBlockTableSize(), 1, m_fDat);
+    BlockTable block(record);
+    record_off start, end;
+    if (record.BlockTableRange(i, &start, &end, CROFILE_TABLE_SIZE))
+    {
+        block.SetRange(start, end);
+        _fseeki64(m_fDat, block.GetBlockTableOffset(), SEEK_SET);
+        fread(block.GetBlockTableData(),
+                block.GetBlockTableSize(), 1, m_fDat);
+    }
 
     return block;
-}
+}*/
 

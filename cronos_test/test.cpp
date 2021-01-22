@@ -54,6 +54,31 @@ void scan_directory(const std::wstring& path)
         scan_directory(path + L"\\" + dir);
 }
 
+void terminal_entry_mode(CroFile& bank)
+{
+    printf("get entry mode\n:<entry> <count>\n\n");
+    int id_entry = -1, id_count;
+    do {
+        printf(":");
+        scanf("%d %d", &id_entry, &id_count);
+
+        bank.Reset();
+        CroEntryTable table = bank.LoadEntryTable((record_id)id_entry,
+                (unsigned)id_count);
+        for (unsigned i = 0; i < table.GetRecordCount(); i++)
+        {
+            RecordEntry entry = table.GetRecordEntry(i);
+            if (entry.IsActive())
+            {
+                printf("%u RECORD at %016llx, size %u, flags %u\n",
+                        entry.Id(), entry.GetOffset(),
+                        entry.GetSize(), entry.GetFlags());
+            }
+            else printf("%u INACTIVE RECORD\n", entry.Id());
+        }
+    } while(id_entry != 0);
+}
+
 int main(int argc, char** argv)
 {
     std::wstring bankPath = testBank;
@@ -94,37 +119,31 @@ int main(int argc, char** argv)
 
     printf("bank version %d\n", bank.GetVersion());
 
-    record_id idx = 1;
+    /*record_id idx = 1;
     do {
         uint32_t burst = bank.GetOptimalEntryCount();
         RecordTable table = bank.LoadRecordTable(idx, burst);
         if (!table.GetRecordCount()) break;
 
-        /*BlockTable block = bank.LoadBlockTable(table, 0);
-        printf("%016llx\t%llu\t%u\n", block.GetBlockTableOffset(),
-                block.GetBlockTableSize(), block.GetBlockTableCount());*/
         record_id i = 0;
         do {
             BlockTable block = bank.LoadBlockTable(table, i);
-            printf("block record count %u\n", block.GetBlockTableCount());
+            record_off start, end;
+            block.GetRange(&start, &end);
+
+            printf("%u\t%u\tBLOCK at %016llx, %u records in %u bytes\n",
+                    table.Id() + start, table.Id() + end,
+                    block.GetBlockTableOffset(),
+                    block.GetBlockTableCount(),
+                    block.GetBlockTableSize());
 
             i += block.GetBlockTableCount();
         } while (i < table.GetRecordCount());
 
-        /*printf("\t%u blocks\n", table.BlockRecordCount(idx, 64*1024*1024));
-
-        for (unsigned i = 0; i < table.GetRecordCount(); i++)
-        {
-            RecordEntry entry = table.GetRecordEntry(i);
-            if (!entry.IsActive()) continue;
-
-            printf("%u\t%016llx\t%08x\t%08x\n", 
-                    entry.Id(), entry.GetOffset(),
-                    entry.GetSize(), entry.GetFlags());
-        }*/
-
         idx += table.GetRecordCount();
-    } while (!bank.IsEndOfEntries());
+    } while (!bank.IsEndOfEntries());*/
+
+    terminal_entry_mode(bank);
 
     bank.Close();
     return 0;
