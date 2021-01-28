@@ -1,0 +1,48 @@
+#ifndef __CRONOS_FORMAT_H
+#define __CRONOS_FORMAT_H
+
+/* Cronos Versions */
+
+// 01.02    3x, small model
+// 01.03    3x, big model
+// 01.04    3x, lite
+// 01.11    4x
+// 01.13    4x, lite
+// 01.14    4x, pro
+
+/* Cronos file header */
+
+// hh hh hh hh  hh hh hh ??
+// ?? ?? vs vs  vs vs vs vs
+// fl fl dl dl  .. .. .. ..
+
+#define CRONOS_HEADER       "CroFile"
+#define CRONOS_HEADER_SIZE  0x1C
+
+#define CRONOS_SECRET       0x13
+
+#define CRONOS_ENCRYPTION   (1<<0)
+#define CRONOS_COMPRESSION  (1<<1)
+
+/* Cronos 3x TAD format */
+
+// of of of of  sz sz sz sz
+// fl fl fl fl
+#define TAD_V3_BASE         0x08
+#define TAD_V3_SIZE         0x0C
+#define TAD_V3_DELETED      0xFFFFFFFF
+#define TAD_V3_FSIZE(off)   (off&0x7FFFFFFF);
+#define TAD_V3_OFFSET(off)  (off&0x1FFFFFFF);
+
+/* Cronos 4x+ TAD format */
+
+// rz of of of  of of of of
+// sz sz sz sz  fl fl fl fl
+#define TAD_V4_BASE         0x10
+#define TAD_V4_SIZE         0x10
+#define TAD_V4_RZ(off)      (off>>56)
+#define TAD_V4_RZ_DELETED   (1<<1)
+#define TAD_V4_FSIZE(off)   (off)
+#define TAD_V4_OFFSET(off)  (off&0xFFFFFFFFFFFF)
+
+#endif

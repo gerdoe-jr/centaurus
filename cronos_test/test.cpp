@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Windows.h>
-#include "cronos.h"
+#include "crofile.h"
 #include <algorithm>
 #include "win32util.h"
 
@@ -57,26 +57,29 @@ void scan_directory(const std::wstring& path)
 void terminal_entry_mode(CroFile& bank)
 {
     printf("get entry mode\n:<entry> <count>\n\n");
-    int id_entry = -1, id_count;
+
+    int id_entry = INVALID_CRONOS_ID;
+    unsigned id_count;
+
     do {
         printf(":");
-        scanf("%d %d", &id_entry, &id_count);
-
+        scanf("%d %u", &id_entry, &id_count);
         bank.Reset();
-        CroEntryTable table = bank.LoadEntryTable((record_id)id_entry,
-                (unsigned)id_count);
-        for (unsigned i = 0; i < table.GetRecordCount(); i++)
+
+        CroEntryTable table = bank.LoadEntryTable(
+                (cronos_id)id_entry, id_count);
+        for (cronos_id id = table.IdStart(); id != table.IdEnd(); id++)
         {
-            RecordEntry entry = table.GetRecordEntry(i);
+            CroEntry entry = table.GetEntry(id);
             if (entry.IsActive())
             {
                 printf("%u RECORD at %016llx, size %u, flags %u\n",
-                        entry.Id(), entry.GetOffset(),
-                        entry.GetSize(), entry.GetFlags());
+                        entry.Id(), entry.EntryOffset(),
+                        entry.EntrySize(), entry.EntryFlags());
             }
             else printf("%u INACTIVE RECORD\n", entry.Id());
         }
-    } while(id_entry != 0);
+    } while (id_entry != INVALID_CRONOS_ID);
 }
 
 int main(int argc, char** argv)
@@ -113,7 +116,8 @@ int main(int argc, char** argv)
 
     if ((st = bank.Open()) != CROFILE_OK)
     {
-        fprintf(stderr, "CroFile error %d\n", st);
+        fprintf(stderr, "CroFile error %d\n\t%s\n",
+                st, bank.GetError().c_str());
         return 1;
     }
 

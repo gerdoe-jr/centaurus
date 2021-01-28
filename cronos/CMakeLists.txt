@@ -5,13 +5,25 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES
-	cronos.cpp
     cronos02.cpp
+    croexception.cpp
+    croentity.cpp
+    crobuffer.cpp
+    crodata.cpp
+    crotable.cpp
+    crofile.cpp
 )
 
 set(HEADERS
-	cronos.h
+    cronos_format.h
     cronos02.h
+    crotype.h
+    croexception.h
+    croentity.h
+    crobuffer.h
+    crodata.h
+    crotable.h
+    crofile.h
 )
 
 add_library(cronos ${SOURCES} ${HEADERS})
