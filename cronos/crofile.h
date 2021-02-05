@@ -1,19 +1,19 @@
 #ifndef __CROFILE_H
 #define __CROFILE_H
 
-#include "crotype.h"
+#include "cronos_abi.h"
 #include "crodata.h"
 #include "crotable.h"
 #include <string>
 
-typedef enum {
+enum crofile_status {
     CROFILE_OK = 0,
     CROFILE_ERROR,
     CROFILE_FOPEN,
     CROFILE_FREAD,
     CROFILE_HEADER,
     CROFILE_VERSION
-} crofile_status;
+};
 
 class CroFile
 {
@@ -26,9 +26,21 @@ public:
     void Close();
     void Reset();
 
-    inline int GetMajor() const { return m_iMajor; }
-    inline int GetMinor() const { return m_iMinor; }
-    inline int GetVersion() const { return m_iVersion; }
+    inline const CronosABI* ABI() const
+    {
+        return m_pABI;
+    }
+
+    inline cronos_abi_num GetABIVersion() const
+    {
+        return ABI()->Number;
+    }
+
+    inline cronos_version GetVersion() const
+    {
+        return m_Version;
+    }
+
     inline crofile_status GetStatus() const { return m_Status; }
     inline const std::string& GetError() const { return m_Error; }
     crofile_status SetError(crofile_status st,
@@ -95,10 +107,9 @@ private:
 
     bool m_bEOB;
 
-    int m_iMajor;
-    int m_iMinor;
+    const CronosABI* m_pABI;
+    cronos_version m_Version;
 
-    int m_iVersion;
     uint32_t m_uFlags;
     uint32_t m_uDefLength;
     cronos_size m_uTadRecordSize;

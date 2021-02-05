@@ -6,8 +6,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 
-add_compile_options(-O3)
-add_link_options(-O3)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+if(CMAKE_BUILD_TYPE EQUAL Release)
+    if(MSVC)
+        add_compile_options(/O2)
+        add_link_options(/O2)
+    else()
+        add_compile_options(-O3)
+        add_link_options(-O3)
+    endif()
+endif()
 
 add_subdirectory(worker)
 add_subdirectory(win32ctrl)

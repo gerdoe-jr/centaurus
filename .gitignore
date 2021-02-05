@@ -1,6 +1,7 @@
+.vs
+out
 *.exe
 *.dll
 *.bin
 log.txt
 scan.txt
-build

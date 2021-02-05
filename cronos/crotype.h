@@ -2,12 +2,34 @@
 #define __CROTYPE_H
 
 #include <stdint.h>
+#include <inttypes.h>
+#include <utility>
+
+using cronos_version = int;
+using cronos_abi_num = std::pair<cronos_version, cronos_version>;
+
+#define INVALID_CRONOS_VERSION (cronos_version)-1
+#define INVALID_CRONOS_ABI (std::make_pair(INVALID_CRONOS_VERSION,   \
+    INVALID_CRONOS_VERSION))
 
 typedef uint64_t cronos_off;
 typedef uint64_t cronos_size;
+typedef uint32_t cronos_flags;
+
+#define cronos_rel cronos_off
+#define cronos_pos cronos_off
+
+#define FCroOff PRIu64
+#define FCroSize PRIu64
+#define FCroFlags PRIu32
+
+#define INVALID_CRONOS_OFFSET   (cronos_off)-1
 
 typedef uint32_t cronos_id;
 typedef uint32_t cronos_idx;
+
+#define FCroId PRIu32
+#define FCroIdx PRIu32
 
 #define INVALID_CRONOS_ID 0
 

@@ -13,7 +13,7 @@ public:
     CroBuffer(CroBuffer&&);
     ~CroBuffer();
 
-    CroBuffer& operator=(CroBuffer&& other)
+    CroBuffer& operator=(CroBuffer&& other) noexcept
     {
         if(&other == this) return *this;
         Free();
@@ -33,7 +33,8 @@ public:
     inline uint8_t* GetData() { return m_pData; }
 
     void Alloc(cronos_size);
-    void Write(uint8_t* data, cronos_size size);
+    void Copy(const uint8_t* data, cronos_size size);
+    void Write(const uint8_t* data, cronos_size size);
     void Free();
 private:
     uint8_t* m_pData;

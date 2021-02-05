@@ -25,22 +25,24 @@ public:
             cronos_off off, cronos_size size);
 
     cronos_filetype GetFileType() const;
-    cronos_off GetStartOffset() const;
-    cronos_off GetEndOffset() const;
+    cronos_pos GetStartOffset() const;
+    cronos_pos GetEndOffset() const;
 
-    crodata_offset_type CheckOffset(cronos_off off) const;
-    bool IsValidOffset(cronos_off off) const;
-    bool OffsetBehind(cronos_off off) const;
-    bool OffsetAhead(cronos_off off) const;
+    virtual bool CheckValue(cronos_pos value) const;
 
-    cronos_off DataOffset(cronos_off off) const;
-    cronos_off FileOffset(cronos_off rel) const;
+    crodata_offset_type CheckOffset(cronos_pos off) const;
+    bool IsValidOffset(cronos_pos off) const;
+    bool OffsetBehind(cronos_pos off) const;
+    bool OffsetAhead(cronos_pos off) const;
 
-    const uint8_t* Data(cronos_off rel) const;
-    uint8_t* Data(cronos_off rel);
+    cronos_off DataOffset(cronos_pos off) const;
+    cronos_off FileOffset(cronos_rel off) const;
+
+    const uint8_t* Data(cronos_rel off) const;
+    uint8_t* Data(cronos_rel off);
 
     template<typename T> inline
-    T Get(cronos_off rel) const
+    T Get(cronos_rel off) const
     {
         return *(T*)Data(rel);
     }

@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES
+    cronos_abi.cpp
     cronos02.cpp
     croexception.cpp
     croentity.cpp
@@ -16,6 +17,7 @@ set(SOURCES
 
 set(HEADERS
     cronos_format.h
+    cronos_abi.h
     cronos02.h
     crotype.h
     croexception.h
@@ -26,7 +28,7 @@ set(HEADERS
     crofile.h
 )
 
-add_library(cronos ${SOURCES} ${HEADERS})
+add_library(cronos ${SOURCES} ${HEADERS} "cronos_abi.h")
 target_include_directories(cronos PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 )

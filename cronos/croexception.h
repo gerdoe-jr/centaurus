@@ -1,6 +1,7 @@
 #ifndef __CROEXCEPTION_H
 #define __CROEXCEPTION_H
 
+#include "crotype.h"
 #include <exception>
 #include <string>
 
@@ -11,6 +12,8 @@ class CroException : public std::exception
 public:
     CroException(CroFile* file);
     CroException(CroFile* file, const std::string& error);
+    CroException(CroFile* file, const std::string& func, cronos_id id);
+    CroException(CroFile* file, const std::string& func, cronos_off off);
 
     inline CroFile* File() const { return m_pFile; }
     virtual const char* what() noexcept;

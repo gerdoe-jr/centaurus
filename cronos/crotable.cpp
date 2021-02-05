@@ -1,5 +1,37 @@
 #include "crotable.h"
+#include "croexception.h"
 #include "cronos_format.h"
+#include <algorithm>
+
+/* CroTable */
+
+template<typename T>
+CroTable<T>::CroTable(CroFile* file, cronos_id id, cronos_size limit)
+{
+    InitData(file, id, AssocFileType(), TableOffset(),
+        std::min(GetEntryCount() * GetEntrySize(), limit));
+}
+
+template<typename T>
+cronos_id CroTable<T>::IdStart() const
+{
+    return Id();
+}
+
+template<typename T>
+cronos_id CroTable<T>::IdEnd() const
+{
+    return Id() + GetEntryCount();
+}
+
+template<typename T>
+cronos_rel CroTable<T>::IdEntryOffset(cronos_id id) const
+{
+    if (!IsValidEntryId(id))
+        throw CroException(File(), "invalid entry id");
+
+    
+}
 
 /* CroEntry */
 
@@ -23,7 +55,7 @@ cronos_size CroEntry::EntrySize() const
         : TAD_V3_FSIZE(Get<uint32_t>(0x04));
 }
 
-uint32_t CroEntry::EntryFlags() const
+cronos_flags CroEntry::EntryFlags() const
 {
     return Is4A() ? Get<uint32_t>(0x0C) : Get<uint32_t>(0x08);
 }

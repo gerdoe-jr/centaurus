@@ -63,7 +63,8 @@ void terminal_entry_mode(CroFile& bank)
 
     do {
         printf(":");
-        scanf("%d %u", &id_entry, &id_count);
+        if (scanf("%d %u", &id_entry, &id_count) < 2)
+            break;
         bank.Reset();
 
         CroEntryTable table = bank.LoadEntryTable(
@@ -73,11 +74,13 @@ void terminal_entry_mode(CroFile& bank)
             CroEntry entry = table.GetEntry(id);
             if (entry.IsActive())
             {
-                printf("%u RECORD at %016llx, size %u, flags %u\n",
-                        entry.Id(), entry.EntryOffset(),
-                        entry.EntrySize(), entry.EntryFlags());
+                printf(FCroId " RECORD at " FCroOff ", size " FCroSize
+                    ", flags " FCroFlags "\n",
+                    entry.Id(), entry.EntryOffset(), entry.EntrySize(),
+                    entry.EntryFlags()
+                );
             }
-            else printf("%u INACTIVE RECORD\n", entry.Id());
+            else printf(FCroId " INACTIVE RECORD\n", entry.Id());                   
         }
     } while (id_entry != INVALID_CRONOS_ID);
 }

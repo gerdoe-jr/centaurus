@@ -78,8 +78,8 @@ crofile_status CroFile::Open()
     char szVersion[4] = {0};
     memcpy(szMajor, hdr.Data(0x0A), 2);
     memcpy(szVersion, hdr.Data(0x0D), 2);
-    m_iMajor = atoi(szMajor);
-    m_iMinor = atoi(szVersion);
+    int major = atoi(szMajor);
+    int minor = atoi(szVersion);
     if (!IsSupported(m_iMajor, m_iMinor))
     {
         Close();
@@ -233,6 +233,9 @@ uint32_t CroFile::GetOptimalEntryCount() const
 
 bool CroFile::IsValidOffset(cronos_off off, cronos_filetype type) const
 {
+    if (off == INVALID_CRONOS_OFFSET)
+        return false;
+
     switch (type)
     {
         case CRONOS_TAD: return off < m_uTadSize;

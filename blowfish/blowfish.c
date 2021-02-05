@@ -1,16 +1,19 @@
 #include "blowfish.h"
+#include <stdlib.h>
 #include <string.h>
  
 inline uint32_t _bswap32(uint32_t val)
 {
     uint32_t res = val;
-    
+#ifdef _MSC_VER
+    res = _byteswap_ulong(val);
+#else
     asm volatile(
         "bswap %0"
         : "=r" (res)
         : "0" (res)
     );
-    
+#endif
     return res;
 }
 

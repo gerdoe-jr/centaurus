@@ -28,21 +28,27 @@
 
 // of of of of  sz sz sz sz
 // fl fl fl fl
+#define CRONOS3_MASK_OFFSET 0x1FFFFFFF
+#define CRONOS3_MASK_FSIZE  0x7FFFFFFF
+
 #define TAD_V3_BASE         0x08
 #define TAD_V3_SIZE         0x0C
 #define TAD_V3_DELETED      0xFFFFFFFF
-#define TAD_V3_FSIZE(off)   (off&0x7FFFFFFF);
-#define TAD_V3_OFFSET(off)  (off&0x1FFFFFFF);
+#define TAD_V3_OFFSET(off)  (off&CRONOS3_MASK_OFFSET)
+#define TAD_V3_FSIZE(off)   (off&CRONOS3_MASK_FSIZE)
 
 /* Cronos 4x+ TAD format */
 
 // rz of of of  of of of of
 // sz sz sz sz  fl fl fl fl
+#define CRONOS4_MASK_OFFSET 0x0000FFFFFFFFFFFF
+#define CRONOS4_MASK_FSIZE  0xFFFFFFFFFFFFFFFF
+
 #define TAD_V4_BASE         0x10
 #define TAD_V4_SIZE         0x10
 #define TAD_V4_RZ(off)      (off>>56)
 #define TAD_V4_RZ_DELETED   (1<<1)
-#define TAD_V4_FSIZE(off)   (off)
-#define TAD_V4_OFFSET(off)  (off&0xFFFFFFFFFFFF)
+#define TAD_V4_OFFSET(off)  (off&CRONOS4_MASK_OFFSET)
+#define TAD_V4_FSIZE(off)   (off&CRONOS4_MASK_FSIZE)
 
 #endif

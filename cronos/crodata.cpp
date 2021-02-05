@@ -38,17 +38,22 @@ cronos_filetype CroData::GetFileType() const
     return m_FileType;
 }
 
-cronos_off CroData::GetStartOffset() const
+cronos_pos CroData::GetStartOffset() const
 {
     return m_uOffset;
 }
 
-cronos_off CroData::GetEndOffset() const
+cronos_pos CroData::GetEndOffset() const
 {
     return GetStartOffset() + GetSize();
 }
 
-crodata_offset_type CroData::CheckOffset(cronos_off off) const
+bool CroData::CheckValue(cronos_pos value) const
+{
+    return true;
+}
+
+crodata_offset_type CroData::CheckOffset(cronos_pos off) const
 {
     if (!File()->IsValidOffset(off, m_FileType))
         return CRODATA_OFFSET_INVALID;
@@ -59,33 +64,33 @@ crodata_offset_type CroData::CheckOffset(cronos_off off) const
     return CRODATA_OFFSET_OK;
 }
 
-bool CroData::IsValidOffset(cronos_off off) const
+bool CroData::IsValidOffset(cronos_pos off) const
 {
     return CheckOffset(off) == CRODATA_OFFSET_OK;
 }
 
-bool CroData::OffsetBehind(cronos_off off) const
+bool CroData::OffsetBehind(cronos_pos off) const
 {
     return CheckOffset(off) == CRODATA_OFFSET_BEHIND;
 }
 
-bool CroData::OffsetAhead(cronos_off off) const
+bool CroData::OffsetAhead(cronos_pos off) const
 {
     return CheckOffset(off) == CRODATA_OFFSET_AHEAD;
 }
 
-cronos_off CroData::DataOffset(cronos_off off) const
+cronos_off CroData::DataOffset(cronos_pos off) const
 {
     if (!IsValidOffset(off))
         throw CroException(File(), "CroData::DataOffset invalid offset");
     return off - GetStartOffset();
 }
 
-cronos_off CroData::FileOffset(cronos_off rel) const
+cronos_off CroData::FileOffset(cronos_rel off) const
 {
-    if (rel > GetSize())
-        throw CroException(File(), "CroData::FileOffset rel > GetSize()");
-    return GetStartOffset() + rel;
+    if (off > GetSize())
+        throw CroException(File(), "CroData::FileOffset", off);
+    return GetStartOffset() + off;
 }
 
 const uint8_t* CroData::Data(cronos_off rel) const

@@ -60,6 +60,13 @@ void CroBuffer::Alloc(cronos_size size)
     m_bOwner = true;
 }
 
+void CroBuffer::Copy(const uint8_t* data, cronos_size size)
+{
+    Free();
+    Alloc(size);
+    memcpy(m_pData, data, size);
+}
+
 void CroBuffer::Write(uint8_t* data, cronos_size size)
 {
     cronos_off off = GetSize();

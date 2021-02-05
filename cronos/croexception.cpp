@@ -16,6 +16,22 @@ CroException::CroException(CroFile* file, const std::string& error)
     m_pFile->SetError(error);
 }
 
+CroException::CroException(CroFile* file, const std::string& func,
+    cronos_off off)
+    : m_pFile(file)
+{
+    m_pFile->SetError(func + "invalid cronos_off("
+        + std::to_string(off) + ")");
+}
+
+CroException::CroException(CroFile* file, const std::string& func,
+    cronos_id id)
+    : m_pFile(file)
+{
+    m_pFile->SetError(func + "invalid (entry) id("
+        + std::to_string(id) + ")");
+}
+
 const char* CroException::what() noexcept
 {
     sprintf_s(s_szError, 256, "CroException - \"%s\"",
