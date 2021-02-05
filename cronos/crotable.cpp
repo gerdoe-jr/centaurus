@@ -6,10 +6,28 @@
 /* CroTable */
 
 template<typename T>
-CroTable<T>::CroTable(CroFile* file, cronos_id id, cronos_size limit)
+CroTable<T>::CroTable()
 {
-    InitData(file, id, AssocFileType(), TableOffset(),
+    m_uEntryCount = 0;
+}
+
+template<typename T>
+CroTable<T>::CroTable(CroFile* file, cronos_filetype ftype,
+    cronos_id id, cronos_size limit)
+{
+    m_uEntryCount = limit / GetEntrySize(id);
+    InitData(file, id, ftype, FileOffset(IdEntryOffset(id)),
         std::min(GetEntryCount() * GetEntrySize(), limit));
+}
+
+template<typename T>
+CroTable<T>::CroTable(CroFile* file, cronos_filetype ftype,
+    cronos_id start, cronos_id end,
+    cronos_size size)
+{
+    m_uEntryCount = end - start;
+    InitData(file, start, ftype, FileOffset(IdEntryOffset(id)),
+        size);
 }
 
 template<typename T>
@@ -25,12 +43,46 @@ cronos_id CroTable<T>::IdEnd() const
 }
 
 template<typename T>
+cronos_off CroTable<T>::TableOffset() const
+{
+    return FileOffset(IdEntryOffset(IdStart()));
+}
+
+template<typename T>
+cronos_size CroTable<T>::TableSize() const
+{
+    unsigned count = GetEntryCount();
+    return count ? count * GetEntrySize() : GetSize();
+}
+
+template<typename T>
+bool CroTable<T>::IsValidEntryId(cronos_id id) const
+{
+    return id >= IdStart() && id < IdEnd();
+}
+
+template<typename T>
 cronos_rel CroTable<T>::IdEntryOffset(cronos_id id) const
 {
     if (!IsValidEntryId(id))
         throw CroException(File(), "invalid entry id");
 
-    
+    cronos_idx idx = id - IdStart();
+    return (cronos_rel)(idx * GetEntrySize());
+}
+
+template<typename T>
+void CroTable<T>::GetEntry(cronos_id id, CroData& out) const
+{
+    out.InitEntity(File(), id);
+    out.InitBuffer((uint8_t*)Data(IdEntryOffset(id)),
+        GetEntrySize(id), false);
+}
+
+template<typename T>
+unsigned CroTable<T>::GetEntryCount() const
+{
+
 }
 
 /* CroEntry */

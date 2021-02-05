@@ -46,6 +46,9 @@ public:
 
     void AddFormat();
     bool IsFormat() const;
+    inline const cronos_abi_num& Number() const { return m_ABIVersion; }
+
+    virtual CronosABI* Instance(cronos_abi_num num) const = 0;
 
     virtual bool IsCompatible(cronos_abi_num num) const = 0;
     virtual bool IsLite() const = 0;

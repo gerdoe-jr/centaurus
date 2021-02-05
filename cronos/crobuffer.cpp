@@ -29,7 +29,7 @@ CroBuffer::CroBuffer(const CroBuffer& other)
     m_bOwner = true;
 }
 
-CroBuffer::CroBuffer(CroBuffer&& other)
+CroBuffer::CroBuffer(CroBuffer&& other) noexcept
 {
     InitBuffer(other.m_pData, other.m_uSize, other.m_bOwner);
 
@@ -49,10 +49,35 @@ void CroBuffer::InitBuffer(uint8_t* data,
     m_bOwner = owner;
 }
 
+cronos_size CroBuffer::GetSize() const
+{
+    return m_uSize;
+}
+
+bool CroBuffer::IsEmpty() const
+{
+    return !m_pData || m_uSize == 0;
+}
+
+const uint8_t* CroBuffer::GetData() const
+{
+    return m_pData;
+}
+
+uint8_t* CroBuffer::GetData()
+{
+    return m_pData;
+}
+
 void CroBuffer::Alloc(cronos_size size)
 {
     if (IsEmpty()) m_pData = (uint8_t*)malloc(size);
-    else m_pData = (uint8_t*)realloc(m_pData, size);
+    else
+    {
+        uint8_t* newData = (uint8_t*)realloc(m_pData, size);
+        if (newData) m_pData = newData;
+        else Free();
+    }
 
     if (!m_pData)
         throw std::runtime_error("CroBuffer::Alloc !m_pData");
@@ -67,7 +92,7 @@ void CroBuffer::Copy(const uint8_t* data, cronos_size size)
     memcpy(m_pData, data, size);
 }
 
-void CroBuffer::Write(uint8_t* data, cronos_size size)
+void CroBuffer::Write(const uint8_t* data, cronos_size size)
 {
     cronos_off off = GetSize();
     Alloc(m_uSize + size);

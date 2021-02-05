@@ -10,7 +10,7 @@ public:
     CroBuffer(const uint8_t* data, cronos_size size);
     CroBuffer(uint8_t* data, cronos_size size, bool owner = true);
     CroBuffer(const CroBuffer&);
-    CroBuffer(CroBuffer&&);
+    CroBuffer(CroBuffer&&) noexcept;
     ~CroBuffer();
 
     CroBuffer& operator=(CroBuffer&& other) noexcept
@@ -27,10 +27,10 @@ public:
     void InitBuffer(uint8_t* data, cronos_size size,
             bool owner = true);
 
-    inline cronos_size GetSize() const { return m_uSize; }
-    inline bool IsEmpty() const { return GetSize() == 0; }
-    inline const uint8_t* GetData() const { return m_pData; }
-    inline uint8_t* GetData() { return m_pData; }
+    cronos_size GetSize() const;
+    bool IsEmpty() const;
+    const uint8_t* GetData() const;
+    uint8_t* GetData();
 
     void Alloc(cronos_size);
     void Copy(const uint8_t* data, cronos_size size);

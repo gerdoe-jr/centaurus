@@ -31,9 +31,9 @@ public:
         return m_pABI;
     }
 
-    inline cronos_abi_num GetABIVersion() const
+    inline const cronos_abi_num& GetABIVersion() const
     {
-        return ABI()->Number;
+        return ABI()->Number();
     }
 
     inline cronos_version GetVersion() const

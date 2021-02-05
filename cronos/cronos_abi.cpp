@@ -62,13 +62,13 @@ void CronosABI::GetData(const CroData* data,
     const CronosABIValue& value, CroData& out) const
 {
     if (!HasFormatValue(value))
-        throw CroException(file, "ABI no value for CroData");
+        throw CroException(data->File(), "ABI no value for CroData");
 
     cronos_rel rel = Offset(value);
     if (!data->IsValidOffset(data->FileOffset(rel)))
-        throw CroException(data->File(), "ABI get data", off);
+        throw CroException(data->File(), "ABI get data", rel);
 
-    out.Copy(data->GetData(rel), value.ValueSize());
+    out.Copy(data->Data(rel), value.ValueSize());
 }
 
 uint64_t CronosABI::GetValue(const CroData* data,
@@ -94,10 +94,10 @@ const CronosABI* CronosABI::LoadABI(cronos_abi_num num)
     const CronosABI* abi = s_pFirst;
     while (abi)
     {
-        if (abi->IsCompatible())
+        if (abi->IsCompatible(num))
         {
             if (abi->IsFormat()) return abi;
-            return new CronosABI(num);
+            return abi->Instance(num);
         }
         abi = abi->m_pNext;
     }
@@ -110,6 +110,14 @@ const CronosABI* CronosABI::LoadABI(cronos_abi_num num)
 class CronosABIGeneric : public CronosABI
 {
 public:
+    CronosABIGeneric()
+    {
+    }
+    
+    CronosABIGeneric(cronos_abi_num num) : CronosABI(num)
+    {
+    }
+
     virtual bool IsCompatible(cronos_abi_num num) const
     {
         return num.first = 1;
@@ -127,12 +135,16 @@ public:
 
     virtual cronos_off GetFormatOffset(const CronosABIValue& value) const
     {
-        switch (value)
+        /*switch (value)
         {
         case cronos_hdr_sig:        return 0x00;
         case cronos_hdr_flags:      return 0x0F;
         case cronos_hdr_deflength:  return 0x11;
         }
+        return INVALID_CRONOS_OFFSET;
+
+        if (value == cronos_hdr_secret)
+            return 0;*/
         return INVALID_CRONOS_OFFSET;
     }
 };
@@ -142,6 +154,19 @@ public:
 class CronosABI3 : public CronosABIGeneric
 {
 public:
+    CronosABI3() : CronosABIGeneric()
+    {
+    }
+
+    CronosABI3(cronos_abi_num num) : CronosABIGeneric(num)
+    {
+    }
+
+    CronosABI* Instance(cronos_abi_num num) const override
+    {
+        return new CronosABI3(num);
+    }
+    
     bool IsCompatible(cronos_abi_num num) const override
     {
         if (!CronosABIGeneric::IsCompatible(num))
@@ -156,30 +181,33 @@ public:
 
     bool HasFormatValue(const CronosABIValue& value) const override
     {
-        if (value == cronos_hdr_secret)
+        /*if (value == cronos_hdr_secret)
             return !IsLite();
         else if (value == cronos_hdrlite_secret)
             return IsLite();
         else if (value == cronos_crypt_table)
             return m_ABIVersion.second != 2;
-        return CronosABIGeneric::HasFormatValue(value);
+        return CronosABIGeneric::HasFormatValue(value);*/
+
+        /*if (value == cronos_hdr_secret)
+            return false;*/
     }
 
     cronos_off GetFormatOffset(const CronosABIValue& value) const override
     {
-        switch (value)
+        /*switch (value)
         {
         case cronos_hdr_secret:     return 0x13;
         case cronos_hdrlite_secret: return 0x33;
         case cronos_crypt_table:    return 0xFC;
-        }
-        return CronosABIGeneric:::GetFormatOffset(value);
+        }*/
+        return CronosABIGeneric::GetFormatOffset(value);
     }
 
     void GetData(const CroData* data, const CronosABIValue& value,
         CroData& out) const override
     {
-        if (value == cronos_crypt_table)
+        /*if (value == cronos_crypt_table)
         {
             if (m_ABIVersion.second == 2)
             {
@@ -187,6 +215,6 @@ public:
                     value.ValueSize(), false);
             }
         }
-        else CronosABIGeneric::GetData(data, value, out);
+        else */CronosABIGeneric::GetData(data, value, out);
     }
 } cronos_abi_v3;

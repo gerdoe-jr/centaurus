@@ -10,21 +10,29 @@ template<typename T>
 class CroTable : public CroData
 {
 public:
-    CroTable(CroFile* file, cronos_id id, cronos_size limit);
+    CroTable();
+    CroTable(CroFile* file, cronos_filetype ftype,
+        cronos_id id, cronos_size limit);
+    CroTable(CroFile* file, cronos_filetype ftype,
+        cronos_id start, cronos_id end,
+        cronos_size size);
 
     cronos_id IdStart() const;
     cronos_id IdEnd() const;
 
-    virtual cronos_filetype AssocFileType() const = 0;
+    cronos_off TableOffset() const;
+    cronos_size TableSize() const;
 
-    virtual cronos_rel IdEntryOffset(cronos_id id) const;
+    bool IsValidEntryId(cronos_id id) const;
+
+    virtual cronos_rel IdEntryOffset(cronos_id id) const = 0;
     virtual unsigned GetEntrySize(cronos_id id
-        = INVALID_CRONOS_ID) const;
-    virtual T GetEntry(cronos_id id) const;
+        = INVALID_CRONOS_ID) const = 0;
+    
+    virtual void GetEntry(cronos_id id, CroData& out) const;
     virtual unsigned GetEntryCount() const;
-protected:
-    using Entry = T;
-    using FileType = F;
+private:
+    unsigned m_uEntryCount;
 };
 
 /* TAD */
@@ -45,7 +53,7 @@ public:
 class CroEntryTable : public CroTable<CroEntry>
 {
 public:
-    unsigned GetEntrySize(cronos_id id = INVALID_CRONOS_ID) const override;
+    unsigned GetEntrySize(cronos_id id) const override;
     CroEntry GetEntry(cronos_id id) const override;
     unsigned GetEntryCount() const override;
 

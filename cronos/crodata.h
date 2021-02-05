@@ -19,7 +19,7 @@ public:
     CroData(CroFile* file, cronos_id id, cronos_filetype ftype,
             cronos_off off, cronos_size size);
     CroData(const CroData& table, cronos_id id,
-            cronos_off rel, cronos_size size);
+            cronos_rel off, cronos_size size);
 
     void InitData(CroFile* file, cronos_id id, cronos_filetype ftype,
             cronos_off off, cronos_size size);
@@ -44,7 +44,7 @@ public:
     template<typename T> inline
     T Get(cronos_rel off) const
     {
-        return *(T*)Data(rel);
+        return *(T*)Data(off);
     }
 private:
     cronos_filetype m_FileType;

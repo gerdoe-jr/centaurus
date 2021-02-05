@@ -1,5 +1,6 @@
 #include "croentity.h"
 #include "crofile.h"
+#include "cronos_abi.h"
 
 CroEntity::CroEntity()
 {
@@ -24,6 +25,6 @@ int CroEntity::Version() const
 
 int CroEntity::Minor() const
 {
-    return m_pFile->GetMinor();
+    return m_pFile->ABI()->Number().second;
 }
 

@@ -17,8 +17,8 @@ set(SOURCES
 
 set(HEADERS
     cronos_format.h
-    cronos_abi.h
     cronos02.h
+    cronos_abi.h
     crotype.h
     croexception.h
     croentity.h
