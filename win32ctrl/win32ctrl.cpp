@@ -37,12 +37,16 @@ AppMonitor::AppMonitor()
     : m_ExePath(L"")
 {
     m_hAppProcess = INVALID_HANDLE_VALUE;
+    m_dwPid = 0;
+    m_bWow64 = FALSE;
 }
 
 AppMonitor::AppMonitor(const std::wstring& app)
     : m_ExePath(app)
 {
     m_hAppProcess = INVALID_HANDLE_VALUE;
+    m_dwPid = 0;
+    m_bWow64 = FALSE;
 }
 
 AppMonitor::~AppMonitor()
@@ -132,6 +136,7 @@ bool AppMonitor::StartApp(const std::wstring& cmdLine)
     if (!IsWow64Process(m_hAppProcess, &m_bWow64))
         m_bWow64 = FALSE;
 
+    CloseHandle(pi.hThread);
     return true;
 }
 
@@ -235,8 +240,7 @@ AppMem AppMonitor::MemAlloc(unsigned uLen)
 void AppMonitor::MemFree(AppMem& mem)
 {
     free(mem.This());
-    VirtualFreeEx(m_hAppProcess, mem.App(), mem.Size(),
-        MEM_RELEASE | MEM_DECOMMIT);
+    VirtualFreeEx(m_hAppProcess, mem.App(), 0, MEM_RELEASE);
     mem = AppMem();
 }
 
@@ -321,13 +325,13 @@ std::wstring AppMonitor::ReadString(HWND hWnd, const AppMem& str)
     if (IsWindowUnicode(hWnd))
     {
         wchar_t* pszText = (wchar_t*)str.This();
-        pszText[(str.Size()-1)/sizeof(wchar_t)] = L'\0';
+        pszText[(uint64_t)(str.Size()-1)/sizeof(wchar_t)] = L'\0';
         ret = std::wstring(pszText);
     }
     else
     {
         char* pszText = (char*)str.This();
-        pszText[(str.Size()-1)/sizeof(char)] = '\0';
+        pszText[(uint64_t)(str.Size()-1)/sizeof(char)] = '\0';
         ret = AnsiToWchar(pszText);
     }
 

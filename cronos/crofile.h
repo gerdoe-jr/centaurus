@@ -70,7 +70,7 @@ public:
     inline T Read(cronos_id id, uint32_t count, cronos_size size,
             cronos_filetype ftype)
     {
-        T data;
+        T data = T();
 
         data.InitData(this, id, ftype, GetOffset(ftype), count*size);
         Read(data, count, size);
@@ -82,13 +82,16 @@ public:
     inline T Read(cronos_id id, uint32_t count, cronos_size size,
             cronos_filetype ftype, cronos_off off)
     {
-        T data;
+        T data();
 
         data.InitData(this, id, ftype, off, count*size);
         Read(data, count, size);
 
         return data;
     }
+
+    void LoadTable(cronos_filetype ftype, cronos_id id,
+        cronos_size limit, CroTable& table);
 
     CroEntryTable LoadEntryTable(cronos_id id, unsigned burst);
     //CroEntryTable LoadEntryTable(record_id idx, unsigned burst);
@@ -114,6 +117,7 @@ private:
     uint32_t m_uDefLength;
     cronos_size m_uTadRecordSize;
 
+    uint32_t m_uSerial;
     CroData m_Crypt;
 };
 

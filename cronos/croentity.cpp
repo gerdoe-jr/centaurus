@@ -20,7 +20,7 @@ void CroEntity::InitEntity(CroFile* file, cronos_id id)
 
 int CroEntity::Version() const
 {
-    return m_pFile->GetVersion();
+    return m_pFile->ABI()->GetVersion();
 }
 
 int CroEntity::Minor() const

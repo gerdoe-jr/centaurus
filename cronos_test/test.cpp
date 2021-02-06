@@ -36,8 +36,8 @@ void scan_directory(const std::wstring& path)
             }
 
             char szHdrText[32] = {0};
-            snprintf(szHdrText, 32, "%02d.%02d", cro.GetMajor(),
-                    cro.GetMinor());
+            cronos_abi_num ver = cro.GetABIVersion();
+            snprintf(szHdrText, 32, "%02d.%02d", ver.first, ver.second);
             std::string hdrtext = szHdrText;
             printf("%s\n", hdrtext.c_str());
             if (std::find(known_versions.begin(), known_versions.end(),

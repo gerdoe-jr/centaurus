@@ -161,9 +161,9 @@ private:
     BOOL m_bWow64;
 
     struct _app_tmp_s {
-        EnumFunc m_Func;
+        EnumFunc m_Func = NULL;
         std::string m_Class;
-        HWND m_hWnd;
+        HWND m_hWnd = NULL;
     } m_Tmp;
 };
 

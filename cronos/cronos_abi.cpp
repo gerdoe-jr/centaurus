@@ -17,15 +17,27 @@ CronosABIValue::CronosABIValue(cronos_filetype ftype,
 
 /* Cronos ABI format values */
 
+CronosABIValue cronos_hdr(CRONOS_DAT, CRONOS_HEADER_SIZE);
 CronosABIValue cronos_hdr_sig(CRONOS_DAT, 7);
+CronosABIValue cronos_hdr_major(CRONOS_DAT, 2);
+CronosABIValue cronos_hdr_minor(CRONOS_DAT, 2);
 CronosABIValue cronos_hdr_flags(CRONOS_DAT, 2, 0xFFFF);
 CronosABIValue cronos_hdr_deflength(CRONOS_DAT, 2, 0xFFFF);
 CronosABIValue cronos_hdr_secret(CRONOS_DAT, 8);
 CronosABIValue cronos_hdrlite_secret(CRONOS_DAT, 8);
+CronosABIValue cronos_hdr_crypt(CRONOS_DAT, 0x200);
 
-CronosABIValue cronos_dat_crypt(CRONOS_DAT, 0x200);
+CronosABIValue cronos_tad_base(CRONOS_TAD, 0);
+CronosABIValue cronos_tad_entry(CRONOS_TAD, 0);
+CronosABIValue cronos_tad_offset(CRONOS_TAD, 0);
+CronosABIValue cronos_tad_size(CRONOS_TAD, 0);
+CronosABIValue cronos_tad_flags(CRONOS_TAD, 0);
+CronosABIValue cronos_tad_rz(CRONOS_TAD, 0);
 
 /* CronosABI */
+
+CronosABI* CronosABI::s_pFirst = NULL;
+CronosABI* CronosABI::s_pLast = NULL;
 
 CronosABI::CronosABI()
     : m_ABIVersion(INVALID_CRONOS_ABI)
@@ -51,6 +63,26 @@ bool CronosABI::IsFormat() const
     return m_ABIVersion != INVALID_CRONOS_ABI;
 }
 
+cronos_version CronosABI::Minor() const
+{
+    return m_ABIVersion.second;
+}
+
+bool CronosABI::IsVersion(cronos_version ver) const
+{
+    return GetVersion() == ver;
+}
+
+bool CronosABI::Is3() const
+{
+    return IsVersion(3);
+}
+
+bool CronosABI::Is4A() const
+{
+    return GetVersion() >= 4;
+}
+
 cronos_rel CronosABI::Offset(const CronosABIValue& value) const
 {
     if (!HasFormatValue(value))
@@ -58,35 +90,58 @@ cronos_rel CronosABI::Offset(const CronosABIValue& value) const
     return GetFormatOffset(value);
 }
 
-void CronosABI::GetData(const CroData* data,
+const uint8_t* CronosABI::GetPtr(const CroData& data,
+    const CronosABIValue& value) const
+{
+    cronos_rel off = Offset(value);
+    if (!data.IsValidOffset(off))
+        throw CroABIError(this, value, "value ptr");
+    return data.Data(off);
+}
+
+void CronosABI::GetData(const CroData& data,
     const CronosABIValue& value, CroData& out) const
 {
     if (!HasFormatValue(value))
-        throw CroException(data->File(), "ABI no value for CroData");
+        throw CroException(data.File(), "ABI no value for CroData");
 
     cronos_rel rel = Offset(value);
-    if (!data->IsValidOffset(data->FileOffset(rel)))
-        throw CroException(data->File(), "ABI get data", rel);
+    if (!data.IsValidOffset(data.FileOffset(rel)))
+        throw CroException(data.File(), "ABI get data", rel);
 
-    out.Copy(data->Data(rel), value.ValueSize());
+    out.Copy(data.Data(rel), GetFormatSize(value));
 }
 
-uint64_t CronosABI::GetValue(const CroData* data,
+uint64_t CronosABI::GetValue(const CroData& data,
     const CronosABIValue& value) const
 {
     if (!HasFormatValue(value))
-        throw CroException(data->File(), "ABI no value");
+        throw CroException(data.File(), "ABI no value");
 
     cronos_rel off = Offset(value);
-    if (!data->IsValidOffset(data->FileOffset(off)))
-        throw CroException(data->File(), "ABI get", off);
+    if (!data.IsValidOffset(data.FileOffset(off)))
+        throw CroException(data.File(), "ABI get", off);
 
     uint64_t uValue = 0;
-    if (value.ValueSize() == 2) uValue = data->Get<uint16_t>(off);
-    else if (value.ValueSize() == 4) uValue = data->Get<uint32_t>(off);
-    else if (value.ValueSize() == 8) uValue = data->Get<uint64_t>(off);
+    if (value.ValueSize() == 2) uValue = data.Get<uint16_t>(off);
+    else if (value.ValueSize() == 4) uValue = data.Get<uint32_t>(off);
+    else if (value.ValueSize() == 8) uValue = data.Get<uint64_t>(off);
 
     return value.MaskValue(uValue);
+}
+
+CroData CronosABI::ReadData(CroFile* file,
+    const CronosABIValue& value) const
+{
+    if (!HasFormatValue(value))
+        throw CroException(file, "ABI no value");
+
+    cronos_pos pos = Offset(value);
+    if (!file->IsValidOffset(pos, value.ValueFile()))
+        throw CroException(file, "ABI read", pos);
+
+    return file->Read(INVALID_CRONOS_ID, 1,
+        GetFormatSize(value), value.ValueFile());
 }
 
 const CronosABI* CronosABI::LoadABI(cronos_abi_num num)
@@ -118,9 +173,14 @@ public:
     {
     }
 
+    virtual cronos_version GetVersion() const
+    {
+        return INVALID_CRONOS_VERSION;
+    }
+
     virtual bool IsCompatible(cronos_abi_num num) const
     {
-        return num.first = 1;
+        return num.first == 1;
     }
 
     virtual bool IsLite() const
@@ -130,22 +190,27 @@ public:
 
     virtual bool HasFormatValue(const CronosABIValue& value) const
     {
-        return true;
+        return false;
     }
 
     virtual cronos_off GetFormatOffset(const CronosABIValue& value) const
     {
-        /*switch (value)
-        {
-        case cronos_hdr_sig:        return 0x00;
-        case cronos_hdr_flags:      return 0x0F;
-        case cronos_hdr_deflength:  return 0x11;
-        }
-        return INVALID_CRONOS_OFFSET;
+        if (value == cronos_hdr)                return 0x00;
+        else if (value == cronos_hdr_sig)       return 0x00;
+        else if (value == cronos_hdr_major)     return 0x0A;
+        else if (value == cronos_hdr_minor)     return 0x0D;
+        else if (value == cronos_hdr_flags)     return 0x0F;
+        else if (value == cronos_hdr_deflength) return 0x11;
 
-        if (value == cronos_hdr_secret)
-            return 0;*/
         return INVALID_CRONOS_OFFSET;
+    }
+
+    virtual cronos_size GetFormatSize(const CronosABIValue& value) const
+    {
+        cronos_size valueSize = value.ValueSize();
+        if (!valueSize)
+            throw CroABIError(this, value, "format size");
+        return valueSize;
     }
 };
 
@@ -166,7 +231,12 @@ public:
     {
         return new CronosABI3(num);
     }
-    
+
+    cronos_version GetVersion() const override
+    {
+        return CRONOS_V3;
+    }
+
     bool IsCompatible(cronos_abi_num num) const override
     {
         if (!CronosABIGeneric::IsCompatible(num))
@@ -181,33 +251,31 @@ public:
 
     bool HasFormatValue(const CronosABIValue& value) const override
     {
-        /*if (value == cronos_hdr_secret)
-            return !IsLite();
-        else if (value == cronos_hdrlite_secret)
-            return IsLite();
-        else if (value == cronos_crypt_table)
+        if (value == cronos_hdr_secret) return !IsLite();
+        else if (value == cronos_hdrlite_secret) return IsLite();
+        else if (value == cronos_hdr_crypt)
             return m_ABIVersion.second != 2;
-        return CronosABIGeneric::HasFormatValue(value);*/
 
-        /*if (value == cronos_hdr_secret)
-            return false;*/
+        return false;
     }
 
     cronos_off GetFormatOffset(const CronosABIValue& value) const override
     {
-        /*switch (value)
-        {
-        case cronos_hdr_secret:     return 0x13;
-        case cronos_hdrlite_secret: return 0x33;
-        case cronos_crypt_table:    return 0xFC;
-        }*/
+        if (value == cronos_hdr_secret)             return 0x13;
+        else if (value == cronos_hdrlite_secret)    return 0x33;
+        else if (value == cronos_hdr_crypt)         return 0xFC;
+        else if (value == cronos_tad_base)          return 0x08;
+        else if (value == cronos_tad_offset)        return 0x00;
+        else if (value == cronos_tad_size)          return 0x04;
+        else if (value == cronos_tad_flags)         return 0x08;
+
         return CronosABIGeneric::GetFormatOffset(value);
     }
 
-    void GetData(const CroData* data, const CronosABIValue& value,
+    void GetData(const CroData& data, const CronosABIValue& value,
         CroData& out) const override
     {
-        /*if (value == cronos_crypt_table)
+        if (value == cronos_hdr_crypt)
         {
             if (m_ABIVersion.second == 2)
             {
@@ -215,6 +283,23 @@ public:
                     value.ValueSize(), false);
             }
         }
-        else */CronosABIGeneric::GetData(data, value, out);
+        else CronosABIGeneric::GetData(data, value, out);
+    }
+
+    uint64_t GetValue(const CroData& data,
+        const CronosABIValue& value) const override
+    {
+        cronos_rel off = Offset(value);
+        
+        if (value == cronos_tad_offset)
+            return TAD_V3_OFFSET(data.Get<uint32_t>(off));
+        else if (value == cronos_tad_size)
+            return TAD_V3_FSIZE(data.Get<uint32_t>(off));
+        else if (value == cronos_tad_flags)
+            return data.Get<uint32_t>(off);
+        else if (value == cronos_tad_rz)
+            return 0;
+
+        return CronosABIGeneric::GetValue(data, value);
     }
 } cronos_abi_v3;

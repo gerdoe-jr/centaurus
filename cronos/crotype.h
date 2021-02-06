@@ -8,6 +8,11 @@
 using cronos_version = int;
 using cronos_abi_num = std::pair<cronos_version, cronos_version>;
 
+#define cronos_abi_version(major, minor) std::make_pair(major, minor)
+
+#define CRONOS_V3 3
+#define CRONOS_V4 4
+
 #define INVALID_CRONOS_VERSION (cronos_version)-1
 #define INVALID_CRONOS_ABI (std::make_pair(INVALID_CRONOS_VERSION,   \
     INVALID_CRONOS_VERSION))

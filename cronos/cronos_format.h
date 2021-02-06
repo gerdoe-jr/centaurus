@@ -17,7 +17,7 @@
 // fl fl dl dl  .. .. .. ..
 
 #define CRONOS_HEADER       "CroFile"
-#define CRONOS_HEADER_SIZE  0x1C
+#define CRONOS_HEADER_SIZE  0x1000
 
 #define CRONOS_SECRET       0x13
 

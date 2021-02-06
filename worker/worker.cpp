@@ -5,12 +5,17 @@
 WaitObject::WaitObject()
     : m_Type(WaitObject::NoWait)
 {
+    m_lInterval = 0;
+    m_Func = NULL;
+    m_pData = NULL;
 }
 
 WaitObject::WaitObject(long lInterval)
     : m_Type(WaitObject::WaitInterval)
 {
     m_lInterval = lInterval > 0 ? lInterval : 0;
+    m_Func = NULL;
+    m_pData = NULL;
 }
 
 WaitObject::WaitObject(WaitFunc func, void* data, long delay)
@@ -31,7 +36,8 @@ Worker::Worker()
     m_pData = NULL;
     m_bThink = false;
     m_iStage = 0;
-    m_State = STATE_INIT;
+    m_State = workstate::INIT;
+    m_bRunning = false;
 }
 
 Worker::~Worker()
@@ -73,16 +79,16 @@ void Worker::SetUpdateFunction(WorkerFunc func)
     m_Update = func;
 }
 
-void Worker::SetState(workstate_t state, bool bRunning)
+void Worker::SetState(workstate state, bool bRunning)
 {
-    if (m_State == STATE_WAIT && state != m_State)
+    if (m_State == workstate::WAIT && state != m_State)
         m_Wait = NoWait;
 
     m_State = state;
     m_bRunning = bRunning;
 }
 
-workstate_t Worker::GetState() const
+workstate Worker::GetState() const
 {
     return m_State;
 }
@@ -124,33 +130,33 @@ void Worker::EnableThink(bool bThink)
 
 void Worker::Start()
 {
-    SetState(STATE_INIT, true);
+    SetState(workstate::INIT, true);
 
     Update();
 }
 
 void Worker::Fail(const std::string& msg)
 {
-    SetState(STATE_FAIL, false);
+    SetState(workstate::FAIL, false);
     m_Msg = msg;
 }
 
 void Worker::Wait(const WaitObject& obj)
 {
-    SetState(STATE_WAIT, true);
+    SetState(workstate::WAIT, true);
     m_Wait = obj;
 }
 
 void Worker::Continue(int nextStage)
 {
-    SetState(STATE_RUNNING, true);
+    SetState(workstate::RUNNING, true);
     if (nextStage != -1)
         SetStage(nextStage);
 }
 
 void Worker::Finish()
 {
-    SetState(STATE_FINISH, false);
+    SetState(workstate::FINISH, false);
 }
 
 void Worker::OnException(const std::exception& exc)
@@ -181,7 +187,7 @@ void Worker::Update()
         if (m_bThink)
             Think();
 
-        if (IsRunning() && GetState() != STATE_WAIT)
+        if (IsRunning() && GetState() != workstate::WAIT)
             DoWork();
     } catch (const std::exception& exc) {
         OnException(exc);
@@ -192,7 +198,7 @@ void Worker::Think()
 {
     switch(GetState())
     {
-    case STATE_WAIT: DoWait(); break;
+    case workstate::WAIT: DoWait(); break;
     default: return;
     }
 }
@@ -203,15 +209,15 @@ void Worker::DoWait()
     switch(obj.m_Type)
     {
     case WaitObject::NoWait:
-        SetState(STATE_RUNNING, true);
+        SetState(workstate::RUNNING, true);
         break;
     case WaitObject::WaitInterval:
         Sleep(obj.m_lInterval);
-        SetState(STATE_RUNNING, true);
+        SetState(workstate::RUNNING, true);
         break;
     case WaitObject::WaitFunction:
         if (obj.m_Func(obj.m_pData))
-            SetState(STATE_RUNNING, true);
+            SetState(workstate::RUNNING, true);
         else Sleep(obj.m_lInterval);
         break;
     }
@@ -228,6 +234,8 @@ void Worker::Run()
 
 ThreadWorker::ThreadWorker()
 {
+    m_hThread = INVALID_HANDLE_VALUE;
+    m_ulThreadId = 0;
 }
 
 ThreadWorker::~ThreadWorker()
@@ -243,12 +251,12 @@ DWORD WINAPI ThreadWorker::_ThreadWorker(LPVOID lpArg)
 {
     ThreadWorker* wrk = (ThreadWorker*)lpArg;
 
-    wrk->SetState(STATE_INIT, false);
+    wrk->SetState(workstate::INIT, false);
     wrk->EnableThink(true);
     wrk->Update();
 
     wrk->Run();
-    return !(wrk->GetState() == STATE_FINISH);
+    return !(wrk->GetState() == workstate::FINISH);
 }
 
 void ThreadWorker::Start()

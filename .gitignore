@@ -3,5 +3,9 @@ out
 *.exe
 *.dll
 *.bin
+*.ilk
+*.pdb
+*.obj
+*.manifest
 log.txt
 scan.txt

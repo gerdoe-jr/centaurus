@@ -8,46 +8,46 @@
 
 std::wstring TextToWchar(const std::string& text)
 {
-    int iWcharLen = MultiByteToWideChar(CP_UTF8, 0,
+    size_t uWcharLen = MultiByteToWideChar(CP_UTF8, 0,
         text.c_str(), text.size(), NULL, 0);
-    auto pszWchar = std::make_unique<wchar_t[]>(iWcharLen+1);
+    auto pszWchar = std::make_unique<wchar_t[]>(uWcharLen+1);
     MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.size(),
-        pszWchar.get(), iWcharLen);
-    pszWchar[iWcharLen] = L'\0';
+        pszWchar.get(), uWcharLen);
+    pszWchar[uWcharLen] = L'\0';
     return std::wstring(pszWchar.get());
 }
 
 std::string WcharToText(const std::wstring& text)
 {
-    int iMbsLen = WideCharToMultiByte(CP_UTF8, 0,
+    size_t uMbsLen = WideCharToMultiByte(CP_UTF8, 0,
         text.c_str(), text.size(), NULL, 0, NULL, NULL);
-    auto pszChar = std::make_unique<char[]>(iMbsLen+1);
+    auto pszChar = std::make_unique<char[]>(uMbsLen +1);
     WideCharToMultiByte(CP_UTF8, 0, text.c_str(), text.size(),
-        pszChar.get(), iMbsLen, NULL, NULL);
-    pszChar[iMbsLen] = '\0';
+        pszChar.get(), uMbsLen, NULL, NULL);
+    pszChar[uMbsLen] = '\0';
     return std::string(pszChar.get());
 }
 
 std::wstring AnsiToWchar(const std::string& text, int cp)
 {
-    int iWcharLen = MultiByteToWideChar(cp, 0,
+    size_t uWcharLen = MultiByteToWideChar(cp, 0,
         text.c_str(), text.size(), NULL, 0);
-    auto pszWchar = std::make_unique<wchar_t[]>(iWcharLen+1);
+    auto pszWchar = std::make_unique<wchar_t[]>(uWcharLen +1);
     MultiByteToWideChar(cp, 0, text.c_str(), text.size(),
-        pszWchar.get(), iWcharLen);
-    pszWchar[iWcharLen] = L'\0';
+        pszWchar.get(), uWcharLen);
+    pszWchar[uWcharLen] = L'\0';
     return std::wstring(pszWchar.get());
 }
 
 
 std::string WcharToAnsi(const std::wstring& text, int cp)
 {
-    int iMbsLen = WideCharToMultiByte(cp, 0,
+    size_t uMbsLen = WideCharToMultiByte(cp, 0,
         text.c_str(), text.size(), NULL, 0, NULL, NULL);
-    auto pszChar = std::make_unique<char[]>(iMbsLen+1);
+    auto pszChar = std::make_unique<char[]>(uMbsLen +1);
     WideCharToMultiByte(cp, 0, text.c_str(), text.size(),
-        pszChar.get(), iMbsLen, NULL, NULL);
-    pszChar[iMbsLen] = '\0';
+        pszChar.get(), uMbsLen, NULL, NULL);
+    pszChar[uMbsLen] = '\0';
     return std::string(pszChar.get());
 }
 
@@ -82,7 +82,7 @@ static BOOL CALLBACK _CheckWindow(HWND hWnd, LPARAM lParam)
 bool FindProcessWindow(DWORD dwPid, const char* pClass,
     HWND& hWnd, DWORD& uiThread)
 {
-    struct _findwnd_s wnd;
+    struct _findwnd_s wnd = { 0 };
 
     wnd.m_dwPid = dwPid;
     wnd.m_pClass = pClass;

@@ -8,13 +8,13 @@ Scheduler::Scheduler(CreateFunc func, unsigned uMaxWorkers)
 
 Scheduler::~Scheduler()
 {
-    for (auto worker : m_Workers)
+    for (auto& worker : m_Workers)
         WorkerDestroy(worker.m_pWorker);
 }
 
 void Scheduler::DoControl()
 {
-    if(GetState() == STATE_INIT)
+    if(GetState() == workstate::INIT)
         Continue(0);
     else Wait(WaitObject(SCHEDULER_DELAY));
 }
@@ -28,8 +28,8 @@ void Scheduler::DoWork()
                 wrk->GetState(), it->m_iTimer);
 
         try {
-            if (wrk->GetState() == STATE_INIT)
-                wrk->SetState(STATE_INIT, true);
+            if (wrk->GetState() == workstate::INIT)
+                wrk->SetState(workstate::INIT, true);
 
             if (wrk->IsRunning())
             {
@@ -38,7 +38,7 @@ void Scheduler::DoWork()
             }
             else continue;
 
-            if (wrk->GetState() == STATE_WAIT)
+            if (wrk->GetState() == workstate::WAIT)
             {
                 WaitObject& obj = wrk->GetWait();
                 if (!it->m_iTimer)
@@ -46,7 +46,7 @@ void Scheduler::DoWork()
                     switch(obj.m_Type)
                     {
                     case WaitObject::NoWait:
-                        wrk->SetState(STATE_RUNNING, true);
+                        wrk->SetState(workstate::RUNNING, true);
                         break;
                     case WaitObject::WaitInterval:
                         it->m_iTimer = (int)obj.m_lInterval;
@@ -56,7 +56,7 @@ void Scheduler::DoWork()
                         if (obj.m_Func(obj.m_pData))
                         {
                             printf("OK WaitFunction\n");
-                            wrk->SetState(STATE_RUNNING, true);
+                            wrk->SetState(workstate::RUNNING, true);
                             it->m_iTimer = 0;
                         }
                         else it->m_iTimer = (int)obj.m_lInterval;
@@ -69,13 +69,13 @@ void Scheduler::DoWork()
                     if (it->m_iTimer <= 0)
                     {
                         if (obj.m_Type != WaitObject::WaitFunction)
-                            wrk->SetState(STATE_RUNNING, true);
+                            wrk->SetState(workstate::RUNNING, true);
                         it->m_iTimer = 0;
                     }
                 }
             }
 
-            if (wrk->IsRunning() && wrk->GetState() != STATE_WAIT)
+            if (wrk->IsRunning() && wrk->GetState() != workstate::WAIT)
                 wrk->DoWork();
         } catch (const std::exception& exc) {
             wrk->OnException(exc);
@@ -116,9 +116,7 @@ void Scheduler::WorkerStart(Worker* wrk)
     printf("WorkerStart %p\n", wrk);
     wrk->EnableThink(false);
 
-    schedworker_t sched;
-    sched.m_pWorker = wrk;
-    sched.m_iTimer = 0;
+    schedworker_t sched = { wrk, 0 };
     m_Workers.push_back(sched);
 }
 

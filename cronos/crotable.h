@@ -3,10 +3,10 @@
 
 #include "crotype.h"
 #include "crodata.h"
+#include "cronos_abi.h"
 
 /* CroTable */
 
-template<typename T>
 class CroTable : public CroData
 {
 public:
@@ -26,11 +26,12 @@ public:
     bool IsValidEntryId(cronos_id id) const;
 
     virtual cronos_rel IdEntryOffset(cronos_id id) const = 0;
+
     virtual unsigned GetEntrySize(cronos_id id
-        = INVALID_CRONOS_ID) const = 0;
-    
-    virtual void GetEntry(cronos_id id, CroData& out) const;
+        = INVALID_CRONOS_ID) const;
     virtual unsigned GetEntryCount() const;
+protected:
+    void GetEntry(cronos_id id, CroData& out) const;
 private:
     unsigned m_uEntryCount;
 };
@@ -40,38 +41,48 @@ private:
 class CroEntry : public CroData
 {
 public:
-    CroEntry(const CroData& table, cronos_id id,
-            cronos_off rel, cronos_size size);
+    inline cronos_off EntryOffset() const
+    {
+        return ABI()->GetValue(*this, cronos_tad_offset);
+    }
 
-    cronos_off EntryOffset() const;
-    cronos_size EntrySize() const;
-    cronos_flags EntryFlags() const;
+    inline cronos_size EntrySize() const
+    {
+        return ABI()->GetValue(*this, cronos_tad_size);
+    }
+
+    inline cronos_flags EntryFlags() const
+    {
+        return ABI()->GetValue(*this, cronos_tad_flags);
+    }
 
     bool IsActive() const;
 };
 
-class CroEntryTable : public CroTable<CroEntry>
+class CroEntryTable : public CroTable
 {
 public:
-    unsigned GetEntrySize(cronos_id id) const override;
-    CroEntry GetEntry(cronos_id id) const override;
+    cronos_off IdEntryOffset(cronos_id id) const override;
+    unsigned GetEntrySize(cronos_id id
+        = INVALID_CRONOS_ID) const override;
+    CroEntry GetEntry(cronos_id id) const;
     unsigned GetEntryCount() const override;
 
     bool FirstActiveEntry(cronos_id id, CroEntry& entry);
 };
 
-class CroEntryTable : public CroData
-{
-public:
-    unsigned GetEntrySize() const;
-    cronos_off IdEntryOffset(cronos_id id) const;
-
-    cronos_id IdStart() const;
-    cronos_id IdEnd() const;
-    CroEntry GetEntry(cronos_id id) const;
-    unsigned GetEntryCount() const;
-
-    bool FirstActiveEntry(cronos_id id, CroEntry& entry);
-};
+//class CroEntryTable : public CroData
+//{
+//public:
+//    unsigned GetEntrySize() const;
+//    cronos_off IdEntryOffset(cronos_id id) const;
+//
+//    cronos_id IdStart() const;
+//    cronos_id IdEnd() const;
+//    CroEntry GetEntry(cronos_id id) const;
+//    unsigned GetEntryCount() const;
+//
+//    bool FirstActiveEntry(cronos_id id, CroEntry& entry);
+//};
 
 #endif

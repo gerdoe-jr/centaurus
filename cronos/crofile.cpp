@@ -1,7 +1,7 @@
 #include "crofile.h"
-#include "croexception.h"
+#include "cronos_abi.h"
 #include "cronos_format.h"
-#include "cronos02.h"
+#include "croexception.h"
 #include <algorithm>
 #include <string.h>
 
@@ -11,8 +11,10 @@ extern "C"
 }
 
 CroFile::CroFile(const std::wstring& path)
-    : m_Path(path),m_iMajor(0),m_iVersion(0)
+    : m_Path(path)
 {
+    m_Version = INVALID_CRONOS_VERSION;
+
     SetError(CROFILE_OK);
     m_fDat = NULL;
     m_fTad = NULL;
@@ -63,70 +65,58 @@ crofile_status CroFile::Open()
     m_uDatSize = _ftelli64(m_fDat);
     m_uTadSize = _ftelli64(m_fTad);
 
-    fseek(m_fDat, 0L, SEEK_SET);
-    fseek(m_fTad, 0L, SEEK_SET);
+    m_uSerial = 1;
+    Reset();
 
-    CroData hdr = Read(0, 1, CRONOS_HEADER_SIZE, CRONOS_DAT);
+    CroData hdr = ABI()->ReadData(this, cronos_hdr);
 
-    if (memcmp(hdr.Data(0x00), CRONOS_HEADER, 7))
+    const uint8_t* sig = hdr.Data(ABI()->Offset(cronos_hdr_sig));
+    if (!memcmp(sig, CRONOS_HEADER, 7))
     {
         Close();
         return SetError(CROFILE_HEADER, "invalid header");
     }
 
     char szMajor[4] = {0};
-    char szVersion[4] = {0};
-    memcpy(szMajor, hdr.Data(0x0A), 2);
-    memcpy(szVersion, hdr.Data(0x0D), 2);
-    int major = atoi(szMajor);
-    int minor = atoi(szVersion);
-    if (!IsSupported(m_iMajor, m_iMinor))
+    char szMinor[4] = {0};
+    memcpy(szMajor, ABI()->GetPtr(hdr, cronos_hdr_major), 2);
+    memcpy(szMinor, ABI()->GetPtr(hdr, cronos_hdr_minor), 2);
+
+    cronos_abi_num abiVersion = cronos_abi_version(
+        atoi(szMajor), atoi(szMinor));
+    m_pABI = CronosABI::LoadABI(abiVersion);
+    if (!ABI())
     {
-        Close();
-        return UpdateError(CROFILE_VERSION, "unknown version");
+        return SetError(CROFILE_VERSION, std::string("unknown ABI")
+            + szMajor + "." + szMinor);
     }
 
-    if (m_iMinor < 11) m_iVersion = 3;
-    else m_iVersion = 4;
-
-    m_uFlags = hdr.Get<uint16_t>(0x0F);
-    m_uDefLength = hdr.Get<uint16_t>(0x11);
-    m_uTadRecordSize = m_iVersion >= 4 ? TAD_V4_BASE : TAD_V3_BASE;
+    m_uFlags = ABI()->Get<uint16_t>(hdr, cronos_hdr_flags);
+    m_uDefLength = ABI()->Get<uint16_t>(hdr, cronos_hdr_deflength);
+    m_uTadRecordSize = ABI()->GetFormatSize(cronos_tad_entry);
 
     if (IsEncrypted())
     {
-        uint32_t uSerial = 1;
-        CroBuffer key;
+        CroData key;
 
-        key.Write(hdr.Data(0x13), 8);
-        memmove(key.GetData()+4, key.GetData(), 4);
-        memcpy(key.GetData(), &uSerial, 4);
+        ABI()->GetData(hdr, cronos_hdr_secret, key);
+        memmove(key.GetData() + 4, key.GetData(), 4);
+        memcpy(key.GetData(), &m_uSerial, 4);
 
-        if (m_iVersion == 3)
-        {
-            if (m_iMinor > 2)
-                m_Crypt = Read(0, 1, 0x200, CRONOS_DAT, 0xFC);
-            else m_Crypt.InitBuffer(cronos02_crypt_table, 0x200, false);
-        }
-        else if (m_iVersion >= 4)
-            m_Crypt = Read(0, 1, 0x200, CRONOS_DAT, 0xF8);
-
-        FILE* fOut = fopen("table_enc.bin", "wb");
-        fwrite(m_Crypt.GetData(), m_Crypt.GetSize(), 1, fOut);
-        fclose(fOut);
-
-        if (m_iMinor > 2)
+        ABI()->GetData(hdr, cronos_hdr_crypt, m_Crypt);
+        if (!ABI()->Is3() && ABI()->Minor() > 2)
         {
             blowfish_t* bf = new blowfish_t;
             blowfish_init(bf, key.GetData(), key.GetSize());
-            blowfish_decrypt_buffer(bf, m_Crypt.GetData(), 0x200);
+            blowfish_decrypt_buffer(bf, m_Crypt.GetData(),
+                m_Crypt.GetSize());
             delete bf;
         }
-
-        fOut = fopen("table_dec.bin", "wb");
-        fwrite(m_Crypt.GetData(), m_Crypt.GetSize(), 1, fOut);
-        fclose(fOut);
     }
+
+    FILE* fOut = fopen("table_dec.bin", "wb");
+    fwrite(m_Crypt.GetData(), m_Crypt.GetSize(), 1, fOut);
+    fclose(fOut);
 
     return SetError(CROFILE_OK);
 }
@@ -226,7 +216,7 @@ uint32_t CroFile::GetOptimalEntryCount() const
     _fseeki64(m_fTad, pos_cur, SEEK_SET);
 
     uint64_t uTadSize = pos_end - pos_cur;
-    if (m_iVersion >= 4)
+    if (GetVersion() >= 4)
         return std::min(CROFILE_TABLE_SIZE, uTadSize) / TAD_V4_SIZE;
     else return std::min(CROFILE_TABLE_SIZE, uTadSize) / TAD_V3_SIZE;
 }
@@ -278,12 +268,19 @@ void CroFile::Read(CroData& data, uint32_t count, cronos_size size)
     }
 }
 
+void CroFile::LoadTable(cronos_filetype ftype, cronos_id id,
+    cronos_size limit, CroTable& table)
+{
+    table.InitData(this, id, ftype, table.IdEntryOffset(id), limit);
+    Read(table, 1, table.TableSize());
+}
+
 CroEntryTable CroFile::LoadEntryTable(cronos_id id, unsigned burst)
 {
-    cronos_off base = m_iVersion >= 4 ? TAD_V4_BASE : TAD_V3_BASE;
-    cronos_size entrySize = m_iVersion >= 4 ? TAD_V4_SIZE : TAD_V3_SIZE;
+    CroEntryTable table;
 
-    return Read<CroEntryTable>(id, burst, entrySize, CRONOS_TAD, base);
+    LoadTable(CRONOS_TAD, id, burst * table.GetEntrySize(), table);
+    return table;
 }
 
 /*CroEntryTable CroFile::LoadEntryTable(record_id idx, unsigned burst)

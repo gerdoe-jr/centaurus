@@ -20,6 +20,12 @@ if(CMAKE_BUILD_TYPE EQUAL Release)
     endif()
 endif()
 
+if(MSVC)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
+    add_compile_options(/utf-8)
+    add_compile_options(/wd26812 /wd6258 /wd28251)
+endif()
+
 add_subdirectory(worker)
 add_subdirectory(win32ctrl)
 add_subdirectory(json)

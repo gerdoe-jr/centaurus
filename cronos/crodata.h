@@ -5,6 +5,8 @@
 #include "crobuffer.h"
 #include "croentity.h"
 
+class CronosABI;
+
 typedef enum {
     CRODATA_OFFSET_INVALID,
     CRODATA_OFFSET_OK,
@@ -46,6 +48,8 @@ public:
     {
         return *(T*)Data(off);
     }
+protected:
+    const CronosABI* ABI() const;
 private:
     cronos_filetype m_FileType;
     cronos_off m_uOffset;

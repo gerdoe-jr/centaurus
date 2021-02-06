@@ -96,24 +96,37 @@ Scheduler* g_pScheduler = NULL;
 
 int AddLog(LPCWSTR lpBank, LPCWSTR lpStatus)
 {
-    LVITEMW lvItem;
+    LVITEMW lvItem = { 0 };
     static int _iItem = 0;
 
-    ZeroMemory(&lvItem, sizeof(lvItem));
     lvItem.mask = LVIF_TEXT;
     lvItem.pszText = _wcsdup(lpBank);
     lvItem.cchTextMax = wcslen(lvItem.pszText);
     lvItem.iItem = _iItem++;
     lvItem.iSubItem = 0;
-    ListView_InsertItem(g_hLog, &lvItem);
+    //ListView_InsertItem(g_hLog, &lvItem);
+    SendMessage(g_hLog, LVM_INSERTITEMW, 0, (LPARAM)&lvItem);
 
-    ListView_SetItemText(g_hLog, lvItem.iItem, 1, _wcsdup(lpStatus));
+    //ListView_SetItemText(g_hLog, lvItem.iItem, 1, _wcsdup(lpStatus));
+    lvItem.iSubItem = 1;
+    lvItem.pszText = _wcsdup(lpStatus);
+    lvItem.cchTextMax = wcslen(lvItem.pszText);
+    SendMessage(g_hLog, LVM_SETITEM, 0, (LPARAM)&lvItem);
+
     return lvItem.iItem;
 }
 
 void UpdateLog(int iItem, LPCWSTR lpStatus)
 {
-    ListView_SetItemText(g_hLog, iItem, 1, _wcsdup(lpStatus));
+    LVITEMW lvItem = { 0 };
+
+    lvItem.mask = LVIF_TEXT;
+    lvItem.pszText = _wcsdup(lpStatus);
+    lvItem.cchTextMax = wcslen(lvItem.pszText);
+    lvItem.iItem = iItem;
+    lvItem.iSubItem = 1;
+
+    SendMessage(g_hLog, LVM_SETITEM, 0, (LPARAM)&lvItem);
 }
 
 void SetStatus(const std::wstring& status = L"")
@@ -161,9 +174,9 @@ static void _DoCheck()
     static unsigned _hwid_count = sizeof(_hwids) / sizeof(hwid_t);
     static int _check_status = 0;
 
-    hwid_t _hwid;
+    hwid_t _hwid = { 0 };
     HW_PROFILE_INFOW hwInfo;
-    int iErrorCode;
+    int iErrorCode = 0; 
 
     switch(_check_status)
     {
@@ -569,7 +582,7 @@ public:
 
         printf("DoControl stage %d\n", GetStage());
 
-        if (GetState() == STATE_INIT)
+        if (GetState() == workstate::INIT)
         {
             Continue(0);
             return;

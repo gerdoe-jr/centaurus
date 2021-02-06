@@ -13,11 +13,13 @@ typedef std::function<bool(void*)> WaitFunc;
 class WaitObject
 {
 public:
+    enum : int { NoWait, WaitInterval, WaitFunction };
+
     WaitObject();
     WaitObject(long lInterval);
     WaitObject(WaitFunc func, void* data, long delay);
 
-    enum { NoWait, WaitInterval, WaitFunction } m_Type;
+    int m_Type;
     long m_lInterval;
     WaitFunc m_Func;
     void* m_pData;
@@ -30,13 +32,28 @@ extern const WaitObject DefWait;
 
 class Worker;
 
-typedef enum {
+/*typedef enum class {
     STATE_FAIL = -1,
     STATE_INIT,
     STATE_WAIT,
     STATE_RUNNING,
     STATE_FINISH,
-} workstate_t;
+} workstate;*/
+/*enum class workstate {
+    STATE_FAIL = -1,
+    STATE_INIT,
+    STATE_WAIT,
+    STATE_RUNNING,
+    STATE_FINISH
+};*/
+
+enum class workstate {
+    FAIL = -1,
+    INIT,
+    WAIT,
+    RUNNING,
+    FINISH
+};
 
 typedef std::function<void(Worker*)> WorkerFunc;
 
@@ -56,9 +73,9 @@ public:
     virtual void SetWorkerFunction(WorkerFunc func);
     virtual void SetUpdateFunction(WorkerFunc func);
 
-    virtual void SetState(workstate_t state, bool bRunning);
+    virtual void SetState(workstate state, bool bRunning);
 
-    virtual workstate_t GetState() const;
+    virtual workstate GetState() const;
     virtual bool IsRunning() const;
 
     virtual std::string& GetExitMessage();
@@ -97,7 +114,7 @@ private:
     WorkerFunc m_Work;
     WorkerFunc m_Update;
 
-    workstate_t m_State;
+    workstate m_State;
     bool m_bRunning;
     int m_iStage;
     std::string m_Msg;

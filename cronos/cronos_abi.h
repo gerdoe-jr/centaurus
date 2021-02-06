@@ -20,6 +20,11 @@ public:
     {
         return value & m_ValueMask;
     }
+
+    inline bool operator==(const CronosABIValue& other) const
+    {
+        return this == &other;
+    }
 private:
     cronos_filetype m_ValueFile;
     cronos_size m_ValueSize;
@@ -28,13 +33,22 @@ private:
 
 /* Cronos ABI format values */
 
+extern CronosABIValue cronos_hdr;
 extern CronosABIValue cronos_hdr_sig;
+extern CronosABIValue cronos_hdr_major;
+extern CronosABIValue cronos_hdr_minor;
 extern CronosABIValue cronos_hdr_flags;
 extern CronosABIValue cronos_hdr_deflength;
 extern CronosABIValue cronos_hdr_secret;
 extern CronosABIValue cronos_hdrlite_secret;
+extern CronosABIValue cronos_hdr_crypt;
 
-extern CronosABIValue cronos_crypt_table;
+extern CronosABIValue cronos_tad_base;
+extern CronosABIValue cronos_tad_entry;
+extern CronosABIValue cronos_tad_offset;
+extern CronosABIValue cronos_tad_size;
+extern CronosABIValue cronos_tad_flags;
+extern CronosABIValue cronos_tad_rz;
 
 /* CronosABI */
 
@@ -50,23 +64,34 @@ public:
 
     virtual CronosABI* Instance(cronos_abi_num num) const = 0;
 
+    virtual cronos_version GetVersion() const = 0;
     virtual bool IsCompatible(cronos_abi_num num) const = 0;
     virtual bool IsLite() const = 0;
     virtual bool HasFormatValue(const CronosABIValue& value) const = 0;
     virtual cronos_rel GetFormatOffset(const CronosABIValue& value) const = 0;
+    virtual cronos_size GetFormatSize(const CronosABIValue& value) const = 0;
+
+    cronos_version Minor() const;
+    bool IsVersion(cronos_version ver) const;
+    bool Is3() const;
+    bool Is4A() const;
 
     cronos_rel Offset(const CronosABIValue& value) const;
+    const uint8_t* GetPtr(const CroData& data,
+        const CronosABIValue& value) const;
 
-    virtual void GetData(const CroData* data,
+    virtual void GetData(const CroData& data,
         const CronosABIValue& value, CroData& out) const;
-    virtual uint64_t GetValue(const CroData* data,
+    virtual uint64_t GetValue(const CroData& data,
+        const CronosABIValue& value) const;
+    virtual CroData ReadData(CroFile* file,
         const CronosABIValue& value) const;
     
     template<typename T>
-    inline T GetValue(const CroData* data,
+    inline T Get(const CroData& data,
         const CronosABIValue& value) const
     {
-        return (T)GetValue(value);
+        return (T)GetValue(data, value);
     }
 
     static const CronosABI* LoadABI(cronos_abi_num num);

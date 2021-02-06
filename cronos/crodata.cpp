@@ -16,14 +16,6 @@ CroData::CroData(CroFile* file, cronos_id id, cronos_filetype ftype,
 
 CroData::CroData(const CroData& table, cronos_id id,
     cronos_rel off, cronos_size size)
-    : CroEntity(table.File(), id), CroBuffer(table.Data(off), size)
-{
-    m_FileType = table.GetFileType();
-    m_uOffset = table.FileOffset(off);
-}
-
-CroData::CroData(const CroData& table, cronos_id id,
-    cronos_rel off, cronos_size size)
 {
     InitEntity(table.File(), id);
     InitBuffer((uint8_t*)table.Data(off), size, off);
@@ -107,4 +99,9 @@ const uint8_t* CroData::Data(cronos_rel off) const
 uint8_t* CroData::Data(cronos_rel off)
 {
     return GetData() + off;
+}
+
+const CronosABI* CroData::ABI() const
+{
+    return File()->ABI();
 }

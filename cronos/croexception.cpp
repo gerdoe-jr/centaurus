@@ -1,4 +1,5 @@
 #include "croexception.h"
+#include "cronos_abi.h"
 #include "crofile.h"
 #include <stdio.h>
 #include <errno.h>
@@ -35,7 +36,8 @@ CroException::CroException(CroFile* file, const std::string& func,
 const char* CroException::what() noexcept
 {
     sprintf_s(s_szError, 256, "CroException - \"%s\"",
-            File()->GetError().c_str());
+        File() ? File()->GetError().c_str() : "CroException"
+    );
     return s_szError;
 }
 
@@ -48,5 +50,33 @@ const char* CroStdError::what() noexcept
 {
     sprintf_s(s_szError, 256, "CroStdError - \"%s\", errno = %d",
             File()->GetError().c_str(), errno);
+    return s_szError;
+}
+
+CroABIError::CroABIError(const CronosABI* abi, const CronosABIValue& value,
+    const std::string& valueName)
+    : CroException(NULL),
+    m_pABI(abi), m_Value(value),
+    m_ValueName(valueName)
+{
+}
+
+const char* CroABIError::what() noexcept
+{
+    cronos_abi_num ver = m_pABI->Number();
+    cronos_size size = m_Value.ValueSize()
+        ? m_Value.ValueSize()
+        : m_pABI->GetFormatSize(m_Value);
+
+    sprintf_s(s_szError, 256,
+        "Cronos %dX [%02d.%02d] Error\n"
+        "[%s]\n"
+        "\tcronos_off\t%" FCroOff "\n"
+        "\tcronos_size\t%" FCroSize,
+
+        m_pABI->GetVersion(), ver.first, ver.second,
+        m_ValueName.c_str(),
+        m_pABI->Offset(m_Value), size
+    );
     return s_szError;
 }

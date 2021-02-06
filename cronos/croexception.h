@@ -6,6 +6,8 @@
 #include <string>
 
 class CroFile;
+class CronosABI;
+class CronosABIValue;
 
 class CroException : public std::exception
 {
@@ -27,6 +29,19 @@ public:
     CroStdError(CroFile* file);
 
     const char* what() noexcept override;
+};
+
+class CroABIError : public CroException
+{
+public:
+    CroABIError(const CronosABI* abi, const CronosABIValue& value,
+        const std::string& valueName);
+
+    const char* what() noexcept override;
+private:
+    const CronosABI* m_pABI;
+    const CronosABIValue& m_Value;
+    const std::string& m_ValueName;
 };
 
 #endif
