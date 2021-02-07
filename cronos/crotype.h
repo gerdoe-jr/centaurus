@@ -39,7 +39,8 @@ typedef uint32_t cronos_idx;
 #define INVALID_CRONOS_ID 0
 
 typedef enum {
-    CRONOS_TAD,
+    CRONOS_INVALID_FILETYPE,
+    CRONOS_TAD = 0,
     CRONOS_DAT
 } cronos_filetype;
 

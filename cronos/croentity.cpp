@@ -18,13 +18,18 @@ void CroEntity::InitEntity(CroFile* file, cronos_id id)
     m_Id = id;
 }
 
+const CronosABI* CroEntity::ABI() const
+{
+    return m_pFile->ABI();
+}
+
 int CroEntity::Version() const
 {
-    return m_pFile->ABI()->GetVersion();
+    return ABI()->GetVersion();
 }
 
 int CroEntity::Minor() const
 {
-    return m_pFile->ABI()->Number().second;
+    return ABI()->Number().second;
 }
 

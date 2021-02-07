@@ -48,8 +48,6 @@ public:
     {
         return *(T*)Data(off);
     }
-protected:
-    const CronosABI* ABI() const;
 private:
     cronos_filetype m_FileType;
     cronos_off m_uOffset;

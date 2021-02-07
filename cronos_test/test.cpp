@@ -74,13 +74,13 @@ void terminal_entry_mode(CroFile& bank)
             CroEntry entry = table.GetEntry(id);
             if (entry.IsActive())
             {
-                printf(FCroId " RECORD at " FCroOff ", size " FCroSize
-                    ", flags " FCroFlags "\n",
+                printf("%" FCroId " RECORD at %" FCroOff ", size %" FCroSize
+                    ", flags %" FCroFlags "\n",
                     entry.Id(), entry.EntryOffset(), entry.EntrySize(),
                     entry.EntryFlags()
                 );
             }
-            else printf(FCroId " INACTIVE RECORD\n", entry.Id());                   
+            else printf("%" FCroId " INACTIVE RECORD\n", entry.Id());                   
         }
     } while (id_entry != INVALID_CRONOS_ID);
 }

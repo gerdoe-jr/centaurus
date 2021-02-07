@@ -68,6 +68,7 @@ crofile_status CroFile::Open()
     m_uSerial = 1;
     Reset();
 
+    //Generic ABI
     CroData hdr = ABI()->ReadData(this, cronos_hdr);
 
     const uint8_t* sig = hdr.Data(ABI()->Offset(cronos_hdr_sig));
@@ -90,6 +91,7 @@ crofile_status CroFile::Open()
         return SetError(CROFILE_VERSION, std::string("unknown ABI")
             + szMajor + "." + szMinor);
     }
+    //ABI initialized
 
     m_uFlags = ABI()->Get<uint16_t>(hdr, cronos_hdr_flags);
     m_uDefLength = ABI()->Get<uint16_t>(hdr, cronos_hdr_deflength);
@@ -254,6 +256,9 @@ void CroFile::Seek(cronos_off off, cronos_filetype ftype)
 
 void CroFile::Read(CroData& data, uint32_t count, cronos_size size)
 {
+    if (data.GetFileType() == CRONOS_INVALID_FILETYPE)
+        throw CroException(this, "Read invalid filetype");
+
     FILE* fp = FilePointer(data.GetFileType());
     cronos_size totalsize = count*size;
     Seek(data.GetStartOffset(), data.GetFileType());
@@ -279,7 +284,8 @@ CroEntryTable CroFile::LoadEntryTable(cronos_id id, unsigned burst)
 {
     CroEntryTable table;
 
-    LoadTable(CRONOS_TAD, id, burst * table.GetEntrySize(), table);
+    LoadTable(CRONOS_TAD, id, (cronos_size)
+        burst * table.GetEntrySize(), table);
     return table;
 }
 

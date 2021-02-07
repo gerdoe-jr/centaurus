@@ -4,6 +4,7 @@
 #include "crotype.h"
 
 class CroFile;
+class CronosABI;
 
 class CroEntity
 {
@@ -16,6 +17,7 @@ public:
 protected:
     void InitEntity(CroFile* file, cronos_id id);
 
+    const CronosABI* ABI() const;
     int Version() const;
     int Minor() const;
 

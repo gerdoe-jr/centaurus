@@ -173,6 +173,11 @@ public:
     {
     }
 
+    virtual CronosABI* Instance(cronos_abi_num num) const
+    {
+        return new CronosABIGeneric(num);
+    }
+
     virtual cronos_version GetVersion() const
     {
         return INVALID_CRONOS_VERSION;
@@ -180,7 +185,7 @@ public:
 
     virtual bool IsCompatible(cronos_abi_num num) const
     {
-        return num.first == 1;
+        return false;
     }
 
     virtual bool IsLite() const
@@ -212,7 +217,7 @@ public:
             throw CroABIError(this, value, "format size");
         return valueSize;
     }
-};
+} cronos_abi_generic;
 
 /* Cronos 3x ABI */
 
@@ -239,7 +244,7 @@ public:
 
     bool IsCompatible(cronos_abi_num num) const override
     {
-        if (!CronosABIGeneric::IsCompatible(num))
+        if (num.first != 1)
             return false;
         return num.second >= 2 && num.second <= 4;
     }

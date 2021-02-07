@@ -4,6 +4,8 @@
 
 CroData::CroData()
 {
+    m_FileType = CRONOS_INVALID_FILETYPE;
+    m_uOffset = INVALID_CRONOS_OFFSET;
 }
 
 CroData::CroData(CroFile* file, cronos_id id, cronos_filetype ftype,
@@ -101,7 +103,3 @@ uint8_t* CroData::Data(cronos_rel off)
     return GetData() + off;
 }
 
-const CronosABI* CroData::ABI() const
-{
-    return File()->ABI();
-}
