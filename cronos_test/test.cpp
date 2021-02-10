@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Windows.h>
-#include "crofile.h"
 #include <algorithm>
+#include "crofile.h"
+#include "croexception.h"
 #include "win32util.h"
 
 static std::wstring testBank = 
@@ -91,6 +92,34 @@ void terminal_entry_mode(CroFile& bank)
     } while (id_entry != INVALID_CRONOS_ID);
 }
 
+void dump_crofile(CroFile* file)
+{
+    file->Reset();
+
+    cronos_id tad_table_id = 1;
+    cronos_idx tad_count = file->OptimalEntryCount();
+    while (file->IsEndOfEntries())
+    {
+        CroEntryTable tad = file->LoadEntryTable(tad_table_id, tad_count);
+        if (!tad.IsEmpty()) throw CroException(file, "empty tad table");
+        
+        cronos_off dat_start, dat_end;
+        cronos_idx dat_count = file->OptimalRecordCount(tad, tad.IdStart());
+        file->RecordTableOffsets(tad, tad.IdStart(),
+            dat_count, dat_start, dat_end);
+        cronos_size dat_size = dat_end - dat_start;
+        CroData dat = file->Read(tad.IdStart(), 1,
+            dat_size, CRONOS_DAT, dat_start);
+
+        for (cronos_id id = tad.IdStart(); id != tad.IdEnd(); id++)
+        {
+
+        }
+
+        tad_table_id += tad.GetEntryCount();
+    }
+}
+
 int main(int argc, char** argv)
 {
     std::wstring bankPath = testBank;
@@ -132,29 +161,15 @@ int main(int argc, char** argv)
 
     printf("bank version %d\n", bank.GetVersion());
 
-    /*record_id idx = 1;
-    do {
-        uint32_t burst = bank.GetOptimalEntryCount();
-        RecordTable table = bank.LoadRecordTable(idx, burst);
-        if (!table.GetRecordCount()) break;
+    printf("optimal entry count %u\n", bank.OptimalEntryCount());
+    CroEntryTable tad = bank.LoadEntryTable(1, bank.OptimalEntryCount());
 
-        record_id i = 0;
-        do {
-            BlockTable block = bank.LoadBlockTable(table, i);
-            record_off start, end;
-            block.GetRange(&start, &end);
+    cronos_idx count = bank.OptimalRecordCount(tad, 1);
+    printf("optimal record count %u\n", count);
 
-            printf("%u\t%u\tBLOCK at %016llx, %u records in %u bytes\n",
-                    table.Id() + start, table.Id() + end,
-                    block.GetBlockTableOffset(),
-                    block.GetBlockTableCount(),
-                    block.GetBlockTableSize());
-
-            i += block.GetBlockTableCount();
-        } while (i < table.GetRecordCount());
-
-        idx += table.GetRecordCount();
-    } while (!bank.IsEndOfEntries());*/
+    cronos_off start, end;
+    bank.RecordTableOffsets(tad, 1, count, start, end);
+    printf("%" FCroOff "-%" FCroOff " record table\n", start, end);
 
     terminal_entry_mode(bank);
 

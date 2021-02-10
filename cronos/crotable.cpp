@@ -123,3 +123,14 @@ unsigned CroEntryTable::GetEntryCount() const
 {
     return GetSize() / GetEntrySize();
 }
+
+bool CroEntryTable::FirstActiveEntry(cronos_id id, CroEntry& entry)
+{
+    for (; id != IdEnd(); id++)
+    {
+        entry = GetEntry(id);
+        if (entry.IsActive()) return true;
+    }
+
+    return false;
+}

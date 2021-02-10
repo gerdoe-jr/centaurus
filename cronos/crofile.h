@@ -15,6 +15,9 @@ enum crofile_status {
     CROFILE_VERSION
 };
 
+#define CROFILE_TAD_TABLE_LIMIT (512*1024*1024ULL)
+#define CROFILE_DAT_TABLE_LIMIT (1024*1024*1024ULL)
+
 class CroFile
 {
 public:
@@ -58,7 +61,6 @@ public:
 
     unsigned EstimateEntryCount() const;
     bool IsEndOfEntries() const;
-    uint32_t GetOptimalEntryCount() const;
 
     bool IsValidOffset(cronos_off off, cronos_filetype type) const;
     FILE* FilePointer(cronos_filetype ftype) const;
@@ -100,9 +102,13 @@ public:
     void LoadTable(cronos_filetype ftype, cronos_id id,
         cronos_size limit, CroTable& table);
 
-    CroEntryTable LoadEntryTable(cronos_id id, unsigned burst);
-    //CroEntryTable LoadEntryTable(record_id idx, unsigned burst);
-    //BlockTable LoadBlockTable(RecordTable& record, record_id i);
+    cronos_idx OptimalEntryCount();
+    CroEntryTable LoadEntryTable(cronos_id id, cronos_idx count);
+
+    cronos_idx OptimalRecordCount(CroEntryTable& tad, cronos_id start);
+    void RecordTableOffsets(CroEntryTable& tad,
+        cronos_id id, cronos_idx count,
+        cronos_off& start, cronos_off& end);
 private:
     std::wstring m_Path;
 

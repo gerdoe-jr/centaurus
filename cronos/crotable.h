@@ -71,18 +71,4 @@ public:
     bool FirstActiveEntry(cronos_id id, CroEntry& entry);
 };
 
-//class CroEntryTable : public CroData
-//{
-//public:
-//    unsigned GetEntrySize() const;
-//    cronos_off IdEntryOffset(cronos_id id) const;
-//
-//    cronos_id IdStart() const;
-//    cronos_id IdEnd() const;
-//    CroEntry GetEntry(cronos_id id) const;
-//    unsigned GetEntryCount() const;
-//
-//    bool FirstActiveEntry(cronos_id id, CroEntry& entry);
-//};
-
 #endif
