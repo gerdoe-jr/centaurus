@@ -64,8 +64,7 @@ class CroEntryTable : public CroTable
 {
 public:
     cronos_rel IdEntryOffset(cronos_id id) const override;
-    unsigned GetEntrySize(cronos_id id
-        = INVALID_CRONOS_ID) const override;
+    unsigned GetEntrySize(cronos_id id = INVALID_CRONOS_ID) const override;
     CroEntry GetEntry(cronos_id id) const;
     unsigned GetEntryCount() const override;
 

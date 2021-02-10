@@ -133,8 +133,8 @@ void CroFile::Reset()
 {
     SetError();
 
-    fseek(m_fDat, 0L, SEEK_SET);
-    fseek(m_fTad, 0L, SEEK_SET);
+    Seek(0, CRONOS_TAD);
+    Seek(0, CRONOS_DAT);
 
     m_bEOB = false;
 }
