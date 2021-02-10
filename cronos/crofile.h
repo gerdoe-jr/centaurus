@@ -53,6 +53,7 @@ public:
             const std::string& msg = "");
     bool IsFailed() const;
 
+    inline unsigned GetDefaultBlockSize() const { return m_uDefLength;  }
     bool IsEncrypted() const;
     bool IsCompressed() const;
 
@@ -106,9 +107,11 @@ public:
     CroEntryTable LoadEntryTable(cronos_id id, cronos_idx count);
 
     cronos_idx OptimalRecordCount(CroEntryTable& tad, cronos_id start);
-    void RecordTableOffsets(CroEntryTable& tad,
+    cronos_size RecordTableOffsets(CroEntryTable& tad,
         cronos_id id, cronos_idx count,
         cronos_off& start, cronos_off& end);
+    CroRecordTable LoadRecordTable(CroEntryTable& tad,
+        cronos_id id, cronos_idx count);
 private:
     std::wstring m_Path;
 

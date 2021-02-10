@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdexcept>
+#include <algorithm>
 
 CroBuffer::CroBuffer()
 {
@@ -108,3 +109,4 @@ void CroBuffer::Free()
     }
     m_uSize = 0;
 }
+

@@ -41,6 +41,12 @@ void CroData::SetOffset(cronos_off off)
     m_uOffset = off;
 }
 
+void CroData::SetOffset(cronos_off off, cronos_filetype ftype)
+{
+    m_FileType = ftype;
+    m_uOffset = off;
+}
+
 void CroData::InitData(CroFile* file, cronos_id id, cronos_filetype ftype,
         cronos_off off, cronos_size size)
 {

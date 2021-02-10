@@ -1,5 +1,6 @@
 #include "crotable.h"
 #include "croexception.h"
+#include "crofile.h"
 #include "cronos_abi.h"
 #include "cronos_format.h"
 #include <algorithm>
@@ -41,7 +42,7 @@ cronos_id CroTable::IdStart() const
 
 cronos_id CroTable::IdEnd() const
 {
-    return Id() + GetEntryCount();
+    return Id() + m_uEntryCount;
 }
 
 cronos_off CroTable::TableOffset() const
@@ -133,4 +134,63 @@ bool CroEntryTable::FirstActiveEntry(cronos_id id, CroEntry& entry)
     }
 
     return false;
+}
+
+/* CroRecordTable */
+
+CroRecordTable::CroRecordTable(CroEntryTable& tad,
+    cronos_id id, cronos_idx count)
+    : m_TAD(tad)
+{
+    InitEntity(tad.File(), id);
+    m_uEntryCount = count;
+}
+
+CroBlock CroRecordTable::FirstBlock(cronos_id id) const
+{
+    CroBlock block(true);
+    cronos_rel off = IdEntryOffset(id);
+
+    block.SetOffset(off, GetFileType());
+    block.InitEntity(File(), id);
+    block.InitBuffer((uint8_t*)Data(off),
+        ABI()->Size(cronos_first_block_hdr), false);
+    return block;
+}
+
+bool CroRecordTable::NextBlock(CroBlock& block) const
+{
+    cronos_off next = block.BlockNext();
+    if (!next) return false;
+
+    block.InitData(File(), block.Id(), GetFileType(),
+        DataOffset(next), ABI()->Size(cronos_block_hdr));
+    return true;
+}
+
+cronos_rel CroRecordTable::IdEntryOffset(cronos_id id) const
+{
+    CroEntry entry = m_TAD.GetEntry(id);
+    if (!entry.IsActive())
+        throw CroException(File(), "record table inactive entry");
+    return DataOffset(entry.EntryOffset());
+}
+
+unsigned CroRecordTable::GetEntrySize(cronos_id id) const
+{
+    if (id == INVALID_CRONOS_ID)
+        return File()->GetDefaultBlockSize();
+    
+    CroBlock block = FirstBlock(id);
+    return block.BlockSize();
+}
+
+unsigned CroRecordTable::GetEntryCount() const
+{
+    return CroTable::GetEntryCount();
+}
+
+void CroRecordTable::SetEntryCount(cronos_idx count)
+{
+    m_uEntryCount = count;
 }

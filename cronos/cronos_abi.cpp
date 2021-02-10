@@ -78,6 +78,14 @@ const char* CronosABI::GetValueName(cronos_value value) const noexcept
         "cronos_tad_size",
         "cronos_tad_flags",
         "cronos_tad_rz",
+
+        "cronos_first_block_hdr",
+        "cronos_first_block_next",
+        "cronos_first_block_size",
+        "cronos_first_block_data",
+        "cronos_block_hdr",
+        "cronos_block_next",
+        "cronos_block_data"
     };
 
     return value < cronos_last
@@ -203,6 +211,16 @@ public:
         install_value(CRONOS_TAD, cronos_value_uint32, 0x04, 4, 0x7FFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x00, 0, 0x00000000);
+
+        /* DAT */
+        install_value(CRONOS_DAT, cronos_value_data, 0x00, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_uint32, 0x00, 4, 0x1FFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_uint32, 0x04, 4, 0x7FFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_data, 0x08, 0, 0);
+        
+        install_value(CRONOS_DAT, cronos_value_data, 0x00, 4, 0);
+        install_value(CRONOS_DAT, cronos_value_uint32, 0x00, 4, 0x1FFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_data, 0x04, 0, 0);
     }
 } cronos_abi_v3;
 
@@ -257,5 +275,17 @@ public:
         install_value(CRONOS_TAD, cronos_value_uint32, 0x0C, 4, 0xFFFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint64,
             0x00, 0, 0xFFFF000000000000);
+
+        /* DAT */
+        install_value(CRONOS_DAT, cronos_value_data, 0x00, 12, 0);
+        install_value(CRONOS_DAT, cronos_value_uint64,
+            0x00, 8, 0x0000FFFFFFFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_data, 0x0C, 0, 0);
+
+        install_value(CRONOS_DAT, cronos_value_data, 0x00, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_uint64,
+            0x00, 8, 0x0000FFFFFFFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_data, 0x08, 0, 0);
     }
 } cronos_abi_v4;

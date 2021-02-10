@@ -25,6 +25,7 @@ public:
         const uint8_t* data, cronos_size size);
     
     void SetOffset(cronos_off off);
+    void SetOffset(cronos_off off, cronos_filetype ftype);
     void InitData(CroFile* file, cronos_id id, cronos_filetype ftype,
             cronos_off off, cronos_size size);
 
@@ -67,7 +68,20 @@ public:
     inline T Get(cronos_value value) const
     {
         const auto* i = ABI()->GetValue(value);
-        return (*(T*)Data(i->m_Offset)) & (T)i->m_Mask;
+
+        uint64_t dataValue = 0;
+        switch (i->m_ValueType)
+        {
+        case cronos_value_uint16:
+            dataValue = *(uint16_t*)Data(i->m_Offset); break;
+        case cronos_value_uint32:
+            dataValue = *(uint32_t*)Data(i->m_Offset); break;
+        case cronos_value_uint64:
+            dataValue = *(uint64_t*)Data(i->m_Offset); break;
+        default: dataValue = *(T*)Data(i->m_Offset);
+        }
+        
+        return dataValue & i->m_Mask;
     }
 private:
     cronos_filetype m_FileType;

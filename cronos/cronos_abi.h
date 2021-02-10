@@ -24,6 +24,14 @@ enum cronos_value : unsigned {
     cronos_tad_flags,
     cronos_tad_rz,
 
+    cronos_first_block_hdr,
+    cronos_first_block_next,
+    cronos_first_block_size,
+    cronos_first_block_data,
+    cronos_block_hdr,
+    cronos_block_next,
+    cronos_block_data,
+
     cronos_last
 };
 

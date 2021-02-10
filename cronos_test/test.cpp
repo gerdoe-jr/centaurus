@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <Windows.h>
-#include <algorithm>
 #include "crofile.h"
 #include "croexception.h"
 #include "win32util.h"
+
+#ifdef min
+#undef min
+#endif
+#include <algorithm>
 
 static std::wstring testBank = 
     L"K:\\Cronos\\TestBanks\\Test1\\11_Республика Коми Нарьян-Мар\\Phones";
@@ -92,32 +95,59 @@ void terminal_entry_mode(CroFile& bank)
     } while (id_entry != INVALID_CRONOS_ID);
 }
 
+CroBuffer dump_record(CroData& dat, CroEntry& entry)
+{
+    CroBuffer record;
+
+    // block header
+
+    return record;
+}
+
 void dump_crofile(CroFile* file)
 {
     file->Reset();
 
     cronos_id tad_table_id = 1;
-    cronos_idx tad_count = file->OptimalEntryCount();
-    while (file->IsEndOfEntries())
+    while (!file->IsEndOfEntries())
     {
+        cronos_idx tad_count = file->OptimalEntryCount();
         CroEntryTable tad = file->LoadEntryTable(tad_table_id, tad_count);
-        if (!tad.IsEmpty()) throw CroException(file, "empty tad table");
+        if (tad.IsEmpty()) break;
         
-        cronos_off dat_start, dat_end;
-        cronos_idx dat_count = file->OptimalRecordCount(tad, tad.IdStart());
-        file->RecordTableOffsets(tad, tad.IdStart(),
-            dat_count, dat_start, dat_end);
-        cronos_size dat_size = dat_end - dat_start;
-        CroData dat = file->Read(tad.IdStart(), 1,
-            dat_size, CRONOS_DAT, dat_start);
-
-        for (cronos_id id = tad.IdStart(); id != tad.IdEnd(); id++)
+        cronos_id dat_table_id = tad_table_id;
+        while (dat_table_id < tad_table_id + tad_count)
         {
+            cronos_idx dat_count = std::min(tad_count,
+                file->OptimalRecordCount(tad, tad.IdStart()));
+            CroRecordTable dat = file->LoadRecordTable(
+                tad, tad.Id(), dat_count);
+            FILE* fTableDat = fopen("table_dat.bin", "wb");
+            fwrite(dat.GetData(), dat.GetSize(), 1, fTableDat);
+            fclose(fTableDat);
 
+            for (cronos_id id = dat.IdStart(); id != dat.IdEnd(); id++)
+            {
+                if (!tad.GetEntry(id).IsActive())
+                    continue;
+                CroBlock block = dat.FirstBlock(id);
+
+                printf("%" FCroId " BLOCK %" FCroOff " size %"
+                    FCroSize " record %" FCroOff " NEXT %" FCroOff "\n",
+                    id, block.GetStartOffset(), block.BlockSize(),
+                    block.RecordOffset(), block.BlockNext()
+                );
+            }
+
+            printf("DAT entry count %u\n", dat.GetEntryCount());
+            break;
+            dat_table_id += dat.GetEntryCount();
         }
 
         tad_table_id += tad.GetEntryCount();
     }
+
+    printf("\n");
 }
 
 int main(int argc, char** argv)
@@ -131,7 +161,7 @@ int main(int argc, char** argv)
         bankPath = szBank;
     }
 
-    std::wstring fileName = L"CroStru";
+    std::wstring fileName = L"CroBank";
     if (argc == 3)
     {
         wchar_t szFile[64] = {0};
@@ -171,6 +201,7 @@ int main(int argc, char** argv)
     bank.RecordTableOffsets(tad, 1, count, start, end);
     printf("%" FCroOff "-%" FCroOff " record table\n", start, end);
 
+    dump_crofile(&bank);
     terminal_entry_mode(bank);
 
     bank.Close();

@@ -24,8 +24,7 @@ public:
         return *this;
     }
 
-    void InitBuffer(uint8_t* data, cronos_size size,
-            bool owner = true);
+    void InitBuffer(uint8_t* data, cronos_size size, bool owner);
 
     cronos_size GetSize() const;
     bool IsEmpty() const;

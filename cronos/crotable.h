@@ -33,8 +33,8 @@ public:
     virtual unsigned GetEntryCount() const;
 protected:
     void GetEntry(cronos_id id, CroData& out) const;
-private:
-    unsigned m_uEntryCount;
+
+    cronos_idx m_uEntryCount;
 };
 
 /* TAD */
@@ -69,6 +69,56 @@ public:
     unsigned GetEntryCount() const override;
 
     bool FirstActiveEntry(cronos_id id, CroEntry& entry);
+};
+
+/* DAT*/
+
+class CroBlock : public CroData
+{
+public:
+    CroBlock(bool first = true) : m_bFirst(first)
+    {
+    }
+
+    inline cronos_off BlockNext() const
+    {
+        return Get<cronos_off>(cronos_block_next);
+    }
+
+    inline cronos_size BlockSize() const
+    {
+        return Get<cronos_size>(cronos_first_block_size);
+    }
+
+    inline bool HasNext() const
+    {
+        return BlockNext() != 0;
+    }
+
+    inline cronos_off RecordOffset() const
+    {
+        return GetStartOffset() + ABI()->Size(m_bFirst
+            ? cronos_first_block_hdr : cronos_block_hdr);
+    }
+private:
+    bool m_bFirst;
+};
+
+class CroRecordTable : public CroTable
+{
+public:
+    CroRecordTable(CroEntryTable& tad, cronos_id id, cronos_idx count);
+
+    CroBlock FirstBlock(cronos_id id) const;
+    bool NextBlock(CroBlock& block) const;
+
+    cronos_rel IdEntryOffset(cronos_id id) const override;
+    unsigned GetEntrySize(cronos_id id = INVALID_CRONOS_ID) const override;
+    unsigned GetEntryCount() const override;
+
+    void SetEntryCount(cronos_idx count);
+private:
+    CroEntryTable& m_TAD;
 };
 
 #endif

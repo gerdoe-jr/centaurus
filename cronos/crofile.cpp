@@ -111,7 +111,7 @@ crofile_status CroFile::Open()
             delete bf;
         }
 
-        m_Crypt.Copy(crypt.GetData(), crypt.GetSize());
+        //m_Crypt.Copy(crypt.GetData(), crypt.GetSize());
     }
 
     FILE* fOut = fopen("table_dec.bin", "wb");
@@ -206,21 +206,6 @@ bool CroFile::IsEndOfEntries() const
     return m_bEOB || feof(m_fTad);
 }
 
-#define CROFILE_TABLE_SIZE (cronos_size)64*1024*1024
-
-uint32_t CroFile::GetOptimalEntryCount() const
-{
-    uint64_t pos_cur = _ftelli64(m_fTad);
-    _fseeki64(m_fTad, 0L, SEEK_END);
-    uint64_t pos_end = _ftelli64(m_fTad);
-    _fseeki64(m_fTad, pos_cur, SEEK_SET);
-
-    uint64_t uTadSize = pos_end - pos_cur;
-    if (GetVersion() >= 4)
-        return std::min(CROFILE_TABLE_SIZE, uTadSize) / TAD_V4_SIZE;
-    else return std::min(CROFILE_TABLE_SIZE, uTadSize) / TAD_V3_SIZE;
-}
-
 bool CroFile::IsValidOffset(cronos_off off, cronos_filetype type) const
 {
     if (off == INVALID_CRONOS_OFFSET)
@@ -265,14 +250,18 @@ void CroFile::Read(CroData& data, uint32_t count, cronos_size size)
     if (read < count)
     {
         if (ferror(fp)) throw CroStdError(this);
-        else if (feof(fp)) m_bEOB = true;
         data.Alloc(read*size);
     }
+
+    m_bEOB = feof(fp);
 }
 
 void CroFile::LoadTable(cronos_filetype ftype, cronos_id id,
     cronos_size limit, CroTable& table)
 {
+    if (!IsValidOffset(table.GetStartOffset(), ftype))
+        return;
+
     table.InitTable(this, ftype, id, limit);
     Read(table, table.GetEntryCount(), table.GetEntrySize());
     table.Sync();
@@ -293,7 +282,8 @@ CroEntryTable CroFile::LoadEntryTable(cronos_id id, unsigned count)
     CroEntryTable table;
     cronos_size entrySize = ABI()->Size(cronos_tad_entry);
 
-    table.SetOffset(ABI()->Offset(cronos_tad_entry));
+    table.SetOffset(ABI()->Offset(cronos_tad_entry)
+        + (cronos_size)(id - 1) * entrySize);
     LoadTable(CRONOS_TAD, id, count * entrySize, table);
     return table;
 }
@@ -322,7 +312,7 @@ cronos_idx CroFile::OptimalRecordCount(CroEntryTable& tad, cronos_id start)
     return entry.Id() - start + 1;
 }
 
-void CroFile::RecordTableOffsets(CroEntryTable& tad, cronos_id id,
+cronos_size CroFile::RecordTableOffsets(CroEntryTable& tad, cronos_id id,
     cronos_idx count, cronos_off& start, cronos_off& end)
 {
     CroEntry entryStart, entryEnd;
@@ -332,5 +322,21 @@ void CroFile::RecordTableOffsets(CroEntryTable& tad, cronos_id id,
 
     entryEnd = tad.GetEntry(id + count - 1);
     end = entryEnd.IsActive()
-        ? entryEnd.EntryOffset() : start + entryStart.EntrySize();
+        ? entryEnd.EntryOffset() + entryEnd.EntrySize() : m_uDatSize;
+
+    return end - start;
+}
+
+CroRecordTable CroFile::LoadRecordTable(CroEntryTable& tad,
+    cronos_id id, cronos_idx count)
+{
+    cronos_off start, end;
+    cronos_size size = RecordTableOffsets(tad, id, count, start, end);
+    CroRecordTable table = CroRecordTable(tad, id, count);
+
+    table.SetOffset(start);
+    LoadTable(CRONOS_DAT, id, size, table);
+    table.SetEntryCount(count);
+
+    return table;
 }
