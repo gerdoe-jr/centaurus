@@ -210,7 +210,7 @@ public:
         install_value(CRONOS_TAD, cronos_value_uint32, 0x00, 4, 0x1FFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x04, 4, 0x7FFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
-        install_value(CRONOS_TAD, cronos_value_uint32, 0x00, 0, 0x00000000);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x04, 4, 0x80000000);
 
         /* DAT */
         install_value(CRONOS_DAT, cronos_value_data, 0x00, 8, 0);

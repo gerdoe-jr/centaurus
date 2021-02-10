@@ -58,6 +58,7 @@ public:
     }
 
     bool IsActive() const;
+    bool HasBlock() const;
 };
 
 class CroEntryTable : public CroTable

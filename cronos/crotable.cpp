@@ -99,6 +99,17 @@ bool CroEntry::IsActive() const
     return EntryOffset() && EntrySize();
 }
 
+bool CroEntry::HasBlock() const
+{
+    if (Is3())
+    {
+        if (Get<uint32_t>(cronos_tad_rz) & TAD_V3_RZ_NOBLOCK)
+            return false;
+    }
+
+    return true;
+}
+
 /* CroEntryTable */
 
 cronos_rel CroEntryTable::IdEntryOffset(cronos_id id) const
@@ -160,11 +171,15 @@ CroBlock CroRecordTable::FirstBlock(cronos_id id) const
 
 bool CroRecordTable::NextBlock(CroBlock& block) const
 {
-    cronos_off next = block.BlockNext();
-    if (!next) return false;
+    if (!block.BlockNext()) return false;
+    if (!IsValidOffset(block.BlockNext()))
+        return false;
+    cronos_rel next = DataOffset(block.BlockNext());
 
-    block.InitData(File(), block.Id(), GetFileType(),
-        DataOffset(next), ABI()->Size(cronos_block_hdr));
+    block.SetOffset(next, GetFileType());
+    block.InitEntity(File(), Id());
+    block.InitBuffer((uint8_t*)Data(next),
+        ABI()->Size(cronos_block_hdr), false);
     return true;
 }
 

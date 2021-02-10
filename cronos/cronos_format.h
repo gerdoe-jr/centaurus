@@ -35,6 +35,7 @@
 #define TAD_V3_BASE         0x08
 #define TAD_V3_SIZE         0x0C
 #define TAD_V3_DELETED      0xFFFFFFFF
+#define TAD_V3_RZ_NOBLOCK   0x80000000
 #define TAD_V3_OFFSET(off)  (off&CRONOS3_MASK_OFFSET)
 #define TAD_V3_FSIZE(off)   (off&CRONOS3_MASK_FSIZE)
 

@@ -10,7 +10,7 @@
 #include <algorithm>
 
 static std::wstring testBank = 
-    L"K:\\Cronos\\TestBanks\\Test1\\11_Республика Коми Нарьян-Мар\\Phones";
+    L"K:\\Cronos\\TestBanks\\Test3\\Украина - Клиенты moneyveo 2017";
 static std::vector<std::string> known_versions;
 
 void scan_directory(const std::wstring& path)
@@ -95,11 +95,63 @@ void terminal_entry_mode(CroFile& bank)
     } while (id_entry != INVALID_CRONOS_ID);
 }
 
-CroBuffer dump_record(CroData& dat, CroEntry& entry)
+CroBuffer dump_record(CroFile* file, CroRecordTable& dat, CroEntry& entry)
 {
     CroBuffer record;
+    const CronosABI* abi = file->ABI();
 
-    // block header
+    if (!entry.HasBlock())
+    {
+        cronos_rel off = dat.DataOffset(entry.EntryOffset());
+        record.Write(dat.Data(off), entry.EntrySize());
+        printf("%p\n", dat.Data(off));
+        printf("%" FCroOff " rel %" FCroOff "\n", entry.EntryOffset(), off);
+
+        printf("\tno block %" FCroOff " record part %" FCroSize "\n",
+            entry.EntryOffset(), entry.EntrySize());
+        return record;
+    }
+
+    CroBlock block = dat.FirstBlock(entry.Id());
+    cronos_size recordSize = block.BlockSize();
+    
+    cronos_rel dataOff = block.GetStartOffset() + block.RecordOffset();
+    cronos_size dataSize = entry.EntrySize()
+        - abi->Size(cronos_first_block_hdr);
+    if (!dat.IsValidOffset(dat.FileOffset(dataOff)))
+    {
+        printf("\tinvalid offset %" FCroOff "\n", dataOff);
+        return record;
+    }
+    
+    printf("\tfirst block %" FCroOff " record part %" FCroSize "\n",
+        dat.GetStartOffset() + block.GetStartOffset(), dataSize);
+    record.Write(dat.Data(dataOff), dataSize);
+    recordSize -= dataSize;
+
+    while (dat.NextBlock(block))
+    {
+        dataOff = block.GetStartOffset() + block.RecordOffset();
+        dataSize = std::min(recordSize, file->GetDefaultBlockSize());
+        if (!dat.IsValidOffset(dat.FileOffset(dataOff)))
+        {
+            printf("\tinvalid offset %" FCroOff "\n", dataOff);
+            continue;
+        }
+
+        printf("\tnext block %" FCroOff " record part %" FCroSize "\n",
+            dat.GetStartOffset() + block.GetStartOffset(), dataSize);
+        record.Write(dat.Data(dataOff), dataSize);
+        recordSize -= dataSize;
+
+        if (!recordSize)
+            break;
+    }
+
+    if (file->IsEncrypted())
+    {
+        file->Decrypt(record.GetData(), record.GetSize(), entry.Id());
+    }
 
     return record;
 }
@@ -128,15 +180,27 @@ void dump_crofile(CroFile* file)
 
             for (cronos_id id = dat.IdStart(); id != dat.IdEnd(); id++)
             {
-                if (!tad.GetEntry(id).IsActive())
+                CroEntry entry = tad.GetEntry(id);
+                if (!entry.IsActive())
                     continue;
                 CroBlock block = dat.FirstBlock(id);
 
                 printf("%" FCroId " BLOCK %" FCroOff " size %"
                     FCroSize " record %" FCroOff " NEXT %" FCroOff "\n",
-                    id, block.GetStartOffset(), block.BlockSize(),
-                    block.RecordOffset(), block.BlockNext()
+                    id, dat.FileOffset(block.GetStartOffset()),
+                    block.BlockSize(),
+                    dat.FileOffset(block.RecordOffset()),
+                    block.BlockNext()
                 );
+
+                // dump_record test
+                char szFileName[64] = { 0 };
+                sprintf_s(szFileName, "record%" FCroId ".bin", id);
+
+                CroBuffer record = dump_record(file, dat, entry);
+                FILE* fRecord = fopen(szFileName, "wb");
+                fwrite(record.GetData(), record.GetSize(), 1, fRecord);
+                fclose(fRecord);
             }
 
             printf("DAT entry count %u\n", dat.GetEntryCount());

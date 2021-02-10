@@ -2,7 +2,7 @@
 #include "crofile.h"
 #include "croexception.h"
 
-CroData::CroData()
+CroData::CroData() : CroBuffer()
 {
     m_FileType = CRONOS_INVALID_FILETYPE;
     m_uOffset = INVALID_CRONOS_OFFSET;
@@ -112,8 +112,6 @@ cronos_off CroData::DataOffset(cronos_pos off) const
 
 cronos_off CroData::FileOffset(cronos_rel off) const
 {
-    if (off > GetSize())
-        throw CroException(File(), "CroData::FileOffset", off);
     return GetStartOffset() + off;
 }
 

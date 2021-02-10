@@ -53,18 +53,18 @@ public:
             const std::string& msg = "");
     bool IsFailed() const;
 
-    inline unsigned GetDefaultBlockSize() const { return m_uDefLength;  }
+    inline cronos_size GetDefaultBlockSize() const { return m_uDefLength;  }
     bool IsEncrypted() const;
     bool IsCompressed() const;
 
     void Decrypt(uint8_t* pBlock, unsigned size,
             uint32_t offset = 0);
 
-    unsigned EstimateEntryCount() const;
     bool IsEndOfEntries() const;
 
     bool IsValidOffset(cronos_off off, cronos_filetype type) const;
     FILE* FilePointer(cronos_filetype ftype) const;
+    cronos_size FileSize(cronos_filetype ftype);
     cronos_off GetOffset(cronos_filetype ftype) const;
     void Seek(cronos_off off, cronos_filetype ftype);
     void Read(CroData& data, uint32_t count, cronos_size size);
@@ -102,6 +102,8 @@ public:
 
     void LoadTable(cronos_filetype ftype, cronos_id id,
         cronos_size limit, CroTable& table);
+    void LoadTable(cronos_filetype ftype, cronos_id id,
+        cronos_off start, cronos_off end, CroTable& table);
 
     cronos_idx OptimalEntryCount();
     CroEntryTable LoadEntryTable(cronos_id id, cronos_idx count);
@@ -121,8 +123,8 @@ private:
     FILE* m_fDat;
     FILE* m_fTad;
 
-    cronos_size m_uDatSize;
-    cronos_size m_uTadSize;
+    cronos_size m_DatSize;
+    cronos_size m_TadSize;
 
     bool m_bEOB;
 

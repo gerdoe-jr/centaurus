@@ -72,6 +72,8 @@ uint8_t* CroBuffer::GetData()
 
 void CroBuffer::Alloc(cronos_size size)
 {
+    if (!size) throw std::runtime_error("CroBuffer alloc !size");
+
     if (IsEmpty()) m_pData = (uint8_t*)malloc(size);
     else
     {
