@@ -14,9 +14,9 @@ public:
 
     inline CroFile* File() const { return m_pFile; }
     inline cronos_id Id() const { return m_Id; }
-protected:
-    void InitEntity(CroFile* file, cronos_id id);
 
+    void InitEntity(CroFile* file, cronos_id id);
+protected:
     const CronosABI* ABI() const;
     int Version() const;
     int Minor() const;

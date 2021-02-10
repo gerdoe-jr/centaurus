@@ -11,11 +11,12 @@ class CroTable : public CroData
 {
 public:
     CroTable();
-    CroTable(CroFile* file, cronos_filetype ftype,
-        cronos_id id, cronos_size limit);
-    CroTable(CroFile* file, cronos_filetype ftype,
-        cronos_id start, cronos_id end,
-        cronos_size size);
+
+    void InitTable(CroFile* file, cronos_filetype ftype,
+        cronos_id start, cronos_id end, cronos_size limit);
+    void InitTable(CroFile* file, cronos_filetype ftype,
+        cronos_id start, cronos_size limit);
+    void Sync();
 
     cronos_id IdStart() const;
     cronos_id IdEnd() const;
@@ -43,17 +44,17 @@ class CroEntry : public CroData
 public:
     inline cronos_off EntryOffset() const
     {
-        return ABI()->GetValue(*this, cronos_tad_offset);
+        return Get<cronos_off>(cronos_tad_offset);
     }
 
     inline cronos_size EntrySize() const
     {
-        return ABI()->GetValue(*this, cronos_tad_size);
+        return Get<cronos_off>(cronos_tad_size);
     }
 
     inline cronos_flags EntryFlags() const
     {
-        return ABI()->GetValue(*this, cronos_tad_flags);
+        return Get<cronos_off>(cronos_tad_flags);
     }
 
     bool IsActive() const;
@@ -62,7 +63,7 @@ public:
 class CroEntryTable : public CroTable
 {
 public:
-    cronos_off IdEntryOffset(cronos_id id) const override;
+    cronos_rel IdEntryOffset(cronos_id id) const override;
     unsigned GetEntrySize(cronos_id id
         = INVALID_CRONOS_ID) const override;
     CroEntry GetEntry(cronos_id id) const;

@@ -68,7 +68,13 @@ void terminal_entry_mode(CroFile& bank)
         bank.Reset();
 
         CroEntryTable table = bank.LoadEntryTable(
-                (cronos_id)id_entry, id_count);
+            (cronos_id)id_entry, id_count);
+        printf("TABLE %" FCroId "->%" FCroId
+            " off %016" FCroOff " size %" FCroSize "\n",
+            table.IdStart(), table.IdEnd(),
+            table.TableOffset(), table.TableSize()
+        );
+
         for (cronos_id id = table.IdStart(); id != table.IdEnd(); id++)
         {
             CroEntry entry = table.GetEntry(id);

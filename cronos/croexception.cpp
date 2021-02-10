@@ -53,7 +53,7 @@ const char* CroStdError::what() noexcept
     return s_szError;
 }
 
-CroABIError::CroABIError(const CronosABI* abi, const CronosABIValue& value,
+CroABIError::CroABIError(const CronosABI* abi, unsigned value,
     const std::string& valueName)
     : CroException(NULL),
     m_pABI(abi), m_Value(value),
@@ -63,20 +63,18 @@ CroABIError::CroABIError(const CronosABI* abi, const CronosABIValue& value,
 
 const char* CroABIError::what() noexcept
 {
-    cronos_abi_num ver = m_pABI->Number();
-    cronos_size size = m_Value.ValueSize()
-        ? m_Value.ValueSize()
-        : m_pABI->GetFormatSize(m_Value);
+    cronos_abi_num ver = m_pABI->GetABIVersion();
+    const auto* value = m_pABI->GetValue((cronos_value)m_Value);
 
     sprintf_s(s_szError, 256,
         "Cronos %dX [%02d.%02d] Error\n"
-        "[%s]\n"
+        "%s\n"
         "\tcronos_off\t%" FCroOff "\n"
         "\tcronos_size\t%" FCroSize,
 
         m_pABI->GetVersion(), ver.first, ver.second,
         m_ValueName.c_str(),
-        m_pABI->Offset(m_Value), size
+        value->m_Offset, value->m_Size
     );
     return s_szError;
 }

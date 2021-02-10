@@ -2,7 +2,8 @@
 #define __CRONOS02_H
 
 #include <stdint.h>
+#include "crodata.h"
 
-extern uint8_t cronos02_crypt_table[512];
+extern const cronos_abi_value cronos02_crypt_table;
 
 #endif

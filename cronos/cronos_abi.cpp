@@ -5,306 +5,257 @@
 #include "cronos_format.h"
 #include "cronos02.h"
 
-/* CronosABIValue */
-
-CronosABIValue::CronosABIValue(cronos_filetype ftype,
-    cronos_size size, uint64_t mask)
-    : m_ValueFile(ftype),
-    m_ValueSize(size),
-    m_ValueMask(mask)
-{
-}
-
-/* Cronos ABI format values */
-
-CronosABIValue cronos_hdr(CRONOS_DAT, CRONOS_HEADER_SIZE);
-CronosABIValue cronos_hdr_sig(CRONOS_DAT, 7);
-CronosABIValue cronos_hdr_major(CRONOS_DAT, 2);
-CronosABIValue cronos_hdr_minor(CRONOS_DAT, 2);
-CronosABIValue cronos_hdr_flags(CRONOS_DAT, 2, 0xFFFF);
-CronosABIValue cronos_hdr_deflength(CRONOS_DAT, 2, 0xFFFF);
-CronosABIValue cronos_hdr_secret(CRONOS_DAT, 8);
-CronosABIValue cronos_hdrlite_secret(CRONOS_DAT, 8);
-CronosABIValue cronos_hdr_crypt(CRONOS_DAT, 0x200);
-
-CronosABIValue cronos_tad_base(CRONOS_TAD, 0);
-CronosABIValue cronos_tad_entry(CRONOS_TAD, 0);
-CronosABIValue cronos_tad_offset(CRONOS_TAD, 0);
-CronosABIValue cronos_tad_size(CRONOS_TAD, 0);
-CronosABIValue cronos_tad_flags(CRONOS_TAD, 0);
-CronosABIValue cronos_tad_rz(CRONOS_TAD, 0);
-
-/* CronosABI */
-
-CronosABI* CronosABI::s_pFirst = NULL;
-CronosABI* CronosABI::s_pLast = NULL;
-
 CronosABI::CronosABI()
-    : m_ABIVersion(INVALID_CRONOS_ABI)
 {
-    AddFormat();
+    InstallABI(INVALID_CRONOS_VERSION, INVALID_CRONOS_ABI);
+    s_ABIFamily.push_back(this);
 }
 
-CronosABI::CronosABI(cronos_abi_num num)
-    : m_ABIVersion(num)
+CronosABI::CronosABI(cronos_version ver)
 {
-    AddFormat();
+    InstallABI(INVALID_CRONOS_VERSION, INVALID_CRONOS_ABI);
+    m_Version = ver;
 }
 
-void CronosABI::AddFormat()
+CronosABI::CronosABI(cronos_version ver, cronos_abi_num num)
 {
-    if (!s_pFirst) s_pFirst = this;
-    if (s_pLast) s_pLast->m_pNext = this;
-    s_pLast = this;
+    InstallABI(ver, num);
 }
 
-bool CronosABI::IsFormat() const
+CronosABI* CronosABI::LoadABI(cronos_abi_num num) const
 {
-    return m_ABIVersion != INVALID_CRONOS_ABI;
+    return new CronosABI(GetVersion(), num);
 }
 
-cronos_version CronosABI::Minor() const
+bool CronosABI::IsCompatible(cronos_abi_num num) const
 {
-    return m_ABIVersion.second;
+    if (m_ABIVersion != INVALID_CRONOS_ABI)
+        return m_ABIVersion == num;
+    return false;
 }
 
-bool CronosABI::IsVersion(cronos_version ver) const
+bool CronosABI::IsLite() const
 {
-    return GetVersion() == ver;
+    return false;
 }
 
-bool CronosABI::Is3() const
+cronos_model CronosABI::GetModel() const
 {
-    return IsVersion(3);
+    return cronos_model_big;
 }
 
-bool CronosABI::Is4A() const
+cronos_version CronosABI::GetVersion() const
 {
-    return GetVersion() >= 4;
+    return m_Version;
 }
 
-cronos_rel CronosABI::Offset(const CronosABIValue& value) const
+cronos_abi_num CronosABI::GetABIVersion() const
 {
-    if (!HasFormatValue(value))
-        return INVALID_CRONOS_OFFSET;
-    return GetFormatOffset(value);
+    return m_ABIVersion;
 }
 
-const uint8_t* CronosABI::GetPtr(const CroData& data,
-    const CronosABIValue& value) const
+const struct cronos_abi_value* CronosABI::GetValue(
+    cronos_value value) const noexcept
 {
-    cronos_rel off = Offset(value);
-    if (!data.IsValidOffset(off))
-        throw CroABIError(this, value, "value ptr");
-    return data.Data(off);
+    return value < cronos_last ? m_Values.data() + value : NULL;
 }
 
-void CronosABI::GetData(const CroData& data,
-    const CronosABIValue& value, CroData& out) const
+const char* CronosABI::GetValueName(cronos_value value) const noexcept
 {
-    if (!HasFormatValue(value))
-        throw CroException(data.File(), "ABI no value for CroData");
+    static const char* s_pValueNames[] = {
+        "cronos_hdr",
+        "cronos_hdr_sig",
+        "cronos_hdr_major",
+        "cronos_hdr_minor",
+        "cronos_hdr_flags",
+        "cronos_hdr_deflength",
+        "cronos_hdr_secret",
+        "cronos_hdrlite_secret",
+        "cronos_hdr_crypt",
 
-    cronos_rel rel = Offset(value);
-    if (!data.IsValidOffset(data.FileOffset(rel)))
-        throw CroException(data.File(), "ABI get data", rel);
+        "cronos_tad_entry",
+        "cronos_tad_offset",
+        "cronos_tad_size",
+        "cronos_tad_flags",
+        "cronos_tad_rz",
+    };
 
-    out.Copy(data.Data(rel), GetFormatSize(value));
+    return value < cronos_last
+        ? s_pValueNames[value] : "cronos_invalid";
 }
 
-uint64_t CronosABI::GetValue(const CroData& data,
-    const CronosABIValue& value) const
+void CronosABI::InstallABI(cronos_version ver, cronos_abi_num num) noexcept
 {
-    if (!HasFormatValue(value))
-        throw CroException(data.File(), "ABI no value");
-
-    cronos_rel off = Offset(value);
-    if (!data.IsValidOffset(data.FileOffset(off)))
-        throw CroException(data.File(), "ABI get", off);
-
-    uint64_t uValue = 0;
-    if (value.ValueSize() == 2) uValue = data.Get<uint16_t>(off);
-    else if (value.ValueSize() == 4) uValue = data.Get<uint32_t>(off);
-    else if (value.ValueSize() == 8) uValue = data.Get<uint64_t>(off);
-
-    return value.MaskValue(uValue);
+    m_Version = ver;
+    m_ABIVersion = num;
+    if (ver == INVALID_CRONOS_VERSION || num == INVALID_CRONOS_ABI)
+        return;
+    m_Values.reserve(cronos_value_count);
 }
 
-CroData CronosABI::ReadData(CroFile* file,
-    const CronosABIValue& value) const
+std::vector<CronosABI*> CronosABI::s_ABIFamily;
+std::vector<std::unique_ptr<CronosABI>> CronosABI::s_ABI;
+
+CronosABI* CronosABI::GetABI(cronos_abi_num num)
 {
-    if (!HasFormatValue(value))
-        throw CroException(file, "ABI no value");
+    for (const auto& abi : s_ABI)
+        if (abi->GetABIVersion() == num) return abi.get();
 
-    cronos_pos pos = Offset(value);
-    if (!file->IsValidOffset(pos, value.ValueFile()))
-        throw CroException(file, "ABI read", pos);
-
-    return file->Read(INVALID_CRONOS_ID, 1,
-        GetFormatSize(value), value.ValueFile());
-}
-
-const CronosABI* CronosABI::LoadABI(cronos_abi_num num)
-{
-    const CronosABI* abi = s_pFirst;
-    while (abi)
+    for (const auto& fmt : s_ABIFamily)
     {
-        if (abi->IsCompatible(num))
-        {
-            if (abi->IsFormat()) return abi;
-            return abi->Instance(num);
-        }
-        abi = abi->m_pNext;
+        if (fmt->IsCompatible(num))
+            return s_ABI.emplace_back(fmt->LoadABI(num)).get();
     }
 
     return NULL;
 }
 
-/* Generic Cronos ABI */
+CronosABI* CronosABI::GenericABI()
+{
+    return GetABI(INVALID_CRONOS_ABI);
+}
 
-class CronosABIGeneric : public CronosABI
+/* Cronos generic ABI */
+
+class CronosABI_Generic : public CronosABI
 {
 public:
-    CronosABIGeneric()
-    {
-    }
-    
-    CronosABIGeneric(cronos_abi_num num) : CronosABI(num)
+    CronosABI_Generic() : CronosABI()
     {
     }
 
-    virtual CronosABI* Instance(cronos_abi_num num) const
+    CronosABI_Generic(cronos_version ver, cronos_abi_num num)
+        : CronosABI(ver, num)
     {
-        return new CronosABIGeneric(num);
+        InstallABI(ver, num);
     }
 
-    virtual cronos_version GetVersion() const
+    virtual CronosABI* LoadABI(cronos_abi_num num) const
     {
-        return INVALID_CRONOS_VERSION;
+        return new CronosABI_Generic(INVALID_CRONOS_VERSION, num);
     }
 
     virtual bool IsCompatible(cronos_abi_num num) const
     {
-        return false;
+        return num == INVALID_CRONOS_ABI;
     }
 
-    virtual bool IsLite() const
+    virtual void InstallABI(cronos_version ver, cronos_abi_num num) noexcept
     {
-        return false;
-    }
-
-    virtual bool HasFormatValue(const CronosABIValue& value) const
-    {
-        return false;
-    }
-
-    virtual cronos_off GetFormatOffset(const CronosABIValue& value) const
-    {
-        if (value == cronos_hdr)                return 0x00;
-        else if (value == cronos_hdr_sig)       return 0x00;
-        else if (value == cronos_hdr_major)     return 0x0A;
-        else if (value == cronos_hdr_minor)     return 0x0D;
-        else if (value == cronos_hdr_flags)     return 0x0F;
-        else if (value == cronos_hdr_deflength) return 0x11;
-
-        return INVALID_CRONOS_OFFSET;
-    }
-
-    virtual cronos_size GetFormatSize(const CronosABIValue& value) const
-    {
-        cronos_size valueSize = value.ValueSize();
-        if (!valueSize)
-            throw CroABIError(this, value, "format size");
-        return valueSize;
+        /* header */
+        install_value(CRONOS_DAT, cronos_value_data, 0x00, 4096, 0);
+        install_value(CRONOS_DAT, cronos_value_data, 0x00, 7, 0);
+        install_value(CRONOS_DAT, cronos_value_data, 0x0A, 2, 0);
+        install_value(CRONOS_DAT, cronos_value_data, 0x0D, 2, 0);
+        install_value(CRONOS_DAT, cronos_value_uint16, 0x0F, 2, 0xFFFF);
+        install_value(CRONOS_DAT, cronos_value_uint16, 0x11, 2, 0xFFFF);
     }
 } cronos_abi_generic;
 
 /* Cronos 3x ABI */
 
-class CronosABI3 : public CronosABIGeneric
+class CronosABI_V3 : public CronosABI_Generic
 {
 public:
-    CronosABI3() : CronosABIGeneric()
+    CronosABI_V3() : CronosABI_Generic()
     {
     }
 
-    CronosABI3(cronos_abi_num num) : CronosABIGeneric(num)
+    CronosABI_V3(cronos_abi_num num)
+        : CronosABI_Generic(CRONOS_V3, num)
     {
+        InstallABI(CRONOS_V3, num);
     }
 
-    CronosABI* Instance(cronos_abi_num num) const override
+    CronosABI* LoadABI(cronos_abi_num num) const override
     {
-        return new CronosABI3(num);
-    }
-
-    cronos_version GetVersion() const override
-    {
-        return CRONOS_V3;
+        return new CronosABI_V3(num);
     }
 
     bool IsCompatible(cronos_abi_num num) const override
     {
-        if (num.first != 1)
-            return false;
-        return num.second >= 2 && num.second <= 4;
+        return num.first == 1 && num.second >= 2 && num.second <= 4;
     }
 
     bool IsLite() const override
     {
-        return m_ABIVersion.second == 4;
+        return Minor() == 4;
     }
 
-    bool HasFormatValue(const CronosABIValue& value) const override
+    cronos_model GetModel() const override
     {
-        if (value == cronos_hdr_secret) return !IsLite();
-        else if (value == cronos_hdrlite_secret) return IsLite();
-        else if (value == cronos_hdr_crypt)
-            return m_ABIVersion.second != 2;
-
-        return false;
+        return Minor() == 2  ? cronos_model_small : cronos_model_big;
     }
 
-    cronos_off GetFormatOffset(const CronosABIValue& value) const override
+    void InstallABI(cronos_version ver,
+        cronos_abi_num num) noexcept override
     {
-        if (value == cronos_hdr_secret)             return 0x13;
-        else if (value == cronos_hdrlite_secret)    return 0x33;
-        else if (value == cronos_hdr_crypt)         return 0xFC;
-        else if (value == cronos_tad_base)          return 0x08;
-        else if (value == cronos_tad_offset)        return 0x00;
-        else if (value == cronos_tad_size)          return 0x04;
-        else if (value == cronos_tad_flags)         return 0x08;
+        /* header */
+        install_value(CRONOS_DAT, cronos_value_data, 0x13, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_data, 0x33, 8, 0);
+        if (GetModel() == cronos_model_small)
+            install_abi_value(cronos02_crypt_table);
+        else install_value(CRONOS_DAT, cronos_value_data, 0xFC, 512, 0);
 
-        return CronosABIGeneric::GetFormatOffset(value);
-    }
-
-    void GetData(const CroData& data, const CronosABIValue& value,
-        CroData& out) const override
-    {
-        if (value == cronos_hdr_crypt)
-        {
-            if (m_ABIVersion.second == 2)
-            {
-                out.InitBuffer(cronos02_crypt_table,
-                    value.ValueSize(), false);
-            }
-        }
-        else CronosABIGeneric::GetData(data, value, out);
-    }
-
-    uint64_t GetValue(const CroData& data,
-        const CronosABIValue& value) const override
-    {
-        cronos_rel off = Offset(value);
-        
-        if (value == cronos_tad_offset)
-            return TAD_V3_OFFSET(data.Get<uint32_t>(off));
-        else if (value == cronos_tad_size)
-            return TAD_V3_FSIZE(data.Get<uint32_t>(off));
-        else if (value == cronos_tad_flags)
-            return data.Get<uint32_t>(off);
-        else if (value == cronos_tad_rz)
-            return 0;
-
-        return CronosABIGeneric::GetValue(data, value);
+        /* TAD */
+        install_value(CRONOS_TAD, cronos_value_data, 0x08, 12, 0);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x00, 4, 0x1FFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x04, 4, 0x7FFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x00, 0, 0x00000000);
     }
 } cronos_abi_v3;
+
+/* Cronos 4x ABI */
+
+class CronosABI_V4 : public CronosABI_Generic
+{
+public:
+    CronosABI_V4() : CronosABI_Generic()
+    {
+    }
+
+    CronosABI_V4(cronos_abi_num num)
+        : CronosABI_Generic(CRONOS_V4, num)
+    {
+        InstallABI(CRONOS_V4, num);
+    }
+
+    CronosABI* LoadABI(cronos_abi_num num) const override
+    {
+        return new CronosABI_V4(num);
+    }
+
+    bool IsCompatible(cronos_abi_num num) const override
+    {
+        return num.first == 1 && num.second >= 11 && num.second <= 14;
+    }
+
+    bool IsLite() const override
+    {
+        return Minor() == 13;
+    }
+
+    cronos_model GetModel() const override
+    {
+        return cronos_model_big;
+    }
+
+    void InstallABI(cronos_version ver,
+        cronos_abi_num num) noexcept override
+    {
+        /* header */
+        install_value(CRONOS_DAT, cronos_value_data, 0x13, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_data, 0x33, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_data, 0xF8, 512, 0);
+
+        /* TAD */
+        install_value(CRONOS_TAD, cronos_value_data, 0x10, 16, 0);
+        install_value(CRONOS_TAD, cronos_value_uint64,
+            0x00, 8, 0x0000FFFFFFFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x0C, 4, 0xFFFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint64,
+            0x00, 0, 0xFFFF000000000000);
+    }
+} cronos_abi_v4;

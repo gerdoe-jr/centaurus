@@ -5,7 +5,7 @@
 #include <inttypes.h>
 #include <utility>
 
-using cronos_version = int;
+typedef int cronos_version;
 using cronos_abi_num = std::pair<cronos_version, cronos_version>;
 
 #define cronos_abi_version(major, minor) std::make_pair(major, minor)
@@ -24,7 +24,7 @@ typedef uint32_t cronos_flags;
 #define cronos_rel cronos_off
 #define cronos_pos cronos_off
 
-#define FCroOff PRIu64
+#define FCroOff PRIx64
 #define FCroSize PRIu64
 #define FCroFlags PRIu32
 
@@ -40,7 +40,8 @@ typedef uint32_t cronos_idx;
 
 typedef enum {
     CRONOS_INVALID_FILETYPE,
-    CRONOS_TAD = 0,
+    CRONOS_MEM = 0,
+    CRONOS_TAD,
     CRONOS_DAT
 } cronos_filetype;
 

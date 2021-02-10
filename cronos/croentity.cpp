@@ -30,6 +30,6 @@ int CroEntity::Version() const
 
 int CroEntity::Minor() const
 {
-    return ABI()->Number().second;
+    return ABI()->GetABIVersion().second;
 }
 

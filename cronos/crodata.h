@@ -4,8 +4,7 @@
 #include "crotype.h"
 #include "crobuffer.h"
 #include "croentity.h"
-
-class CronosABI;
+#include "cronos_abi.h"
 
 typedef enum {
     CRODATA_OFFSET_INVALID,
@@ -22,7 +21,10 @@ public:
             cronos_off off, cronos_size size);
     CroData(const CroData& table, cronos_id id,
             cronos_rel off, cronos_size size);
-
+    CroData(CroFile* file, cronos_id id,
+        const uint8_t* data, cronos_size size);
+    
+    void SetOffset(cronos_off off);
     void InitData(CroFile* file, cronos_id id, cronos_filetype ftype,
             cronos_off off, cronos_size size);
 
@@ -43,10 +45,29 @@ public:
     const uint8_t* Data(cronos_rel off) const;
     uint8_t* Data(cronos_rel off);
 
-    template<typename T> inline
-    T Get(cronos_rel off) const
+    CroData Value(cronos_value value);
+
+    template<typename T>
+    inline T Get(cronos_rel off) const
     {
         return *(T*)Data(off);
+    }
+
+    inline const uint8_t* Data(cronos_value value) const
+    {
+        return Data(ABI()->GetValue(value)->m_Offset);
+    }
+
+    uint8_t* Data(cronos_value value)
+    {
+        return Data(ABI()->GetValue(value)->m_Offset);
+    }
+
+    template<typename T>
+    inline T Get(cronos_value value) const
+    {
+        const auto* i = ABI()->GetValue(value);
+        return (*(T*)Data(i->m_Offset)) & (T)i->m_Mask;
     }
 private:
     cronos_filetype m_FileType;

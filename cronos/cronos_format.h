@@ -20,6 +20,7 @@
 #define CRONOS_HEADER_SIZE  0x1000
 
 #define CRONOS_SECRET       0x13
+#define CRONOS_LITESECRET   0x33
 
 #define CRONOS_ENCRYPTION   (1<<0)
 #define CRONOS_COMPRESSION  (1<<1)

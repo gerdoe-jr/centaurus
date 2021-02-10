@@ -2,106 +2,103 @@
 #define __CRONOS_ABI_H
 
 #include "crotype.h"
-#include "crodata.h"
+#include <memory>
+#include <vector>
 
 class CroFile;
 
-/* CronosABIValue */
+enum cronos_value : unsigned {
+    cronos_hdr = 0,
+    cronos_hdr_sig,
+    cronos_hdr_major,
+    cronos_hdr_minor,
+    cronos_hdr_flags,
+    cronos_hdr_deflength,
+    cronos_hdr_secret,
+    cronos_hdrlite_secret,
+    cronos_hdr_crypt,
 
-class CronosABIValue
-{
-public:
-    CronosABIValue(cronos_filetype ftype, cronos_size size,
-        uint64_t mask = (uint64_t)-1);
+    cronos_tad_entry,
+    cronos_tad_offset,
+    cronos_tad_size,
+    cronos_tad_flags,
+    cronos_tad_rz,
 
-    inline cronos_filetype ValueFile() const { return m_ValueFile;  }
-    inline cronos_size ValueSize() const { return m_ValueSize; }
-    inline uint64_t MaskValue(uint64_t value) const
-    {
-        return value & m_ValueMask;
-    }
-
-    inline bool operator==(const CronosABIValue& other) const
-    {
-        return this == &other;
-    }
-private:
-    cronos_filetype m_ValueFile;
-    cronos_size m_ValueSize;
-    uint64_t m_ValueMask;
+    cronos_last
 };
 
-/* Cronos ABI format values */
+#define cronos_value_count cronos_last
 
-extern CronosABIValue cronos_hdr;
-extern CronosABIValue cronos_hdr_sig;
-extern CronosABIValue cronos_hdr_major;
-extern CronosABIValue cronos_hdr_minor;
-extern CronosABIValue cronos_hdr_flags;
-extern CronosABIValue cronos_hdr_deflength;
-extern CronosABIValue cronos_hdr_secret;
-extern CronosABIValue cronos_hdrlite_secret;
-extern CronosABIValue cronos_hdr_crypt;
+enum cronos_value_type {
+    cronos_value_data,
+    cronos_value_uint16,
+    cronos_value_uint32,
+    cronos_value_uint64
+};
 
-extern CronosABIValue cronos_tad_base;
-extern CronosABIValue cronos_tad_entry;
-extern CronosABIValue cronos_tad_offset;
-extern CronosABIValue cronos_tad_size;
-extern CronosABIValue cronos_tad_flags;
-extern CronosABIValue cronos_tad_rz;
+struct cronos_abi_value {
+    cronos_filetype m_FileType;
+    cronos_value_type m_ValueType;
+    union {
+        cronos_off m_Offset;
+        const uint8_t* m_pMem;
+    };
+    cronos_size m_Size;
+    uint64_t m_Mask;
+};
 
-/* CronosABI */
+enum cronos_model {
+    cronos_model_small,
+    cronos_model_big
+};
 
 class CronosABI
 {
 public:
     CronosABI();
-    CronosABI(cronos_abi_num num);
+    CronosABI(cronos_version ver);
+    CronosABI(cronos_version ver, cronos_abi_num num);
+    virtual ~CronosABI() {}
 
-    void AddFormat();
-    bool IsFormat() const;
-    inline const cronos_abi_num& Number() const { return m_ABIVersion; }
+    virtual CronosABI* LoadABI(cronos_abi_num num) const;
 
-    virtual CronosABI* Instance(cronos_abi_num num) const = 0;
+    virtual bool IsCompatible(cronos_abi_num num) const;
+    virtual bool IsLite() const;
+    virtual cronos_model GetModel() const;
 
-    virtual cronos_version GetVersion() const = 0;
-    virtual bool IsCompatible(cronos_abi_num num) const = 0;
-    virtual bool IsLite() const = 0;
-    virtual bool HasFormatValue(const CronosABIValue& value) const = 0;
-    virtual cronos_rel GetFormatOffset(const CronosABIValue& value) const = 0;
-    virtual cronos_size GetFormatSize(const CronosABIValue& value) const = 0;
+    cronos_version GetVersion() const;
+    cronos_abi_num GetABIVersion() const;
+    inline cronos_version Minor() const { return m_ABIVersion.second;  }
 
-    cronos_version Minor() const;
-    bool IsVersion(cronos_version ver) const;
-    bool Is3() const;
-    bool Is4A() const;
+    const struct cronos_abi_value* GetValue(
+        cronos_value value) const noexcept;
+    const char* GetValueName(cronos_value value) const noexcept;
 
-    cronos_rel Offset(const CronosABIValue& value) const;
-    const uint8_t* GetPtr(const CroData& data,
-        const CronosABIValue& value) const;
-
-    virtual void GetData(const CroData& data,
-        const CronosABIValue& value, CroData& out) const;
-    virtual uint64_t GetValue(const CroData& data,
-        const CronosABIValue& value) const;
-    virtual CroData ReadData(CroFile* file,
-        const CronosABIValue& value) const;
-    
-    template<typename T>
-    inline T Get(const CroData& data,
-        const CronosABIValue& value) const
+    inline cronos_off Offset(cronos_value value) const noexcept
     {
-        return (T)GetValue(data, value);
+        return GetValue(value)->m_Offset;
     }
 
-    static const CronosABI* LoadABI(cronos_abi_num num);
+    inline cronos_size Size(cronos_value value) const noexcept
+    {
+        return GetValue(value)->m_Size;
+    }
 protected:
-    cronos_abi_num m_ABIVersion;
-private:
-    CronosABI* m_pNext;
+    virtual void InstallABI(cronos_version ver, cronos_abi_num num) noexcept;
 
-    static CronosABI* s_pFirst;
-    static CronosABI* s_pLast;
+    cronos_version m_Version;
+    cronos_abi_num m_ABIVersion;
+    std::vector<struct cronos_abi_value> m_Values;
+
+    static std::vector<CronosABI*> s_ABIFamily;
+    static std::vector<std::unique_ptr<CronosABI>> s_ABI;
+public:
+    static CronosABI* GetABI(cronos_abi_num num);
+    static CronosABI* GenericABI();
 };
+
+#define install_abi_value(value) m_Values.push_back(value)
+#define install_value(ftype, vtype, offset, size, mask)            \
+    m_Values.emplace_back(ftype, vtype, offset, size, mask)
 
 #endif

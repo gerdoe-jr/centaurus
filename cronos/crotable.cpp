@@ -11,23 +11,27 @@ CroTable::CroTable()
     m_uEntryCount = 0;
 }
 
-CroTable::CroTable(CroFile* file, cronos_filetype ftype,
-    cronos_id id, cronos_size limit)
+void CroTable::InitTable(CroFile* file, cronos_filetype ftype,
+    cronos_id start, cronos_id end, cronos_size limit)
 {
-    m_uEntryCount = limit / GetEntrySize(id);
-    InitData(file, id, ftype,
-        FileOffset(IdEntryOffset(id)),
-        std::min(((cronos_size)GetEntryCount() * GetEntrySize()), limit)
-    );
+    InitEntity(file, start);
+    InitData(file, start, ftype, GetStartOffset(), limit);
+
+    m_uEntryCount = end - start;
 }
 
-CroTable::CroTable(CroFile* file, cronos_filetype ftype,
-    cronos_id start, cronos_id end,
-    cronos_size size)
+void CroTable::InitTable(CroFile* file, cronos_filetype ftype,
+    cronos_id start, cronos_size limit)
 {
-    m_uEntryCount = end - start;
-    InitData(file, start, ftype, FileOffset(IdEntryOffset(start)),
-        size);
+    InitEntity(file, start);
+    InitData(file, start, ftype, GetStartOffset(), limit);
+
+    m_uEntryCount = (unsigned)(limit / GetEntrySize());
+}
+
+void CroTable::Sync()
+{
+    m_uEntryCount = GetSize() / GetEntrySize();
 }
 
 cronos_id CroTable::IdStart() const
@@ -47,10 +51,7 @@ cronos_off CroTable::TableOffset() const
 
 cronos_size CroTable::TableSize() const
 {
-    unsigned count = GetEntryCount();
-    return count
-        ? (cronos_size)count * GetEntrySize()
-        : GetSize();
+    return (cronos_size)GetEntryCount() * GetEntrySize();
 }
 
 bool CroTable::IsValidEntryId(cronos_id id) const
@@ -60,9 +61,6 @@ bool CroTable::IsValidEntryId(cronos_id id) const
 
 cronos_rel CroTable::IdEntryOffset(cronos_id id) const
 {
-    if (!IsValidEntryId(id))
-        throw CroException(File(), "invalid entry id");
-
     cronos_idx idx = id - IdStart();
     return (cronos_rel)idx * GetEntrySize();
 }
@@ -93,7 +91,7 @@ bool CroEntry::IsActive() const
     }
     else if (Is4A())
     {
-        if (ABI()->GetValue(*this, cronos_tad_rz) & TAD_V4_RZ_DELETED)
+        if (Get<uint64_t>(cronos_tad_rz) & TAD_V4_RZ_DELETED)
             return false;
     }
 
@@ -102,15 +100,15 @@ bool CroEntry::IsActive() const
 
 /* CroEntryTable */
 
-cronos_off CroEntryTable::IdEntryOffset(cronos_id id) const
+cronos_rel CroEntryTable::IdEntryOffset(cronos_id id) const
 {
-    return ABI()->Offset(cronos_tad_base)
-        + (cronos_off)id * GetEntrySize();
+    cronos_idx idx = id - IdStart();
+    return (cronos_off)idx * GetEntrySize();
 }
 
 unsigned CroEntryTable::GetEntrySize(cronos_id id) const
 {
-    return ABI()->GetFormatSize(cronos_tad_entry);
+    return ABI()->Size(cronos_tad_entry);
 }
 
 CroEntry CroEntryTable::GetEntry(cronos_id id) const
@@ -123,5 +121,5 @@ CroEntry CroEntryTable::GetEntry(cronos_id id) const
 
 unsigned CroEntryTable::GetEntryCount() const
 {
-    return TableSize() / GetEntrySize();
+    return GetSize() / GetEntrySize();
 }

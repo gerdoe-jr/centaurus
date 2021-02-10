@@ -20,7 +20,7 @@ class CroFile
 public:
     CroFile(const std::wstring& path);
 protected:
-    bool IsSupported(int major, int minor);
+    void DumpABI(CronosABI* abi);
 public:
     crofile_status Open();
     void Close();
@@ -31,9 +31,9 @@ public:
         return m_pABI;
     }
 
-    inline const cronos_abi_num& GetABIVersion() const
+    inline cronos_abi_num GetABIVersion() const
     {
-        return ABI()->Number();
+        return m_pABI->GetABIVersion();
     }
 
     inline cronos_version GetVersion() const
@@ -82,12 +82,19 @@ public:
     inline T Read(cronos_id id, uint32_t count, cronos_size size,
             cronos_filetype ftype, cronos_off off)
     {
-        T data();
+        T data = T();
 
         data.InitData(this, id, ftype, off, count*size);
         Read(data, count, size);
 
         return data;
+    }
+
+    template<typename T = CroData>
+    inline T Read(cronos_id id, uint32_t count, cronos_value value)
+    {
+        const auto* i = ABI()->GetValue(value);
+        return Read<T>(id, count, i->m_Size, i->m_FileType, i->m_Offset);
     }
 
     void LoadTable(cronos_filetype ftype, cronos_id id,
@@ -110,7 +117,7 @@ private:
 
     bool m_bEOB;
 
-    const CronosABI* m_pABI;
+    CronosABI* m_pABI;
     cronos_version m_Version;
 
     uint32_t m_uFlags;
