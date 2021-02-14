@@ -47,12 +47,14 @@ cronos_id CroTable::IdEnd() const
 
 cronos_off CroTable::TableOffset() const
 {
-    return FileOffset(IdEntryOffset(IdStart()));
+    return ABI() ? FileOffset(IdEntryOffset(IdStart()))
+        : GetStartOffset();
 }
 
 cronos_size CroTable::TableSize() const
 {
-    return (cronos_size)GetEntryCount() * GetEntrySize();
+    return ABI() ? (cronos_size)GetEntryCount() * GetEntrySize()
+        : GetSize();
 }
 
 bool CroTable::IsValidEntryId(cronos_id id) const
@@ -133,7 +135,7 @@ CroEntry CroEntryTable::GetEntry(cronos_id id) const
 
 unsigned CroEntryTable::GetEntryCount() const
 {
-    return GetSize() / GetEntrySize();
+    return ABI() ? GetSize() / GetEntrySize() : m_uEntryCount;
 }
 
 bool CroEntryTable::FirstActiveEntry(cronos_id id, CroEntry& entry)

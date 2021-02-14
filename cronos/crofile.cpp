@@ -29,14 +29,91 @@ void CroFile::DumpABI(CronosABI* abi)
         abi->GetModel() == cronos_model_big ? "big model" : "small model",
         abiVersion.first, abiVersion.second
     );
+
+    cronos_rel member_off = 0;
     for (unsigned i = 0; i < cronos_last; i++)
     {
         cronos_value value = (cronos_value)i;
-        printf("%016" FCroOff "\t%" FCroSize "\t%s\n",
-            abi->Offset(value), abi->Size(value),
-            abi->GetValueName((cronos_value)i)
-        );
+        const auto* pValue = ABI()->GetValue(value);
+
+        const char* valueType;
+        switch (pValue->m_ValueType)
+        {
+        case cronos_value_data: valueType = "uint8_t"; break;
+        case cronos_value_struct: valueType = "CroData"; break;
+        case cronos_value_uint16: valueType = "uint16_t"; break;
+        case cronos_value_uint32: valueType = "uint32_t"; break;
+        case cronos_value_uint64: valueType = "uint64_t"; break;
+        }
+
+        switch (pValue->m_FileType)
+        {
+        case CRONOS_MEM:
+            printf(
+                "%s CroData(NULL, cronos_id, (const uint8_t*)%p, %"
+                FCroSize ");\n",
+                abi->GetValueName(value),
+                pValue->m_pMem,
+                pValue->m_Size
+            );
+            break;
+        case CRONOS_TAD:
+        case CRONOS_DAT:
+            if (pValue->m_ValueType == cronos_value_struct)
+            {
+                if (member_off)
+                {
+                    printf("};\n\n");
+                    member_off = 0;
+                }
+
+                printf("struct %s /* %" FCroSize " */ {\n",
+                    abi->GetValueName(value),
+                    pValue->m_Size
+                );
+            }
+            else
+            {
+                const char* valueName = abi->GetValueName(value) + 7;
+                if (pValue->m_Offset > member_off)
+                {
+                    unsigned skip = pValue->m_Offset - member_off;
+                    printf("\tuint8_t __skip%" FCroOff
+                        "[%u];\n\n", member_off, skip);
+                    member_off += skip;
+                }
+
+                if (pValue->m_Offset < member_off)
+                {
+                    printf(
+                        "\t/* 0x%" FCroOff " %" FCroSize " & 0x%"
+                        PRIX64 " */\n",
+                        pValue->m_Offset, 
+                        pValue->m_Size,
+                        pValue->m_Mask
+                    );
+                }
+                else if (pValue->m_ValueType == cronos_value_data)
+                {
+                    printf("\t%s %s[%" FCroSize "];\n",
+                        valueType, valueName, pValue->m_Size
+                    );
+                }
+                else
+                {
+                    printf("\t%s %s; /* & 0x%" PRIx64 " */\n",
+                        valueType, valueName, pValue->m_Mask
+                    );
+                }
+
+                member_off += pValue->m_Size;
+            }
+            
+            break;
+        }
     }
+
+    if (member_off) printf("};\n");
     printf("\n");
 }
 
@@ -267,6 +344,8 @@ void CroFile::Read(CroData& data, uint32_t count, cronos_size size)
 void CroFile::LoadTable(cronos_filetype ftype, cronos_id id,
     cronos_size limit, CroTable& table)
 {
+    table.InitEntity(this, id);
+
     if (!IsValidOffset(table.GetStartOffset(), ftype))
         return;
 
@@ -278,6 +357,8 @@ void CroFile::LoadTable(cronos_filetype ftype, cronos_id id,
 void CroFile::LoadTable(cronos_filetype ftype, cronos_id id,
     cronos_off start, cronos_off end, CroTable& table)
 {
+    table.InitEntity(this, id);
+
     end = std::min(end, ftype == CRONOS_TAD
         ? m_TadSize : m_DatSize);
     cronos_size size = end - start;

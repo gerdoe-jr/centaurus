@@ -151,7 +151,7 @@ public:
     virtual void InstallABI(cronos_version ver, cronos_abi_num num) noexcept
     {
         /* header */
-        install_value(CRONOS_DAT, cronos_value_data, 0x00, 4096, 0);
+        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 4096, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x00, 7, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x0A, 2, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x0D, 2, 0);
@@ -206,19 +206,19 @@ public:
         else install_value(CRONOS_DAT, cronos_value_data, 0xFC, 512, 0);
 
         /* TAD */
-        install_value(CRONOS_TAD, cronos_value_data, 0x08, 12, 0);
+        install_value(CRONOS_TAD, cronos_value_struct, 0x08, 12, 0);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x00, 4, 0x1FFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x04, 4, 0x7FFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x04, 4, 0x80000000);
 
         /* DAT */
-        install_value(CRONOS_DAT, cronos_value_data, 0x00, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 8, 0);
         install_value(CRONOS_DAT, cronos_value_uint32, 0x00, 4, 0x1FFFFFFF);
         install_value(CRONOS_DAT, cronos_value_uint32, 0x04, 4, 0x7FFFFFFF);
         install_value(CRONOS_DAT, cronos_value_data, 0x08, 0, 0);
         
-        install_value(CRONOS_DAT, cronos_value_data, 0x00, 4, 0);
+        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 4, 0);
         install_value(CRONOS_DAT, cronos_value_uint32, 0x00, 4, 0x1FFFFFFF);
         install_value(CRONOS_DAT, cronos_value_data, 0x04, 0, 0);
     }
@@ -246,12 +246,12 @@ public:
 
     bool IsCompatible(cronos_abi_num num) const override
     {
-        return num.first == 1 && num.second >= 11 && num.second <= 14;
+        return num.first == 1 && num.second >= 11 && num.second <= 19;
     }
 
     bool IsLite() const override
     {
-        return Minor() == 13;
+        return Minor() == 13 || Minor() == 19;
     }
 
     cronos_model GetModel() const override
@@ -268,7 +268,7 @@ public:
         install_value(CRONOS_DAT, cronos_value_data, 0xF8, 512, 0);
 
         /* TAD */
-        install_value(CRONOS_TAD, cronos_value_data, 0x10, 16, 0);
+        install_value(CRONOS_TAD, cronos_value_struct, 0x10, 16, 0);
         install_value(CRONOS_TAD, cronos_value_uint64,
             0x00, 8, 0x0000FFFFFFFFFFFF);
         install_value(CRONOS_TAD, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
@@ -277,13 +277,13 @@ public:
             0x00, 0, 0xFFFF000000000000);
 
         /* DAT */
-        install_value(CRONOS_DAT, cronos_value_data, 0x00, 12, 0);
+        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 12, 0);
         install_value(CRONOS_DAT, cronos_value_uint64,
             0x00, 8, 0x0000FFFFFFFFFFFF);
         install_value(CRONOS_DAT, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
         install_value(CRONOS_DAT, cronos_value_data, 0x0C, 0, 0);
 
-        install_value(CRONOS_DAT, cronos_value_data, 0x00, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 8, 0);
         install_value(CRONOS_DAT, cronos_value_uint64,
             0x00, 8, 0x0000FFFFFFFFFFFF);
         install_value(CRONOS_DAT, cronos_value_data, 0x08, 0, 0);

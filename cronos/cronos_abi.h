@@ -38,6 +38,7 @@ enum cronos_value : unsigned {
 #define cronos_value_count cronos_last
 
 enum cronos_value_type {
+    cronos_value_struct,
     cronos_value_data,
     cronos_value_uint16,
     cronos_value_uint32,

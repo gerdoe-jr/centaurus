@@ -6,6 +6,7 @@
 
 #ifdef min
 #undef min
+#undef max
 #endif
 #include <algorithm>
 
@@ -58,41 +59,117 @@ void scan_directory(const std::wstring& path)
         scan_directory(path + L"\\" + dir);
 }
 
-void terminal_entry_mode(CroFile& bank)
+void dump_buffer(const CroBuffer& buf, unsigned codepage = 0)
 {
-    printf("get entry mode\n:<entry> <count>\n\n");
+    const char ascii_lup = 201, ascii_rup = 187,
+        ascii_lsp = 199, ascii_rsp = 182,
+        ascii_lbt = 200, ascii_rbt = 188,
+        ascii_up_cross = 209, ascii_bt_cross = 207,
+        ascii_cross = 197,
+        ascii_v_sp = 179, ascii_h_sp = 196,
+        ascii_v_border = 186, ascii_h_border = 205;
 
-    int id_entry = INVALID_CRONOS_ID;
-    unsigned id_count;
+    const cronos_size line = 0x10;
 
-    do {
-        printf(":");
-        if (scanf("%d %u", &id_entry, &id_count) < 2)
-            break;
-        bank.Reset();
+    //code page
+    if (!codepage) codepage = GetConsoleOutputCP();
+    SetConsoleOutputCP(codepage);
 
-        CroEntryTable table = bank.LoadEntryTable(
-            (cronos_id)id_entry, id_count);
-        printf("TABLE %" FCroId "->%" FCroId
-            " off %016" FCroOff " size %" FCroSize "\n",
-            table.IdStart(), table.IdEnd(),
-            table.TableOffset(), table.TableSize()
-        );
+    //start
+    putc(ascii_lup, stdout);
+    for (cronos_rel i = 0; i < 8; i++) putc(ascii_h_border, stdout);
+    putc(ascii_up_cross, stdout);
+    for (cronos_rel i = 0; i < line * 3 - 1; i++)
+        putc(ascii_h_border, stdout);
+    putc(ascii_up_cross, stdout);
+    for (cronos_rel i = 0; i < line; i++)
+        putc(ascii_h_border, stdout);
+    putc(ascii_rup, stdout);
 
-        for (cronos_id id = table.IdStart(); id != table.IdEnd(); id++)
+    putc('\n', stdout);
+
+    //header
+    putc(ascii_v_border, stdout);
+    printf(" offset ");
+    putc(ascii_v_sp, stdout);
+    for (cronos_rel i = 0; i < line; i++)
+        printf(i < line - 1 ? "%02x " : "%02x", i & 0xFF);
+    putc(ascii_v_sp, stdout);
+    switch (codepage)
+    {
+    case CP_UTF7: printf(" UTF-7  "); break;
+    case CP_UTF8: printf(" UTF-8  "); break;
+    default: printf(" ANSI CP #%05d ", codepage);
+    }
+    putc(ascii_v_border, stdout);
+
+    putc('\n', stdout);
+
+    //split
+    putc(ascii_lsp, stdout);
+    for (cronos_rel i = 0; i < 8; i++)
+        putc(ascii_h_sp, stdout);
+    putc(ascii_cross, stdout);
+    for (cronos_rel i = 0; i < line * 3 - 1; i++)
+        putc(ascii_h_sp, stdout);
+    putc(ascii_cross, stdout);
+    for (cronos_rel i = 0; i < line; i++)
+        putc(ascii_h_sp, stdout);
+    putc(ascii_rsp, stdout);
+
+    putc('\n', stdout);
+
+    //hex dump
+    for (cronos_size off = 0; off < buf.GetSize(); off += line)
+    {
+        cronos_size len = std::min(buf.GetSize() - off, line);
+
+        putc(ascii_v_border, stdout);
+        printf("%08" FCroOff, off);
+        if (len) putc(ascii_v_sp, stdout);
+        else break;
+
+        for (cronos_rel i = 0; i < line; i++)
         {
-            CroEntry entry = table.GetEntry(id);
-            if (entry.IsActive())
+            if (i < len)
             {
-                printf("%" FCroId " RECORD at %" FCroOff ", size %" FCroSize
-                    ", flags %" FCroFlags "\n",
-                    entry.Id(), entry.EntryOffset(), entry.EntrySize(),
-                    entry.EntryFlags()
-                );
+                printf(i < line - 1 ? "%02X " : "%02X",
+                    buf.GetData()[off + i] & 0xFF);
             }
-            else printf("%" FCroId " INACTIVE RECORD\n", entry.Id());                   
+            else printf(i < line - 1 ? "   " : "  ");
         }
-    } while (id_entry != INVALID_CRONOS_ID);
+
+        putc(ascii_v_sp, stdout);
+        for (cronos_rel i = 0; i < line; i++)
+        {
+            if (i < len)
+            {
+                uint8_t byte = buf.GetData()[off + i];
+                putc(byte >= 0x20 ? (char)byte : '.', stdout);
+            }
+            else putc(' ', stdout);
+        }
+        putc(ascii_v_border, stdout);
+
+        putc('\n', stdout);
+    }
+
+    //end
+    putc(ascii_lbt, stdout);
+
+    for (cronos_rel i = 0; i < 8; i++)
+        putc(ascii_h_border, stdout);
+    putc(ascii_bt_cross, stdout);
+
+    for (cronos_rel i = 0; i < line * 3 - 1; i++)
+        putc(ascii_h_border, stdout);
+
+    putc(ascii_bt_cross, stdout);
+    for (cronos_rel i = 0; i < line; i++)
+        putc(ascii_h_border, stdout);
+    putc(ascii_rbt, stdout);
+
+    putc('\n', stdout);
 }
 
 CroBuffer dump_record(CroFile* file, CroRecordTable& dat, CroEntry& entry)
@@ -194,13 +271,9 @@ void dump_crofile(CroFile* file)
                 );
 
                 // dump_record test
-                char szFileName[64] = { 0 };
-                sprintf_s(szFileName, "record%" FCroId ".bin", id);
-
                 CroBuffer record = dump_record(file, dat, entry);
-                FILE* fRecord = fopen(szFileName, "wb");
-                fwrite(record.GetData(), record.GetSize(), 1, fRecord);
-                fclose(fRecord);
+                dump_buffer(record);
+                return;
             }
 
             printf("DAT entry count %u\n", dat.GetEntryCount());
@@ -212,6 +285,18 @@ void dump_crofile(CroFile* file)
     }
 
     printf("\n");
+}
+
+void log_table(const CroTable& table)
+{
+    printf(
+        "== %s TABLE 0x%" FCroOff " %" FCroSize " ID "
+        "%" FCroId "-%" FCroId " COUNT %" FCroIdx "\n",
+        table.GetFileType() == CRONOS_TAD ? "TAD" : "DAT",
+        table.TableOffset(), table.TableSize(),
+        table.IdStart(), table.IdEnd(),
+        table.GetEntryCount()
+    );
 }
 
 int main(int argc, char** argv)
@@ -226,7 +311,7 @@ int main(int argc, char** argv)
     }
 
     std::wstring fileName = L"CroBank";
-    if (argc == 3)
+    if (argc >= 3)
     {
         wchar_t szFile[64] = {0};
         MultiByteToWideChar(CP_THREAD_ACP, 0, argv[2], -1,
@@ -253,7 +338,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    printf("bank version %d\n", bank.GetVersion());
+    /*printf("bank version %d\n", bank.GetVersion());
 
     printf("optimal entry count %u\n", bank.OptimalEntryCount());
     CroEntryTable tad = bank.LoadEntryTable(1, bank.OptimalEntryCount());
@@ -263,10 +348,107 @@ int main(int argc, char** argv)
 
     cronos_off start, end;
     bank.RecordTableOffsets(tad, 1, count, start, end);
-    printf("%" FCroOff "-%" FCroOff " record table\n", start, end);
+    printf("%" FCroOff "-%" FCroOff " record table\n", start, end);*/
+    
+    for (int i = 3; i < argc; i++)
+    {
+        bank.Reset();
+        
+        if (!strcmp(argv[i], "--crypt-table"))
+        {
+            dump_buffer(bank.GetCryptTable());
+        }
+        else if (!strcmp(argv[i], "--entry"))
+        {
+            cronos_id tad_id = i + 1 < argc ? atoi(argv[++i]) : 1;
+            cronos_idx tad_count = i + 1 < argc ? atoi(argv[++i]) : 0;
 
-    dump_crofile(&bank);
-    terminal_entry_mode(bank);
+            while (!bank.IsEndOfEntries())
+            {
+                CroEntryTable tad = bank.LoadEntryTable(tad_id, tad_count > 0
+                    ? tad_count : bank.OptimalEntryCount());
+                if (tad.IsEmpty()) break;
+                log_table(tad);
+
+                for (cronos_id id = tad.IdStart(); id != tad.IdEnd(); id++)
+                {
+                    CroEntry tad_entry = tad.GetEntry(id);
+
+                    printf("%" FCroId "\t", tad_entry.Id());
+                    if (tad_entry.IsActive())
+                    {
+                        printf("ENTRY\t%016" FCroOff "\t%" FCroSize
+                            "\t%" FCroFlags "\n",
+                            tad_entry.EntryOffset(),
+                            tad_entry.EntrySize(),
+                            tad_entry.EntryFlags()
+                        );
+                    }
+                    else printf("INACTIVE\n");
+                }
+
+                if (tad_count > 0) break;
+                tad_id = tad.IdEnd();
+            }
+        }
+        else if (!strcmp(argv[i], "--block"))
+        {
+            cronos_id tad_id = i + 1 < argc ? atoi(argv[++i]) : 1;
+            cronos_idx tad_count = i + 1 < argc ? atoi(argv[++i]) : 0;
+
+            while (!bank.IsEndOfEntries())
+            {
+                CroEntryTable tad = bank.LoadEntryTable(tad_id, tad_count > 0
+                    ? tad_count : bank.OptimalEntryCount());
+                if (tad.IsEmpty()) break;
+
+                cronos_off dat_start, dat_end;
+                cronos_idx dat_count = bank.OptimalRecordCount(tad, tad.Id());
+                bank.RecordTableOffsets(tad, tad.Id(), dat_count,
+                    dat_start, dat_end);
+                CroRecordTable dat = bank.LoadRecordTable(tad,
+                    tad_id, dat_count);
+                if (dat.IsEmpty()) break;
+
+                log_table(dat);
+
+                for (cronos_id id = tad.IdStart(); id != tad.IdEnd(); id++)
+                {
+                    CroEntry tad_entry = tad.GetEntry(id);
+
+                    printf("%" FCroId "\t", tad_entry.Id());
+                    if (tad_entry.IsActive())
+                    {
+                        CroBlock dat_entry = dat.FirstBlock(id);
+                        if (tad_entry.HasBlock())
+                        {
+                            printf("BLOCK\t%016" FCroOff "\t%" FCroSize
+                                "\t%016" FCroOff "\n",
+                                tad_entry.EntryOffset(),
+                                dat_entry.BlockSize(),
+                                dat_entry.BlockNext()
+                            );
+                        }
+                        else
+                        {
+                            printf("NOBLOCK\t%016" FCroOff "\t%" FCroSize
+                                "\t%016" FCroOff "\n",
+                                tad_entry.EntryOffset(),
+                                tad_entry.EntrySize(),
+                                0ULL
+                            );
+                        }
+                    }
+                    else printf("INACTIVE\n");
+                }
+
+                if (tad_count > 0) break;
+                tad_id = tad.IdEnd();
+            }
+        }
+
+        putc('\n', stdout);
+    }
 
     bank.Close();
     return 0;

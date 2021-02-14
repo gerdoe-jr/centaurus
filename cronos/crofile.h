@@ -57,6 +57,7 @@ public:
     bool IsEncrypted() const;
     bool IsCompressed() const;
 
+    inline const CroBuffer& GetCryptTable() const { return m_Crypt; }
     void Decrypt(uint8_t* pBlock, unsigned size,
             uint32_t offset = 0);
 
