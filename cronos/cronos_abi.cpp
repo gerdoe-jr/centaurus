@@ -251,7 +251,7 @@ public:
 
     bool IsLite() const override
     {
-        return Minor() == 13 || Minor() == 19;
+        return Minor() == 14 || Minor() == 19;
     }
 
     cronos_model GetModel() const override

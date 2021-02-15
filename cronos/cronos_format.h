@@ -7,8 +7,8 @@
 // 01.03    3x, big model
 // 01.04    3x, lite
 // 01.11    4x
-// 01.13    4x, lite
-// 01.14    4x, pro
+// 01.13    4x, pro
+// 01.14    4x, lite
 
 /* Cronos file header */
 

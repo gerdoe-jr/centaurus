@@ -174,22 +174,22 @@ crofile_status CroFile::Open()
     {
         if (m_Secret.IsEmpty())
         {
-            m_Secret = hdr.CopyValue(cronos_hdrlite_secret);
+            m_Secret = hdr.CopyValue(cronos_hdr_secret);
 
             if (ABI()->IsLite())
             {
-                CroData liteKey = hdr.Value(cronos_hdr_secret);
+                CroData lite = hdr.CopyValue(cronos_hdrlite_secret);
 
                 auto bf = std::make_unique<blowfish_t>();
-                blowfish_init(bf.get(), liteKey.GetData(), liteKey.GetSize());
+                blowfish_init(bf.get(), m_Secret.GetData(), 4);
                 blowfish_decrypt_buffer(bf.get(),
-                    m_Secret.GetData(), m_Secret.GetSize());
+                    lite.GetData(), lite.GetSize());
+
+                m_Secret.Copy(lite.GetData(), lite.GetSize());
             }
-            else
-            {
-                memmove(m_Secret.GetData() + 4, m_Secret.GetData(), 4);
-                memcpy(m_Secret.GetData(), &m_uSerial, 4);
-            }
+            
+            memmove(m_Secret.GetData() + 4, m_Secret.GetData(), 4);
+            memcpy(m_Secret.GetData(), &m_uSerial, 4);
         }
 
         m_Crypt = hdr.CopyValue(cronos_hdr_crypt);

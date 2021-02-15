@@ -359,14 +359,15 @@ int main(int argc, char** argv)
     cronos_off start, end;
     bank.RecordTableOffsets(tad, 1, count, start, end);
     printf("%" FCroOff "-%" FCroOff " record table\n", start, end);*/
-    
+
     for (int i = 3; i < argc; i++)
     {
         bank.Reset();
         
         if (!strcmp(argv[i], "--crypt-table"))
         {
-            dump_buffer(bank.GetCryptTable());
+            if (bank.IsEncrypted())
+                dump_buffer(bank.GetCryptTable());
         }
         else if (!strcmp(argv[i], "--entry"))
         {
@@ -405,9 +406,12 @@ int main(int argc, char** argv)
         {
             const CroData& secret = bank.GetSecret();
 
-            printf("SERIAL\t%" PRIu32 "\n", secret.Get<uint32_t>(0x00));
-            printf("KEY\t%" PRIu32 "\n", secret.Get<uint32_t>(0x04));
-            dump_buffer(secret);
+            if (bank.IsEncrypted())
+            {
+                printf("SERIAL\t%" PRIu32 "\n", secret.Get<uint32_t>(0x00));
+                printf("KEY\t%" PRIu32 "\n", secret.Get<uint32_t>(0x04));
+                dump_buffer(secret);
+            }
         }
         else if (!strcmp(argv[i], "--block"))
         {
