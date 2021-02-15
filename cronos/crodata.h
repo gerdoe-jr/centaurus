@@ -47,6 +47,7 @@ public:
     uint8_t* Data(cronos_rel off);
 
     CroData Value(cronos_value value);
+    CroData CopyValue(cronos_value value);
 
     template<typename T>
     inline T Get(cronos_rel off) const

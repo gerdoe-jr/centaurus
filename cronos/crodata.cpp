@@ -128,8 +128,20 @@ uint8_t* CroData::Data(cronos_rel off)
 CroData CroData::Value(cronos_value value)
 {
     const auto* i = ABI()->GetValue(value);
-
     const uint8_t* pData = i->m_FileType == CRONOS_MEM
         ? i->m_pMem : Data(i->m_Offset);
     return CroData(File(), Id(), pData, i->m_Size);
+}
+
+CroData CroData::CopyValue(cronos_value value)
+{
+    const auto* i = ABI()->GetValue(value);
+    const uint8_t* pData = i->m_FileType == CRONOS_MEM
+        ? i->m_pMem : Data(i->m_Offset);
+
+    CroData data;
+    data.InitData(File(), Id(), i->m_FileType,
+        FileOffset(i->m_Offset), i->m_Size);
+    memcpy(data.GetData(), pData, i->m_Size);
+    return data;
 }

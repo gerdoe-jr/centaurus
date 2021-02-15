@@ -172,24 +172,35 @@ crofile_status CroFile::Open()
 
     if (IsEncrypted())
     {
-        CroData key = hdr.Value(cronos_hdr_secret);
-        memmove(key.GetData() + 4, key.GetData(), 4);
-        memcpy(key.GetData(), &m_uSerial, 4);
+        if (m_Secret.IsEmpty())
+        {
+            m_Secret = hdr.CopyValue(cronos_hdrlite_secret);
 
-        m_Crypt = hdr.Value(cronos_hdr_crypt);
+            if (ABI()->IsLite())
+            {
+                CroData liteKey = hdr.Value(cronos_hdr_secret);
+
+                auto bf = std::make_unique<blowfish_t>();
+                blowfish_init(bf.get(), liteKey.GetData(), liteKey.GetSize());
+                blowfish_decrypt_buffer(bf.get(),
+                    m_Secret.GetData(), m_Secret.GetSize());
+            }
+            else
+            {
+                memmove(m_Secret.GetData() + 4, m_Secret.GetData(), 4);
+                memcpy(m_Secret.GetData(), &m_uSerial, 4);
+            }
+        }
+
+        m_Crypt = hdr.CopyValue(cronos_hdr_crypt);
         if (ABI()->GetModel() != cronos_model_small)
         {
-            blowfish_t* bf = new blowfish_t;
-            blowfish_init(bf, key.GetData(), key.GetSize());
-            blowfish_decrypt_buffer(bf, m_Crypt.GetData(),
+            auto bf = std::make_unique<blowfish_t>();
+            blowfish_init(bf.get(), m_Secret.GetData(), m_Secret.GetSize());
+            blowfish_decrypt_buffer(bf.get(), m_Crypt.GetData(),
                 m_Crypt.GetSize());
-            delete bf;
         }
     }
-
-    FILE* fOut = fopen("table_dec.bin", "wb");
-    fwrite(m_Crypt.GetData(), m_Crypt.GetSize(), 1, fOut);
-    fclose(fOut);
 
     return SetError(CROFILE_OK);
 }
@@ -251,6 +262,15 @@ bool CroFile::IsEncrypted() const
 bool CroFile::IsCompressed() const
 {
     return m_uFlags & CRONOS_COMPRESSION;
+}
+
+void CroFile::SetSecret(uint32_t serial, uint32_t key)
+{
+    if (m_Secret.IsEmpty())
+        m_Secret.Alloc(8);
+
+    *(uint32_t*)m_Secret.Data(0x00) = serial;
+    *(uint32_t*)m_Secret.Data(0x04) = key;
 }
 
 void CroFile::Decrypt(uint8_t* pBlock, unsigned size,

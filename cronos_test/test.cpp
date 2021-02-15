@@ -73,7 +73,6 @@ void dump_buffer(const CroBuffer& buf, unsigned codepage = 0)
 
     //code page
     if (!codepage) codepage = GetConsoleOutputCP();
-    SetConsoleOutputCP(codepage);
 
     //start
     putc(ascii_lup, stdout);
@@ -140,6 +139,8 @@ void dump_buffer(const CroBuffer& buf, unsigned codepage = 0)
         }
 
         putc(ascii_v_sp, stdout);
+
+        SetConsoleOutputCP(codepage);
         for (cronos_rel i = 0; i < line; i++)
         {
             if (i < len)
@@ -149,6 +150,7 @@ void dump_buffer(const CroBuffer& buf, unsigned codepage = 0)
             }
             else putc(' ', stdout);
         }
+        SetConsoleOutputCP(866);
         putc(ascii_v_border, stdout);
 
         putc('\n', stdout);
@@ -331,6 +333,14 @@ int main(int argc, char** argv)
     CroFile bank(bankPath + L"\\" + fileName);
     crofile_status st;
 
+    for (int i = 3; i < argc; i++)
+    {
+        if (!strcmp(argv[i], "--set-secret"))
+        {
+            bank.SetSecret(atoi(argv[++i]), atoi(argv[++i]));
+        }
+    }
+
     if ((st = bank.Open()) != CROFILE_OK)
     {
         fprintf(stderr, "CroFile error %d\n\t%s\n",
@@ -391,6 +401,14 @@ int main(int argc, char** argv)
                 tad_id = tad.IdEnd();
             }
         }
+        else if (!strcmp(argv[i], "--secret"))
+        {
+            const CroData& secret = bank.GetSecret();
+
+            printf("SERIAL\t%" PRIu32 "\n", secret.Get<uint32_t>(0x00));
+            printf("KEY\t%" PRIu32 "\n", secret.Get<uint32_t>(0x04));
+            dump_buffer(secret);
+        }
         else if (!strcmp(argv[i], "--block"))
         {
             cronos_id tad_id = i + 1 < argc ? atoi(argv[++i]) : 1;
@@ -444,6 +462,30 @@ int main(int argc, char** argv)
 
                 if (tad_count > 0) break;
                 tad_id = tad.IdEnd();
+            }
+        }
+        else if (!strcmp(argv[i], "--record"))
+        {
+            cronos_id tad_id = i + 1 < argc ? atoi(argv[++i]) : 1;
+            cronos_idx tad_count = i + 1 < argc ? atoi(argv[++i]) : 0;
+
+            CroEntryTable tad = bank.LoadEntryTable(tad_id, tad_count > 0
+                ? tad_count : bank.OptimalEntryCount());
+            if (tad.IsEmpty()) break;
+
+            cronos_off dat_start, dat_end;
+            cronos_idx dat_count = bank.OptimalRecordCount(tad, tad.Id());
+            bank.RecordTableOffsets(tad, tad.Id(),
+                dat_count, dat_start, dat_end);
+            CroRecordTable dat = bank.LoadRecordTable(tad,
+                tad_id, dat_count);
+            if (dat.IsEmpty()) break;
+
+            CroEntry tad_entry = tad.GetEntry(tad_id);
+            if (tad_entry.IsActive())
+            {
+                CroBuffer record = dump_record(&bank, dat, tad_entry);
+                dump_buffer(record, 1251);
             }
         }
 

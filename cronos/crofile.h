@@ -57,7 +57,10 @@ public:
     bool IsEncrypted() const;
     bool IsCompressed() const;
 
-    inline const CroBuffer& GetCryptTable() const { return m_Crypt; }
+    inline const CroData& GetSecret() const { return m_Secret; }
+    void SetSecret(uint32_t serial, uint32_t key);
+
+    inline const CroData& GetCryptTable() const { return m_Crypt; }
     void Decrypt(uint8_t* pBlock, unsigned size,
             uint32_t offset = 0);
 
@@ -137,6 +140,8 @@ private:
     cronos_size m_uTadRecordSize;
 
     uint32_t m_uSerial;
+
+    CroData m_Secret;
     CroData m_Crypt;
 };
 
