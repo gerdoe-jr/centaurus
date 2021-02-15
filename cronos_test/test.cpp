@@ -330,6 +330,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    unsigned codepage = 1251;
+
     CroFile bank(bankPath + L"\\" + fileName);
     crofile_status st;
 
@@ -338,6 +340,10 @@ int main(int argc, char** argv)
         if (!strcmp(argv[i], "--set-secret"))
         {
             bank.SetSecret(atoi(argv[++i]), atoi(argv[++i]));
+        }
+        else if (!strcmp(argv[i], "--codepage"))
+        {
+            codepage = atoi(argv[++i]);
         }
     }
 
@@ -489,7 +495,7 @@ int main(int argc, char** argv)
             if (tad_entry.IsActive())
             {
                 CroBuffer record = dump_record(&bank, dat, tad_entry);
-                dump_buffer(record, 1251);
+                dump_buffer(record, codepage);
             }
         }
 
