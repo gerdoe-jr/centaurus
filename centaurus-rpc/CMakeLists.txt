@@ -10,7 +10,7 @@ set(HEADERS
 )
 
 find_package(Boost 1.75.0 REQUIRED COMPONENTS
-    system thread
+    system thread json
 )
 
 add_library(centaurus-rpc ${SOURCES} ${HEADERS})
