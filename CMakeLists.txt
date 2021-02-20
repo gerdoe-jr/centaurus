@@ -8,6 +8,8 @@ set(BOOST_INCLUDEDIR "C:\\Boost\\include\\boost-1_75")
 set(BOOST_LIBRARYDIR "C:\\Boost\\lib")
 set(BOOST_ROOT "C:\\Boost\\include\\boost-1_75\\boost")
 
+add_definitions( -DBOOST_ALL_NO_LIB )
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

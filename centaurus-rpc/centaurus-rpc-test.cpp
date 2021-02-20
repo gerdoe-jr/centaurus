@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include "centaurus-rpc.h"
-#include <boost/asio/connect.hpp>
-#include <boost/asio/ip/tcp.hpp>
 
 int main()
 {
-
+    centaurus::rpc::test_server();
     return 0;
 }
