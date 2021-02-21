@@ -11,6 +11,8 @@ RPCTable my_table("my_table", {
             {rpc_value_string, "first"}, {rpc_value_int, "second"}
         }, [](RPCTable* self) {
             printf("hello world from testfunc1!\n");
+            printf("\ttable id %zu\n", self->TableId());
+            printf("\ttable name %s\n", self->TableName().c_str());
         }
     }
 });
@@ -21,12 +23,8 @@ int main()
 
     json::object args{ {"first", "stringValue"}, {"second", 333} };
     
-    RPCTable* table = rpc->Table("my_table");
-    const RPCTable::rpc_method& method = table->Method("testfunc1");
+    rpc_call call;
+    rpc->Dispatch(call, my_table.TableId(), 0, args);
 
-    std::cout << "table " << table->TableName()
-        << " id " << table->TableId() << std::endl;
-    std::cout << "\tmethod " << method.m_MethodName << std::endl;
-    std::cout << std::endl;
     return 0;
 }

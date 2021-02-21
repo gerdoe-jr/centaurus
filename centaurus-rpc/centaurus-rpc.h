@@ -37,10 +37,12 @@ namespace Centaurus
     using rpc_value = boost::variant<rpc_null, uint64_t, bool, std::string>;
 
     struct rpc_call {
-        rpc_id m_FuncId;
+        rpc_id m_MethodId;
         std::vector<rpc_value> m_Args;
         rpc_value m_Return;
     };
+
+    class RPCTable;
 
     template<typename T>
     class RPCBase
@@ -54,6 +56,8 @@ namespace Centaurus
 
             inline void operator()(T* pC) { m_Function(pC); }
         };
+
+        virtual RPCTable* Table() = 0;
 
         void Dispatch(rpc_call& call, json::value& args);
     };
@@ -70,12 +74,15 @@ namespace Centaurus
         RPCTable(const std::string& name,
             std::initializer_list<rpc_method> table);
 
+        RPCTable* Table() override;
+
         void Init(rpc_id tableId);
 
         rpc_id TableId() const;
         const std::string& TableName() const;
-        const rpc_method& Method(rpc_id method) const;
-        const rpc_method& Method(const std::string& func) const;
+        rpc_method& Method(rpc_id method);
+        rpc_method& Method(const std::string& func);
+        rpc_id MethodId(const rpc_method& method) const;
     private:
         rpc_id m_TableId;
         std::string m_TableName;
@@ -127,7 +134,11 @@ namespace Centaurus
         void SetEndPoint(tcp::endpoint address);
         
         void Init();
+        RPCTable* Table(rpc_id tableId);
         RPCTable* Table(const std::string& name);
+
+        void Dispatch(rpc_call& call, rpc_id tableId, rpc_id methodId,
+            json::object& args);
     private:
         RPCType m_Type;
         tcp::endpoint m_Address;
