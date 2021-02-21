@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 #include <typeinfo>
+#include <exception>
 #include <functional>
 #include <boost/json.hpp>
 #include <boost/thread.hpp>
@@ -22,7 +23,7 @@
 namespace Centaurus
 {
     namespace json = boost::json;
-    using rpc_id = unsigned;
+    using rpc_id = std::size_t;
 
     enum rpc_value_type {
         rpc_value_null,
@@ -34,41 +35,62 @@ namespace Centaurus
     class rpc_null {};
     using rpc_param = std::pair<rpc_value_type, std::string>;
     using rpc_value = boost::variant<rpc_null, uint64_t, bool, std::string>;
-    
-    class RPCObject;
-    using rpc_function = std::function<void(RPCObject*)>;
-
-    struct rpc_method {
-        std::string m_MethodName;
-        rpc_value_type m_Return;
-        std::vector<rpc_param> m_Params;
-        rpc_function m_Function;
-    };
 
     struct rpc_call {
         rpc_id m_FuncId;
         std::vector<rpc_value> m_Args;
         rpc_value m_Return;
     };
-    
+
+    template<typename T>
+    class RPCBase
+    {
+    public:
+        struct rpc_method {
+            std::string m_MethodName;
+            rpc_value_type m_ReturnType;
+            std::vector<rpc_param> m_Params;
+            std::function<void(T*)> m_Function;
+
+            inline void operator()(T* pC) { m_Function(pC); }
+        };
+
+        void Dispatch(rpc_call& call, json::value& args);
+    };
+
+    class RPCTable : public RPCBase<RPCTable>
+    {
+    public:
+        static RPCTable* s_pFirstTable;
+        static RPCTable* s_pLastTable;
+        RPCTable* m_pNextTable;
+
+        //RPCTable(const std::type_info& type,
+        //    std::initializer_list<rpc_method> table);
+        RPCTable(const std::string& name,
+            std::initializer_list<rpc_method> table);
+
+        void Init(rpc_id tableId);
+
+        rpc_id TableId() const;
+        const std::string& TableName() const;
+        const rpc_method& Method(rpc_id method) const;
+        const rpc_method& Method(const std::string& func) const;
+    private:
+        rpc_id m_TableId;
+        std::string m_TableName;
+        std::vector<rpc_method> m_Methods;
+    };
+
+    /*template<typename T>
     class RPCObject
     {
     public:
-        static RPCObject* s_pFirstTable;
-        static RPCObject* s_pLastTable;
-        RPCObject* m_pNextTable;
+        using rpc_method = rpc_base_method<T>;
 
-        RPCObject(const std::type_info& type,
-            std::initializer_list<rpc_method> table);
+        RPCObject();
         RPCObject(rpc_id objectId);
-
-        const std::string& GetObjectName() const;
-        void Dispatch(const std::string& func, json::object& args);
-    private:
-        std::string m_ObjectName;
-        std::vector<rpc_method> m_Methods;
-        rpc_call m_Call;
-    };
+    };*/
 
     enum RPCType {
         RPC_SERVER,
@@ -105,6 +127,7 @@ namespace Centaurus
         void SetEndPoint(tcp::endpoint address);
         
         void Init();
+        RPCTable* Table(const std::string& name);
     private:
         RPCType m_Type;
         tcp::endpoint m_Address;
@@ -112,6 +135,16 @@ namespace Centaurus
     };
 
     extern std::shared_ptr<RPC> rpc;
+
+    class RPCError : public std::exception
+    {
+    public:
+        RPCError(const std::string& error);
+
+        const char* what() const noexcept override;
+    private:
+        std::string m_Error;
+    };
 }
 
 #endif
