@@ -2,12 +2,16 @@
 #include "win32util.h"
 #include "crofile.h"
 #include "cronos_abi.h"
+#include <functional>
 #include <stdexcept>
 #include <exception>
 #include <memory>
 #include <stdio.h>
 
 #include <boost/filesystem.hpp>
+#include <boost/atomic.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread.hpp>
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
@@ -16,6 +20,17 @@ namespace sc = boost::system;
 class CCentaurusBank : public ICentaurusBank
 {
 public:
+    virtual ~CCentaurusBank()
+    {
+        CroFile* stru = File(CroStru);
+        CroFile* bank = File(CroBank);
+        CroFile* index = File(CroIndex);
+
+        if (stru) stru->Close();
+        if (bank) bank->Close();
+        if (index) index->Close();
+    }
+
     bool LoadPath(const std::wstring& path) override
     {
         m_Path = path;
@@ -88,6 +103,68 @@ private:
     std::unique_ptr<CroFile> m_Files[CroBankFile_Count];
 };
 
+/* Centaurus Task */
+
+class CCentaurusTask : public ICentaurusTask
+{
+public:
+    using RunFunction = std::function<void(CCentaurusTask*)>;
+
+    CCentaurusTask()
+        : m_fTaskProgress(0)
+    {
+    }
+
+    CCentaurusTask(RunFunction run)
+        : m_fTaskProgress(0), m_RunFunction(run)
+    {
+    }
+
+    virtual void StartTask()
+    {
+        try {
+            Run();
+        } catch (const boost::thread_interrupted& ti) {
+            Interrupt();
+        } catch (const std::exception& e) {
+            fprintf(stderr, "CCentaurusTask(%p): %s\n", this, e.what());
+        }
+
+        EndTask();
+    }
+
+    virtual void EndTask()
+    {
+        centaurus->TaskNotify(this);
+        centaurus->EndTask(this);
+    }
+
+    virtual void Interrupt()
+    {
+        EndTask();
+    }
+
+    virtual void Run()
+    {
+        if (m_RunFunction)
+            m_RunFunction(this);
+    }
+
+    float GetTaskProgress() const override
+    {
+        return m_fTaskProgress;
+    }
+    
+    void UpdateProgress(float progress)
+    {
+        m_fTaskProgress = progress;
+        centaurus->TaskNotify(this);
+    }
+private:
+    boost::atomic<float> m_fTaskProgress;
+    RunFunction m_RunFunction;
+};
+
 /* Centaurus API */
 
 class CCentaurusAPI : public ICentaurusAPI
@@ -97,6 +174,8 @@ public:
     {
         m_fOutput = stdout;
         m_fError = stderr;
+
+        SetTableSizeLimit(64 * 1024 * 1024); //64 MB
     }
 
     void Exit() override
@@ -104,12 +183,27 @@ public:
         if (m_fOutput != stdout) fclose(m_fOutput);
         if (m_fError != stderr) fclose(m_fError);
 
+        // bank
         for (auto bank : m_Banks) delete bank;
         m_Banks.clear();
+
+        // task
+        for (auto& task : m_Tasks)
+        {
+            task.second.interrupt();
+            task.second.join();
+        }
+        m_Tasks.clear();
+    }
+
+    void SetTableSizeLimit(centaurus_size limit) override
+    {
+        m_TableSizeLimit = limit;
     }
 
     ICentaurusBank* ConnectBank(const std::wstring& path) override
     {
+        auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
         CCentaurusBank* bank = new CCentaurusBank();
         if (!bank->LoadPath(path))
         {
@@ -125,6 +219,7 @@ public:
 
     void DisconnectBank(ICentaurusBank* bank) override
     {
+        auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
         auto it = std::find(m_Banks.begin(), m_Banks.end(), bank);
         if (it != m_Banks.end())
         {
@@ -270,10 +365,65 @@ public:
             );
         }
     }
+
+    void StartTask(ICentaurusTask* task) override
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+        m_Tasks.insert(std::make_pair(task,
+            boost::thread(&ICentaurusTask::StartTask, task)));
+    }
+
+    void EndTask(ICentaurusTask* task) override
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+        auto it = m_Tasks.find(task);
+
+        if (it == m_Tasks.end())
+            throw std::runtime_error("centaurus->EndTask with no task");
+
+        m_Tasks.erase(it);
+    }
+
+    void TaskAwait() override
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+        m_TaskCond.wait(lock);
+    }
+
+    void TaskNotify(ICentaurusTask* task) override
+    {
+        m_Notifier = task;
+        m_TaskCond.notify_all();
+    }
+
+    void Idle(ICentaurusTask* task = NULL) override
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+        if (m_Tasks.empty()) return;
+
+        do {
+            m_TaskCond.wait(lock);
+            ICentaurusTask* notifier = m_Notifier;
+
+            if (task && notifier == task)
+                if (task->GetTaskProgress() >= 100) break;
+            fprintf(m_fOutput, "task %p progress %f notify\n", notifier,
+                notifier->GetTaskProgress());
+        } while (!m_Tasks.empty());
+    }
 private:
-    std::vector<CCentaurusBank*> m_Banks;
     FILE* m_fOutput;
     FILE* m_fError;
+
+    centaurus_size m_TableSizeLimit;
+
+    boost::mutex m_BankLock;
+    std::vector<CCentaurusBank*> m_Banks;
+
+    boost::mutex m_TaskLock;
+    boost::condition_variable m_TaskCond;
+    boost::atomic<ICentaurusTask*> m_Notifier;
+    std::map<ICentaurusTask*, boost::thread> m_Tasks;
 };
 
 /* Centaurus ABI */

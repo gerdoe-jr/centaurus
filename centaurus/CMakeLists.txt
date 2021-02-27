@@ -17,7 +17,7 @@ endif()
 add_library(centaurus SHARED ${SOURCES} ${HEADERS})
 
 find_package(Boost 1.75.0 REQUIRED COMPONENTS
-    system filesystem
+    system filesystem thread
 )
 
 target_include_directories(centaurus PUBLIC ${Boost_INCLUDE_DIRS})
