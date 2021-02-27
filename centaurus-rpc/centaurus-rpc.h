@@ -28,86 +28,30 @@
 namespace Centaurus
 {
     namespace json = boost::json;
-    using rpc_id = std::size_t;
+    using rpc_id = uint64_t;
 
+    class rpc_null {};
+    using rpc_value = boost::variant<rpc_null, uint64_t, bool, std::string>;
     enum rpc_value_type {
         rpc_value_null,
         rpc_value_int,
         rpc_value_bool,
         rpc_value_string
     };
-    
-    class rpc_null {};
-    using rpc_param = std::pair<rpc_value_type, std::string>;
-    using rpc_value = boost::variant<rpc_null, uint64_t, bool, std::string>;
 
-    //RPC call with T    
+    using rpc_param = std::pair<rpc_value_type, std::string>;
     struct rpc_call {
-        rpc_id m_BaseId;
+        rpc_id m_ObjectId;
         rpc_id m_MethodId;
         std::vector<rpc_value> m_Args;
         rpc_value m_Return;
-    };
-
-    class RPCTable;
-
-    class IRPCBase
-    {
-    public:
-        virtual void Init(rpc_id baseId) = 0;
-        virtual rpc_id BaseId() const = 0;
-        virtual void Dispatch(rpc_call& call) = 0;
-
-        virtual RPCTable* Table() = 0;
-    };
-
-    template<typename T>
-    class RPCBase : public IRPCBase
-    {
-    public:
-        struct rpc_method {
-            std::string m_MethodName;
-            rpc_value_type m_ReturnType;
-            std::vector<rpc_param> m_Params;
-            std::function<void(T*)> m_Function;
-        };
-
-        void Init(rpc_id baseId) override;
-        rpc_id BaseId() const override;
-        void Dispatch(rpc_call& call) override;
-    private:
-        rpc_id m_BaseId;
-    };
-
-    class RPCTable : public RPCBase<RPCTable>
-    {
-    public:
-        static RPCTable* s_pFirstTable;
-        static RPCTable* s_pLastTable;
-        RPCTable* m_pNextTable;
-        
-        RPCTable(const std::string& name,
-            std::initializer_list<rpc_method> table);
-
-        RPCTable* Table() override;
-
-        void Init(rpc_id tableId);
-
-        rpc_id TableId() const;
-        const std::string& TableName() const;
-        rpc_method& Method(rpc_id method);
-        rpc_method& Method(const std::string& func);
-        rpc_id MethodId(const rpc_method& method) const;
-    private:
-        std::string m_TableName;
-        std::vector<rpc_method> m_Methods;
     };
 
     enum RPCType {
         RPC_SERVER,
         RPC_CLIENT
     };
-
+    
     namespace beast = boost::beast;
     namespace http = boost::beast::http;
     namespace net = boost::asio;
@@ -136,15 +80,6 @@ namespace Centaurus
         
         RPC(RPCType type);
         void SetEndPoint(tcp::endpoint address);
-        
-        rpc_id RegisterRPCBase(IRPCBase* base); 
-        void UnregisterRPCBase(rpc_id baseId);
-        IRPCBase* Base(rpc_id baseId);
-        rpc_id BaseId(const IRPCBase* base) const;
-        
-        void InitTables();
-        RPCTable* Table(rpc_id tableId);
-        RPCTable* Table(const std::string& name);
 
         void Init();
         void Start();
@@ -154,20 +89,20 @@ namespace Centaurus
         void RunRPC();
         void RunIO();
 
-        rpc_call Call(std::string table, std::string method,
+        /*rpc_call Call(std::string table, std::string method,
             std::initializer_list<rpc_value> args);
         rpc_call Call(rpc_id base, rpc_id method, json::object& args);
-        void Issue(rpc_call& call);
+        void Issue(rpc_call& call);*/
     protected:
-        void ParseArgs(rpc_call& call, json::value& args);
-        void Dispatch(rpc_call& call);
+        /*void ParseArgs(rpc_call& call, json::value& args);
+        void Dispatch(rpc_call& call);*/
     private:
         RPCType m_Type;
         tcp::endpoint m_Address;
         
-        boost::mutex m_BaseMutex;
-        boost::atomic_uint64_t m_BaseCounter;
-        std::map<rpc_id,IRPCBase*> m_BaseMap;
+        boost::mutex m_ObjectMutex;
+        boost::atomic_uint64_t m_ObjectCounter;
+        //std::map<rpc_id, IRPCObject*> m_Objects;
 
         bool m_bRunning;
         boost::thread m_RPCThread;
