@@ -507,6 +507,7 @@ public:
         if (it == m_Tasks.end())
             throw std::runtime_error("centaurus->EndTask with no task");
 
+        delete it->first;
         m_Tasks.erase(it);
     }
 
