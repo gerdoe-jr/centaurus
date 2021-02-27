@@ -1,1 +1,1 @@
-cmake -G "Visual Studio 16 2019" -S . -B vs2019
+cmake -DCMAKE_SYSTEM_VERSION=10.0.18362.0 -G "Visual Studio 16 2019" -S . -B vs2019

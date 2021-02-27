@@ -21,102 +21,6 @@ CroFile::CroFile(const std::wstring& path)
     m_bEOB = false;
 }
 
-void CroFile::DumpABI(CronosABI* abi)
-{
-    cronos_abi_num abiVersion = abi->GetABIVersion();
-    printf("Cronos %dx %s %s, ABI %02d.%02d\n", abi->GetVersion(),
-        abi->IsLite() ? "Lite" : "Pro",
-        abi->GetModel() == cronos_model_big ? "big model" : "small model",
-        abiVersion.first, abiVersion.second
-    );
-
-    cronos_rel member_off = 0;
-    for (unsigned i = 0; i < cronos_last; i++)
-    {
-        cronos_value value = (cronos_value)i;
-        const auto* pValue = ABI()->GetValue(value);
-
-        const char* valueType;
-        switch (pValue->m_ValueType)
-        {
-        case cronos_value_data: valueType = "uint8_t"; break;
-        case cronos_value_struct: valueType = "CroData"; break;
-        case cronos_value_uint16: valueType = "uint16_t"; break;
-        case cronos_value_uint32: valueType = "uint32_t"; break;
-        case cronos_value_uint64: valueType = "uint64_t"; break;
-        }
-
-        switch (pValue->m_FileType)
-        {
-        case CRONOS_MEM:
-            printf(
-                "%s CroData(NULL, cronos_id, (const uint8_t*)%p, %"
-                FCroSize ");\n",
-                abi->GetValueName(value),
-                pValue->m_pMem,
-                pValue->m_Size
-            );
-            break;
-        case CRONOS_TAD:
-        case CRONOS_DAT:
-            if (pValue->m_ValueType == cronos_value_struct)
-            {
-                if (member_off)
-                {
-                    printf("};\n\n");
-                    member_off = 0;
-                }
-
-                printf("struct %s /* %" FCroSize " */ {\n",
-                    abi->GetValueName(value),
-                    pValue->m_Size
-                );
-            }
-            else
-            {
-                const char* valueName = abi->GetValueName(value) + 7;
-                if (pValue->m_Offset > member_off)
-                {
-                    unsigned skip = pValue->m_Offset - member_off;
-                    printf("\tuint8_t __skip%" FCroOff
-                        "[%u];\n\n", member_off, skip);
-                    member_off += skip;
-                }
-
-                if (pValue->m_Offset < member_off)
-                {
-                    printf(
-                        "\t/* 0x%" FCroOff " %" FCroSize " & 0x%"
-                        PRIX64 " */\n",
-                        pValue->m_Offset, 
-                        pValue->m_Size,
-                        pValue->m_Mask
-                    );
-                }
-                else if (pValue->m_ValueType == cronos_value_data)
-                {
-                    printf("\t%s %s[%" FCroSize "];\n",
-                        valueType, valueName, pValue->m_Size
-                    );
-                }
-                else
-                {
-                    printf("\t%s %s; /* & 0x%" PRIx64 " */\n",
-                        valueType, valueName, pValue->m_Mask
-                    );
-                }
-
-                member_off += pValue->m_Size;
-            }
-            
-            break;
-        }
-    }
-
-    if (member_off) printf("};\n");
-    printf("\n");
-}
-
 crofile_status CroFile::Open()
 {
     FILE* fDat = _wfopen((m_Path + L".dat").c_str(), L"rb");
@@ -163,8 +67,6 @@ crofile_status CroFile::Open()
         return SetError(CROFILE_VERSION, std::string("unknown ABI ")
             + szMajor + "." + szMinor);
     }
-    //ABI initialized
-    DumpABI(m_pABI);
 
     m_uFlags = hdr.Get<uint16_t>(cronos_hdr_flags);
     m_uDefLength = hdr.Get<uint16_t>(cronos_hdr_deflength);
@@ -410,6 +312,12 @@ CroEntryTable CroFile::LoadEntryTable(cronos_id id, unsigned count)
         + (cronos_size)(id - 1) * entrySize);
     LoadTable(CRONOS_TAD, id, count * entrySize, table);
     return table;
+}
+
+cronos_idx CroFile::EntryCountFileSize() const
+{
+    return (m_TadSize - ABI()->Offset(cronos_tad_entry))
+        / ABI()->Size(cronos_tad_entry);
 }
 
 cronos_idx CroFile::OptimalRecordCount(CroEntryTable& tad, cronos_id start)

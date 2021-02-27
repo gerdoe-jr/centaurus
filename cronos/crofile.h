@@ -22,8 +22,6 @@ class CroFile
 {
 public:
     CroFile(const std::wstring& path);
-protected:
-    void DumpABI(CronosABI* abi);
 public:
     crofile_status Open();
     void Close();
@@ -44,6 +42,7 @@ public:
         return m_Version;
     }
 
+    inline const std::wstring& GetPath() const { return m_Path; }
     inline crofile_status GetStatus() const { return m_Status; }
     inline const std::string& GetError() const { return m_Error; }
     crofile_status SetError(crofile_status st,
@@ -108,6 +107,8 @@ public:
         cronos_size limit, CroTable& table);
     void LoadTable(cronos_filetype ftype, cronos_id id,
         cronos_off start, cronos_off end, CroTable& table);
+
+    cronos_idx EntryCountFileSize() const;
 
     cronos_idx OptimalEntryCount();
     CroEntryTable LoadEntryTable(cronos_id id, cronos_idx count);

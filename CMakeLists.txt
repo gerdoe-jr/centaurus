@@ -35,9 +35,12 @@ if(MSVC)
     add_compile_options(/wd26812 /wd6258 /wd28251)
 endif()
 
+add_subdirectory(win32ctrl)
 add_subdirectory(blowfish)
 add_subdirectory(cronos)
-add_subdirectory(cronos_test)
+
+add_subdirectory(centaurus)
+add_subdirectory(centaurus-ex)
 
 #add_subdirectory(centaurus-rpc)
 

@@ -2,6 +2,8 @@
 .vscode
 out
 build
+mingw
+vs2019
 *.exe
 *.dll
 *.bin
