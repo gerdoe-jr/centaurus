@@ -15,6 +15,7 @@ enum CroBankFile {
 };
 
 class CronosABI;
+class CroBuffer;
 class CroFile;
 
 class ICentaurusBank
@@ -31,6 +32,8 @@ public:
 class ICentaurusTask
 {
 public:
+    virtual ~ICentaurusTask() {}
+
     virtual void StartTask() = 0;
     virtual void EndTask() = 0;
     virtual void Interrupt() = 0;
@@ -55,7 +58,9 @@ public:
 
     virtual void ExportABIHeader(const CronosABI* abi,
         FILE* out = NULL) const = 0;
+    
     virtual void LogBankFiles(ICentaurusBank* bank) const = 0;
+    virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
 
     virtual void StartTask(ICentaurusTask* task) = 0;
     virtual void EndTask(ICentaurusTask* task) = 0;

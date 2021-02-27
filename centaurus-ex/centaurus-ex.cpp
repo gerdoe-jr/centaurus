@@ -23,6 +23,7 @@ int main(int argc, char** argv)
     try {
         bank->ExportHeaders();
         centaurus->LogBankFiles(bank);
+
     } catch (const std::exception& e) {
         fprintf(stderr, "centaurus bank exception: %s\n", e.what());
     }

@@ -1,6 +1,7 @@
 #include "centaurus.h"
 #include "win32util.h"
 #include "crofile.h"
+#include "crobuffer.h"
 #include "cronos_abi.h"
 #include <functional>
 #include <stdexcept>
@@ -14,6 +15,12 @@
 #include <boost/thread.hpp>
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
+
+#ifdef min
+#undef min
+#endif
+
+#include <algorithm>
 
 /* Centaurus Bank */
 
@@ -117,6 +124,10 @@ public:
 
     CCentaurusTask(RunFunction run)
         : m_fTaskProgress(0), m_RunFunction(run)
+    {
+    }
+
+    virtual ~CCentaurusTask()
     {
     }
 
@@ -364,6 +375,121 @@ public:
                 file->EntryCountFileSize()
             );
         }
+    }
+
+    void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) override
+    {
+        const char ascii_lup = 201, ascii_rup = 187,
+            ascii_lsp = 199, ascii_rsp = 182,
+            ascii_lbt = 200, ascii_rbt = 188,
+            ascii_up_cross = 209, ascii_bt_cross = 207,
+            ascii_cross = 197,
+            ascii_v_sp = 179, ascii_h_sp = 196,
+            ascii_v_border = 186, ascii_h_border = 205;
+
+        const cronos_size line = 0x10;
+
+        //code page
+        if (!codepage) codepage = GetConsoleOutputCP();
+
+        //start
+        putc(ascii_lup, m_fOutput);
+        for (cronos_rel i = 0; i < 8; i++) putc(ascii_h_border, m_fOutput);
+        putc(ascii_up_cross, m_fOutput);
+        for (cronos_rel i = 0; i < line * 3 - 1; i++)
+            putc(ascii_h_border, m_fOutput);
+        putc(ascii_up_cross, m_fOutput);
+        for (cronos_rel i = 0; i < line; i++)
+            putc(ascii_h_border, m_fOutput);
+        putc(ascii_rup, m_fOutput);
+
+        putc('\n', m_fOutput);
+
+        //header
+        putc(ascii_v_border, m_fOutput);
+        fprintf(m_fOutput, " offset ");
+        putc(ascii_v_sp, m_fOutput);
+        for (cronos_rel i = 0; i < line; i++)
+            fprintf(m_fOutput, i < line - 1 ? "%02x " : "%02x", i & 0xFF);
+        putc(ascii_v_sp, m_fOutput);
+        switch (codepage)
+        {
+        case CP_UTF7: fprintf(m_fOutput, " UTF-7  "); break;
+        case CP_UTF8: fprintf(m_fOutput, " UTF-8  "); break;
+        default: fprintf(m_fOutput, " ANSI CP #%05d ", codepage);
+        }
+        putc(ascii_v_border, m_fOutput);
+
+        putc('\n', m_fOutput);
+
+        //split
+        putc(ascii_lsp, m_fOutput);
+        for (cronos_rel i = 0; i < 8; i++)
+            putc(ascii_h_sp, m_fOutput);
+        putc(ascii_cross, stdout);
+        for (cronos_rel i = 0; i < line * 3 - 1; i++)
+            putc(ascii_h_sp, m_fOutput);
+        putc(ascii_cross, m_fOutput);
+        for (cronos_rel i = 0; i < line; i++)
+            putc(ascii_h_sp, m_fOutput);
+        putc(ascii_rsp, m_fOutput);
+
+        putc('\n', m_fOutput);
+
+        //hex dump
+        for (cronos_size off = 0; off < buf.GetSize(); off += line)
+        {
+            cronos_size len = std::min(buf.GetSize() - off, line);
+
+            putc(ascii_v_border, m_fOutput);
+            fprintf(m_fOutput, "%08" FCroOff, off);
+            if (len) putc(ascii_v_sp, m_fOutput);
+            else break;
+
+            for (cronos_rel i = 0; i < line; i++)
+            {
+                if (i < len)
+                {
+                    fprintf(m_fOutput, i < line - 1 ? "%02X " : "%02X",
+                        buf.GetData()[off + i] & 0xFF);
+                }
+                else fprintf(m_fOutput, i < line - 1 ? "   " : "  ");
+            }
+
+            putc(ascii_v_sp, m_fOutput);
+
+            SetConsoleOutputCP(codepage);
+            for (cronos_rel i = 0; i < line; i++)
+            {
+                if (i < len)
+                {
+                    uint8_t byte = buf.GetData()[off + i];
+                    putc(byte >= 0x20 ? (char)byte : '.', m_fOutput);
+                }
+                else putc(' ', m_fOutput);
+            }
+            SetConsoleOutputCP(866);
+            putc(ascii_v_border, m_fOutput);
+
+            putc('\n', m_fOutput);
+        }
+
+        //end
+        putc(ascii_lbt, m_fOutput);
+
+        for (cronos_rel i = 0; i < 8; i++)
+            putc(ascii_h_border, m_fOutput);
+        putc(ascii_bt_cross, m_fOutput);
+
+        for (cronos_rel i = 0; i < line * 3 - 1; i++)
+            putc(ascii_h_border, m_fOutput);
+
+        putc(ascii_bt_cross, m_fOutput);
+        for (cronos_rel i = 0; i < line; i++)
+            putc(ascii_h_border, m_fOutput);
+        putc(ascii_rbt, m_fOutput);
+
+        putc('\n', m_fOutput);
     }
 
     void StartTask(ICentaurusTask* task) override
