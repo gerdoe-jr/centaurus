@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(cronos)
+project(centaurus)
 
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)

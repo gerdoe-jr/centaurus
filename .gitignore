@@ -1,5 +1,7 @@
 .vs
+.vscode
 out
+build
 *.exe
 *.dll
 *.bin

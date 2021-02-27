@@ -108,6 +108,6 @@ public:
 
 #define install_abi_value(value) m_Values.push_back(value)
 #define install_value(ftype, vtype, offset, size, mask)            \
-    m_Values.emplace_back(ftype, vtype, offset, size, mask)
+    m_Values.push_back({ftype, vtype, offset, size, mask})
 
 #endif

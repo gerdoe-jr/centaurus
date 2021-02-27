@@ -2,7 +2,7 @@
 #define __CROTYPE_H
 
 #include <stdint.h>
-#include <inttypes.h>
+#include <cinttypes>
 #include <utility>
 
 typedef int cronos_version;
