@@ -180,24 +180,29 @@ public:
         if (centaurus->IsBankAcquired(bank))
             return false;
         
+        auto lock = std::unique_lock<boost::mutex>(m_DataLock);
         m_Banks.emplace_back(bank);
+
         return true;
     }
 
     CroTable* AcquireTable(CroTable&& table) override
     {
+        auto lock = std::unique_lock<boost::mutex>(m_DataLock);
         return m_Tables.emplace_back(
             std::make_unique<CroTable>(std::move(table))).get();
     }
 
     bool IsBankAcquired(ICentaurusBank* bank) override
     {
+        auto lock = std::unique_lock<boost::mutex>(m_DataLock);
         return std::find(m_Banks.begin(), m_Banks.end(), bank)
             != m_Banks.end();
     }
 
     void ReleaseTable(CroTable* table) override
     {
+        auto lock = std::unique_lock<boost::mutex>(m_DataLock);
         for (auto it = m_Tables.begin(); it != m_Tables.end(); it++)
         {
             if (it->get() == table)
@@ -211,6 +216,7 @@ private:
     boost::atomic<float> m_fTaskProgress;
     RunFunction m_RunFunction;
 
+    boost::mutex m_DataLock;
     std::vector<ICentaurusBank*> m_Banks;
     std::vector<std::unique_ptr<CroTable>> m_Tables;
 };
@@ -620,6 +626,7 @@ public:
     void TaskNotify(ICentaurusTask* task) override
     {
         m_Notifier = task;
+        m_fNotifierProgress = task->GetTaskProgress();
         m_TaskCond.notify_all();
     }
 
@@ -641,10 +648,13 @@ public:
             }
 
             ICentaurusTask* notifier = m_Notifier;
+            float progress = m_fNotifierProgress;
+            
             fprintf(m_fOutput, "task %p progress %f notify\n", notifier,
-                notifier->GetTaskProgress());
+                progress);
+
             if (task && notifier == task)
-                if (task->GetTaskProgress() >= 100) break;
+                if (progress >= 100) break;
         } while (!m_Tasks.empty());
     }
 
@@ -671,6 +681,7 @@ private:
     boost::mutex m_TaskLock;
     boost::condition_variable m_TaskCond;
     boost::atomic<ICentaurusTask*> m_Notifier;
+    boost::atomic<float> m_fNotifierProgress;
     std::vector<Task> m_Tasks;
 };
 
