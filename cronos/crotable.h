@@ -26,7 +26,7 @@ public:
 
     bool IsValidEntryId(cronos_id id) const;
 
-    virtual cronos_rel IdEntryOffset(cronos_id id) const = 0;
+    virtual cronos_rel IdEntryOffset(cronos_id id) const;
 
     virtual unsigned GetEntrySize(cronos_id id
         = INVALID_CRONOS_ID) const;

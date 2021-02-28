@@ -16,6 +16,7 @@ enum CroBankFile {
 
 class CronosABI;
 class CroBuffer;
+class CroTable;
 class CroFile;
 
 class ICentaurusBank
@@ -41,6 +42,11 @@ public:
     virtual void Run() = 0;
 
     virtual float GetTaskProgress() const = 0;
+
+    virtual bool AcquireBank(ICentaurusBank* bank) = 0;
+    virtual CroTable* AcquireTable(CroTable&& table) = 0;
+    virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
+    virtual void ReleaseTable(CroTable* table) = 0;
 };
 
 class ICentaurusAPI
@@ -67,6 +73,8 @@ public:
     virtual void TaskAwait() = 0;
     virtual void TaskNotify(ICentaurusTask* task) = 0;
     virtual void Idle(ICentaurusTask* task = NULL) = 0;
+
+    virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
 };
 
 extern CENTAURUS_API ICentaurusAPI* centaurus;

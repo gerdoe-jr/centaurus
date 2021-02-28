@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <exception>
 #include <memory>
+#include <tuple>
 #include <stdio.h>
 
 #include <boost/filesystem.hpp>
@@ -133,6 +134,8 @@ public:
 
     virtual void StartTask()
     {
+        UpdateProgress(0);
+
         try {
             Run();
         } catch (const boost::thread_interrupted& ti) {
@@ -146,7 +149,7 @@ public:
 
     virtual void EndTask()
     {
-        centaurus->TaskNotify(this);
+        UpdateProgress(100);
         centaurus->EndTask(this);
     }
 
@@ -171,16 +174,56 @@ public:
         m_fTaskProgress = progress;
         centaurus->TaskNotify(this);
     }
+
+    bool AcquireBank(ICentaurusBank* bank) override
+    {
+        if (centaurus->IsBankAcquired(bank))
+            return false;
+        
+        m_Banks.emplace_back(bank);
+        return true;
+    }
+
+    CroTable* AcquireTable(CroTable&& table) override
+    {
+        return m_Tables.emplace_back(
+            std::make_unique<CroTable>(std::move(table))).get();
+    }
+
+    bool IsBankAcquired(ICentaurusBank* bank) override
+    {
+        return std::find(m_Banks.begin(), m_Banks.end(), bank)
+            != m_Banks.end();
+    }
+
+    void ReleaseTable(CroTable* table) override
+    {
+        for (auto it = m_Tables.begin(); it != m_Tables.end(); it++)
+        {
+            if (it->get() == table)
+            {
+                m_Tables.erase(it);
+                return;
+            }
+        }
+    }
 private:
     boost::atomic<float> m_fTaskProgress;
     RunFunction m_RunFunction;
+
+    std::vector<ICentaurusBank*> m_Banks;
+    std::vector<std::unique_ptr<CroTable>> m_Tables;
 };
 
 /* Centaurus API */
 
+ICentaurusBank* testbank;
+
 class CCentaurusAPI : public ICentaurusAPI
 {
 public:
+    using Task = std::tuple<std::unique_ptr<ICentaurusTask>, boost::thread>;
+
     void Init() override
     {
         m_fOutput = stdout;
@@ -194,17 +237,16 @@ public:
         if (m_fOutput != stdout) fclose(m_fOutput);
         if (m_fError != stderr) fclose(m_fError);
 
-        // bank
-        for (auto bank : m_Banks) delete bank;
-        m_Banks.clear();
-
-        // task
         for (auto& task : m_Tasks)
         {
-            task.second.interrupt();
-            task.second.join();
+            auto& thread = std::get<1>(task);
+
+            thread.interrupt();
+            thread.join();
         }
         m_Tasks.clear();
+
+        m_Banks.clear();
     }
 
     void SetTableSizeLimit(centaurus_size limit) override
@@ -224,20 +266,57 @@ public:
             return NULL;
         }
 
-        m_Banks.push_back(bank);
+        testbank = bank;
+        ICentaurusTask* test1 = new CCentaurusTask(
+            [](CCentaurusTask* task) {
+                task->AcquireBank(testbank);
+
+                CroFile* data = testbank->File(CroBank);
+
+                CroTable* table = task->AcquireTable(
+                    data->LoadEntryTable(1, 50));
+                printf("acquired table %p\n", table);
+
+                task->ReleaseTable(table);
+            }
+        );
+
+        ICentaurusTask* test2 = new CCentaurusTask(
+            [](CCentaurusTask* task) {
+                task->AcquireBank(testbank);
+
+                CroFile* data = testbank->File(CroBank);
+
+                CroTable* table = task->AcquireTable(
+                    data->LoadEntryTable(1, 50));
+                printf("acquired table %p\n", table);
+
+                task->ReleaseTable(table);
+            }
+        );
+
+        StartTask(test1);
+        StartTask(test2);
+        
+        Idle();
+
+        m_Banks.emplace_back(std::unique_ptr<CCentaurusBank>(bank));
         return bank;
     }
 
     void DisconnectBank(ICentaurusBank* bank) override
     {
         auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
-        auto it = std::find(m_Banks.begin(), m_Banks.end(), bank);
-        if (it != m_Banks.end())
+        for (auto it = m_Banks.begin(); it != m_Banks.end(); it++)
         {
-            CCentaurusBank* theBank = *it;
-            delete theBank;
-
-            m_Banks.erase(it);
+            auto* theBank = it->get();
+            if (theBank == bank)
+            {
+                if (IsBankAcquired(theBank))
+                    throw std::runtime_error("bank is acquired");
+                m_Banks.erase(it);
+                return;
+            }
         }
     }
 
@@ -494,21 +573,42 @@ public:
 
     void StartTask(ICentaurusTask* task) override
     {
+        printf("start task %p\n", task);
         auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
-        m_Tasks.insert(std::make_pair(task,
-            boost::thread(&ICentaurusTask::StartTask, task)));
+        m_Tasks.emplace_back(task, boost::thread(
+            &ICentaurusTask::StartTask, task));
     }
 
     void EndTask(ICentaurusTask* task) override
     {
+        printf("end task %p\n", task);
         auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
-        auto it = m_Tasks.find(task);
+        for (auto it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+        {
+            auto pTask = std::get<0>(*it).get();
+            if (pTask == task)
+            {
+                m_Tasks.erase(it);
+                if (m_Tasks.empty())
+                    m_TaskCond.notify_all();
+                return;
+            }
+        }
 
-        if (it == m_Tasks.end())
-            throw std::runtime_error("centaurus->EndTask with no task");
+        throw std::runtime_error("centaurus->EndTask with no task");
+    }
 
-        delete it->first;
-        m_Tasks.erase(it);
+    Task* GetTask(ICentaurusTask* task)
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+        for (auto it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+        {
+            auto pTask = std::get<0>(*it).get();
+            if (pTask == task)
+                return &(*it);
+        }
+
+        return NULL;
     }
 
     void TaskAwait() override
@@ -525,18 +625,39 @@ public:
 
     void Idle(ICentaurusTask* task = NULL) override
     {
-        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
-        if (m_Tasks.empty()) return;
+        {
+            auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+            if (m_Tasks.empty()) return;
+        }
 
         do {
+            auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
             m_TaskCond.wait(lock);
-            ICentaurusTask* notifier = m_Notifier;
 
-            if (task && notifier == task)
-                if (task->GetTaskProgress() >= 100) break;
+            if (m_Tasks.empty())
+            {
+                printf("idle end\n");
+                break;
+            }
+
+            ICentaurusTask* notifier = m_Notifier;
             fprintf(m_fOutput, "task %p progress %f notify\n", notifier,
                 notifier->GetTaskProgress());
+            if (task && notifier == task)
+                if (task->GetTaskProgress() >= 100) break;
         } while (!m_Tasks.empty());
+    }
+
+    bool IsBankAcquired(ICentaurusBank* bank) override
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+        for (auto& task : m_Tasks)
+        {
+            if (std::get<0>(task)->IsBankAcquired(bank))
+                return true;
+        }
+
+        return false;
     }
 private:
     FILE* m_fOutput;
@@ -545,12 +666,12 @@ private:
     centaurus_size m_TableSizeLimit;
 
     boost::mutex m_BankLock;
-    std::vector<CCentaurusBank*> m_Banks;
+    std::vector<std::unique_ptr<CCentaurusBank>> m_Banks;
 
     boost::mutex m_TaskLock;
     boost::condition_variable m_TaskCond;
     boost::atomic<ICentaurusTask*> m_Notifier;
-    std::map<ICentaurusTask*, boost::thread> m_Tasks;
+    std::vector<Task> m_Tasks;
 };
 
 /* Centaurus ABI */
