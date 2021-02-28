@@ -193,6 +193,17 @@ public:
             std::make_unique<CroTable>(std::move(table))).get();
     }
 
+    template<typename T>
+    T* AcquireTable(T&& table)
+    {
+        auto lock = std::unique_lock<boost::mutex>(m_DataLock);
+
+        T* newTable = new T(std::move(table));
+        m_Tables.emplace_back(std::unique_ptr<CroTable>(newTable));
+
+        return newTable;
+    }
+
     bool IsBankAcquired(ICentaurusBank* bank) override
     {
         auto lock = std::unique_lock<boost::mutex>(m_DataLock);
@@ -701,7 +712,8 @@ public:
         centaurus_size ramUsage = TotalMemoryUsage();
         if (ramUsage > m_TableSizeLimit)
             throw std::runtime_error("ramUsage > m_TableSizeLimit");
-        return m_TableSizeLimit - ramUsage;
+        cronos_size available = m_TableSizeLimit - ramUsage;
+        return std::min(available / 4, available);
     }
 private:
     FILE* m_fOutput;
@@ -773,7 +785,48 @@ public:
         AcquireBank(m_pBank);
         PrepareDirs();
 
-        centaurus->LogBuffer(m_pBank->File(CroStru)->GetCryptTable());
+        ExportCroFile(m_pBank->File(CroBank));
+    }
+
+    void ExportCroFile(CroFile* file)
+    {
+        const CronosABI* abi = file->ABI();
+        file->Reset();
+
+        cronos_id tad_table_id = 1;
+        while (!file->IsEndOfEntries())
+        {
+            centaurus_size tad_table_size = centaurus->RequestTableSize();
+
+            cronos_off tad_off = file->GetOffset(CRONOS_TAD)
+                ? file->GetOffset(CRONOS_TAD) : abi->Offset(cronos_tad_entry);
+            cronos_idx tad_count = (tad_table_size - tad_off)
+                / abi->Size(cronos_tad_entry);
+            
+            CroEntryTable* tad = AcquireTable<CroEntryTable>(
+                file->LoadEntryTable(tad_table_id, tad_count));
+            if (tad->IsEmpty())
+            {
+                ReleaseTable(tad);
+                break;
+            }
+
+            for (cronos_id id = tad->IdStart(); id != tad->IdEnd(); id++)
+            {
+                CroEntry entry = tad->GetEntry(id);
+                if (!entry.IsActive()) continue;
+
+                centaurus->LogBuffer(entry);
+                //printf("%" FCroOff "\t%" FCroSize "\n", entry.EntryOffset(),
+                //    entry.EntrySize());
+
+                //UpdateProgress(100.0f * (float)id
+                //    / (float)file->EntryCountFileSize());
+            }
+
+            tad_table_id += tad->GetEntryCount();
+            ReleaseTable(tad);
+        }
     }
 private:
     ICentaurusBank* m_pBank;
