@@ -21,9 +21,13 @@ int main(int argc, char** argv)
     printf("bank %p\n", bank);
 
     try {
-        bank->ExportHeaders();
         centaurus->LogBankFiles(bank);
 
+        ICentaurusTask* exportTask = CentaurusTask_Export(
+            bank, bankPath + L"\\export");
+        centaurus->StartTask(exportTask);
+
+        centaurus->Idle();
     } catch (const std::exception& e) {
         fprintf(stderr, "centaurus bank exception: %s\n", e.what());
     }

@@ -212,6 +212,16 @@ public:
             }
         }
     }
+
+    centaurus_size GetMemoryUsage() override
+    {
+        auto lock = std::unique_lock<boost::mutex>(m_DataLock);
+
+        centaurus_size total = 0;
+        for (const auto& table : m_Tables)
+            total += table->GetSize();
+        return total;
+    }
 private:
     boost::atomic<float> m_fTaskProgress;
     RunFunction m_RunFunction;
@@ -235,7 +245,7 @@ public:
         m_fOutput = stdout;
         m_fError = stderr;
 
-        SetTableSizeLimit(64 * 1024 * 1024); //64 MB
+        SetTableSizeLimit(512 * 1024 * 1024); //512 MB
     }
 
     void Exit() override
@@ -283,6 +293,9 @@ public:
                     data->LoadEntryTable(1, 50));
                 printf("acquired table %p\n", table);
 
+                printf("available table memory size %" FCroSize "\n",
+                    centaurus->RequestTableSize());
+
                 task->ReleaseTable(table);
             }
         );
@@ -296,6 +309,9 @@ public:
                 CroTable* table = task->AcquireTable(
                     data->LoadEntryTable(1, 50));
                 printf("acquired table %p\n", table);
+                
+                printf("task2 memory usage: %" FCroSize "\n",
+                    task->GetMemoryUsage());
 
                 task->ReleaseTable(table);
             }
@@ -669,6 +685,24 @@ public:
 
         return false;
     }
+
+    centaurus_size TotalMemoryUsage() override
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+        
+        centaurus_size total = 0;
+        for (auto& task : m_Tasks)
+            total += std::get<0>(task)->GetMemoryUsage();
+        return total;
+    }
+
+    centaurus_size RequestTableSize() override
+    {
+        centaurus_size ramUsage = TotalMemoryUsage();
+        if (ramUsage > m_TableSizeLimit)
+            throw std::runtime_error("ramUsage > m_TableSizeLimit");
+        return m_TableSizeLimit - ramUsage;
+    }
 private:
     FILE* m_fOutput;
     FILE* m_fError;
@@ -717,4 +751,37 @@ CENTAURUS_API void ExitCentaurusAPI()
 
     delete centaurus;
     centaurus = NULL;
+}
+
+/* Centaurus Export */
+
+class CCentaurusExport : public CCentaurusTask
+{
+public:
+    CCentaurusExport(ICentaurusBank* bank, const std::wstring& path)
+        : m_pBank(bank), m_ExportPath(path)
+    {
+    }
+
+    void PrepareDirs()
+    {
+        fs::create_directories(m_ExportPath);
+    }
+
+    void Run() override
+    {
+        AcquireBank(m_pBank);
+        PrepareDirs();
+
+        centaurus->LogBuffer(m_pBank->File(CroStru)->GetCryptTable());
+    }
+private:
+    ICentaurusBank* m_pBank;
+    std::wstring m_ExportPath;
+};
+
+CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank,
+    const std::wstring& path)
+{
+    return new CCentaurusExport(bank, path);
 }

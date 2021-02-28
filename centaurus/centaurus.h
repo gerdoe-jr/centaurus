@@ -47,6 +47,8 @@ public:
     virtual CroTable* AcquireTable(CroTable&& table) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
     virtual void ReleaseTable(CroTable* table) = 0;
+
+    virtual centaurus_size GetMemoryUsage() = 0;
 };
 
 class ICentaurusAPI
@@ -75,11 +77,17 @@ public:
     virtual void Idle(ICentaurusTask* task = NULL) = 0;
 
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
+
+    virtual centaurus_size TotalMemoryUsage() = 0;
+    virtual centaurus_size RequestTableSize() = 0;
 };
 
 extern CENTAURUS_API ICentaurusAPI* centaurus;
 
 CENTAURUS_API bool InitCentaurusAPI();
 CENTAURUS_API void ExitCentaurusAPI();
+
+CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank,
+    const std::wstring& path);
 
 #endif
