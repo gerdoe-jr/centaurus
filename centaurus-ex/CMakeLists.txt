@@ -8,5 +8,5 @@ set(SOURCES
 add_executable(centaurus-ex ${SOURCES})
 
 target_link_libraries(centaurus-ex
-    PRIVATE centaurus
+    PRIVATE centaurus win32ctrl
 )

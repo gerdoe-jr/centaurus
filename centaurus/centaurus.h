@@ -79,7 +79,7 @@ public:
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
 
     virtual centaurus_size TotalMemoryUsage() = 0;
-    virtual centaurus_size RequestTableSize() = 0;
+    virtual centaurus_size RequestTableLimit() = 0;
 };
 
 extern CENTAURUS_API ICentaurusAPI* centaurus;

@@ -15,8 +15,8 @@ enum crofile_status {
     CROFILE_VERSION
 };
 
-#define CROFILE_TAD_TABLE_LIMIT (512*1024*1024ULL)
-#define CROFILE_DAT_TABLE_LIMIT (1024*1024*1024ULL)
+//#define CROFILE_TAD_TABLE_LIMIT (512*1024*1024ULL)
+//#define CROFILE_DAT_TABLE_LIMIT (1024*1024*1024ULL)
 
 class CroFile
 {
@@ -26,6 +26,7 @@ public:
     crofile_status Open();
     void Close();
     void Reset();
+    void SetTableLimits(cronos_size tableLimit);
 
     inline const CronosABI* ABI() const
     {
@@ -130,6 +131,9 @@ private:
 
     cronos_size m_DatSize;
     cronos_size m_TadSize;
+
+    cronos_size m_DatTableLimit;
+    cronos_size m_TadTableLimit;
 
     bool m_bEOB;
 

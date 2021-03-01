@@ -125,6 +125,12 @@ void CroFile::Reset()
     m_bEOB = false;
 }
 
+void CroFile::SetTableLimits(cronos_size tableLimit)
+{
+    m_DatTableLimit = tableLimit / 2 + tableLimit / 4;
+    m_TadTableLimit = tableLimit / 4;
+}
+
 crofile_status CroFile::SetError(crofile_status st,
         const std::string& msg)
 {
@@ -298,7 +304,7 @@ cronos_idx CroFile::OptimalEntryCount()
     cronos_off offset = GetOffset(CRONOS_TAD);
     if (!offset)
         offset = ABI()->Offset(cronos_tad_entry);
-    cronos_size remaining = std::min(CROFILE_TAD_TABLE_LIMIT,
+    cronos_size remaining = std::min(m_TadTableLimit,
         m_TadSize - offset);
     return remaining / ABI()->Size(cronos_tad_entry);
 }
@@ -327,7 +333,7 @@ cronos_idx CroFile::OptimalRecordCount(CroEntryTable& tad, cronos_id start)
     tad.FirstActiveEntry(start, entry);
     cronos_size tableSize = entry.EntrySize();
 
-    while (tableSize < CROFILE_DAT_TABLE_LIMIT)
+    while (tableSize < m_DatTableLimit)
     {
         if (!entry.IsActive())
             continue;

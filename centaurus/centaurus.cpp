@@ -1,8 +1,9 @@
-#include "centaurus.h"
+﻿#include "centaurus.h"
 #include "win32util.h"
 #include "crofile.h"
 #include "crobuffer.h"
 #include "cronos_abi.h"
+#include "croexception.h"
 #include <functional>
 #include <stdexcept>
 #include <exception>
@@ -140,6 +141,8 @@ public:
             Run();
         } catch (const boost::thread_interrupted& ti) {
             Interrupt();
+        } catch (CroException& cro) {
+            fprintf(stderr, "CroFile(%p): %s\n", cro.File(), cro.what());
         } catch (const std::exception& e) {
             fprintf(stderr, "CCentaurusTask(%p): %s\n", this, e.what());
         }
@@ -292,46 +295,6 @@ public:
             delete bank;
             return NULL;
         }
-
-        testbank = bank;
-        ICentaurusTask* test1 = new CCentaurusTask(
-            [](CCentaurusTask* task) {
-                task->AcquireBank(testbank);
-
-                CroFile* data = testbank->File(CroBank);
-
-                CroTable* table = task->AcquireTable(
-                    data->LoadEntryTable(1, 50));
-                printf("acquired table %p\n", table);
-
-                printf("available table memory size %" FCroSize "\n",
-                    centaurus->RequestTableSize());
-
-                task->ReleaseTable(table);
-            }
-        );
-
-        ICentaurusTask* test2 = new CCentaurusTask(
-            [](CCentaurusTask* task) {
-                task->AcquireBank(testbank);
-
-                CroFile* data = testbank->File(CroBank);
-
-                CroTable* table = task->AcquireTable(
-                    data->LoadEntryTable(1, 50));
-                printf("acquired table %p\n", table);
-                
-                printf("task2 memory usage: %" FCroSize "\n",
-                    task->GetMemoryUsage());
-
-                task->ReleaseTable(table);
-            }
-        );
-
-        StartTask(test1);
-        StartTask(test2);
-        
-        Idle();
 
         m_Banks.emplace_back(std::unique_ptr<CCentaurusBank>(bank));
         return bank;
@@ -707,7 +670,7 @@ public:
         return total;
     }
 
-    centaurus_size RequestTableSize() override
+    centaurus_size RequestTableLimit() override
     {
         centaurus_size ramUsage = TotalMemoryUsage();
         if (ramUsage > m_TableSizeLimit)
@@ -785,24 +748,33 @@ public:
         AcquireBank(m_pBank);
         PrepareDirs();
 
-        ExportCroFile(m_pBank->File(CroBank));
+        ExportCroFile(m_pBank->File(CroStru));
+    }
+
+    std::wstring GetFileName(CroFile* file)
+    {
+        std::wstring filePath = file->GetPath();
+        std::size_t fileNamePos = filePath.find_last_of(L'\\');
+        return fileNamePos != std::wstring::npos
+            ? filePath.substr(fileNamePos + 1)
+            : filePath;
     }
 
     void ExportCroFile(CroFile* file)
     {
+        std::wstring outPath = m_ExportPath + L"\\" + GetFileName(file);
+        fs::create_directories(outPath);
+
         const CronosABI* abi = file->ABI();
         file->Reset();
+
+        centaurus_size tableLimit = centaurus->RequestTableLimit();
+        file->SetTableLimits((cronos_size)tableLimit);
 
         cronos_id tad_table_id = 1;
         while (!file->IsEndOfEntries())
         {
-            centaurus_size tad_table_size = centaurus->RequestTableSize();
-
-            cronos_off tad_off = file->GetOffset(CRONOS_TAD)
-                ? file->GetOffset(CRONOS_TAD) : abi->Offset(cronos_tad_entry);
-            cronos_idx tad_count = (tad_table_size - tad_off)
-                / abi->Size(cronos_tad_entry);
-            
+            cronos_idx tad_count = file->OptimalEntryCount();
             CroEntryTable* tad = AcquireTable<CroEntryTable>(
                 file->LoadEntryTable(tad_table_id, tad_count));
             if (tad->IsEmpty())
@@ -811,22 +783,110 @@ public:
                 break;
             }
 
-            for (cronos_id id = tad->IdStart(); id != tad->IdEnd(); id++)
+            cronos_id dat_table_id = tad_table_id;
+            while (dat_table_id < tad_table_id + tad_count)
             {
-                CroEntry entry = tad->GetEntry(id);
-                if (!entry.IsActive()) continue;
+                cronos_idx dat_count = file
+                    ->OptimalRecordCount(*tad, tad->IdStart());
+                CroRecordTable* dat = AcquireTable<CroRecordTable>(
+                    file->LoadRecordTable(*tad, dat_table_id, dat_count));
+                
+                printf("tad_count %" FCroIdx " dat_count %" FCroIdx "\n",
+                    tad_count, dat_count);
 
-                centaurus->LogBuffer(entry);
-                //printf("%" FCroOff "\t%" FCroSize "\n", entry.EntryOffset(),
-                //    entry.EntrySize());
+                if (dat->IsEmpty())
+                {
+                    ReleaseTable(dat);
+                    break;
+                }
 
-                //UpdateProgress(100.0f * (float)id
-                //    / (float)file->EntryCountFileSize());
+                printf("IdStart %" FCroId " IdEnd %" FCroId "\n", dat->IdStart(), dat->IdEnd());
+                for (cronos_id id = dat->IdStart(); id != dat->IdEnd(); id++)
+                {
+                    CroEntry entry = tad->GetEntry(id);
+                    if (!entry.IsActive()) continue;
+
+                    printf("%" FCroId " entry offset %" FCroOff "\n", id, entry.EntryOffset());
+                    CroBlock block = dat->FirstBlock(id);
+                    printf("BLOCK %" FCroOff " NEXT %" FCroOff "\n",
+                        block.GetStartOffset(), block.BlockNext());
+                    //CroBuffer record = GetRecord(file, entry, dat);
+                    //centaurus->LogBuffer(record, 1251);
+
+                    /*wchar_t szFileName[MAX_PATH] = { 0 };
+                    swprintf_s(szFileName, L"%s\\%d.bin", outPath.c_str(),
+                        entry.Id());
+                    FILE* fRec = _wfopen(szFileName, L"wb");
+                    fwrite(record.GetData(), record.GetSize(), 1, fRec);
+                    fclose(fRec);*/
+
+                    UpdateProgress(100.0f * (float)id
+                        / (float)file->EntryCountFileSize());
+                }
+
+                dat_table_id += dat->GetEntryCount();
+                ReleaseTable(dat);
             }
 
             tad_table_id += tad->GetEntryCount();
             ReleaseTable(tad);
         }
+    }
+
+    CroBuffer GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat)
+    {
+        CroBuffer record;
+        const CronosABI* abi = file->ABI();
+
+        if (!entry.HasBlock())
+        {
+            cronos_rel off = dat->DataOffset(entry.EntryOffset());
+            record.Write(dat->Data(off), entry.EntrySize());
+            
+            return record;
+        }
+
+        // здесь нужно загрузить несколько таблиц
+        CroBlock block = dat->FirstBlock(entry.Id());
+        cronos_size recordSize = block.BlockSize();
+
+        printf("DAT %" FCroOff "<->%" FCroOff "\n", dat->GetStartOffset(),
+            dat->GetEndOffset());
+        printf("record offset %" FCroOff "\n", block.RecordOffset());
+
+        cronos_rel dataOff = block.RecordOffset();
+        cronos_size dataSize = entry.EntrySize()
+            - abi->Size(cronos_first_block_hdr);
+        if (!dat->IsValidOffset(dat->FileOffset(dataOff)))
+        {
+            throw std::runtime_error("first block invalid offset "
+                + std::to_string(dat->FileOffset(dataOff)));
+        }
+
+        record.Write(dat->Data(dataOff), dataSize);
+        recordSize -= dataSize;
+
+        while (dat->NextBlock(block))
+        {
+            dataOff = block.RecordOffset();
+            dataSize = std::min(recordSize, file->GetDefaultBlockSize());
+            if (!dat->IsValidOffset(dat->FileOffset(dataOff)))
+            {
+                throw std::runtime_error("next block invalid offset "
+                    + std::to_string(dat->FileOffset(dataOff)));
+            }
+
+            record.Write(dat->Data(dataOff), dataSize);
+            recordSize -= dataSize;
+            if (!recordSize) break;
+        }
+
+        if (file->IsEncrypted())
+        {
+            file->Decrypt(record.GetData(), record.GetSize(), entry.Id());
+        }
+
+        return record;
     }
 private:
     ICentaurusBank* m_pBank;
