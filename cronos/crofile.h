@@ -15,9 +15,6 @@ enum crofile_status {
     CROFILE_VERSION
 };
 
-//#define CROFILE_TAD_TABLE_LIMIT (512*1024*1024ULL)
-//#define CROFILE_DAT_TABLE_LIMIT (1024*1024*1024ULL)
-
 class CroFile
 {
 public:
@@ -72,6 +69,8 @@ public:
     cronos_off GetOffset(cronos_filetype ftype) const;
     void Seek(cronos_off off, cronos_filetype ftype);
     void Read(CroData& data, uint32_t count, cronos_size size);
+    inline cronos_size DatFileSize() const { return m_DatSize; }
+    inline cronos_size TadFileSize() const { return m_TadSize; }
 
     template<typename T = CroData>
     inline T Read(cronos_id id, uint32_t count, cronos_size size,
@@ -110,15 +109,19 @@ public:
         cronos_off start, cronos_off end, CroTable& table);
 
     cronos_idx EntryCountFileSize() const;
+    inline cronos_id IdEntryEnd() const
+    {
+        return (cronos_id)EntryCountFileSize();
+    }
 
     cronos_idx OptimalEntryCount();
     CroEntryTable LoadEntryTable(cronos_id id, cronos_idx count);
 
-    cronos_idx OptimalRecordCount(CroEntryTable& tad, cronos_id start);
-    cronos_size RecordTableOffsets(CroEntryTable& tad,
+    cronos_idx OptimalRecordCount(CroEntryTable* tad, cronos_id start);
+    cronos_size RecordTableOffsets(CroEntryTable* tad,
         cronos_id id, cronos_idx count,
         cronos_off& start, cronos_off& end);
-    CroRecordTable LoadRecordTable(CroEntryTable& tad,
+    CroRecordTable LoadRecordTable(CroEntryTable* tad,
         cronos_id id, cronos_idx count);
 private:
     std::wstring m_Path;

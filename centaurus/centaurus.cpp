@@ -7,7 +7,7 @@ CENTAURUS_API ICentaurusAPI* centaurus = NULL;
 
 CENTAURUS_API bool Centaurus_Init()
 {
-    ICentaurusAPI* api = new CCentaurusAPI();
+    ICentaurusAPI* api = new CentaurusAPI();
     if (!api) return false;
 
     try {
@@ -39,11 +39,11 @@ CENTAURUS_API void Centaurus_Exit()
 
 CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run)
 {
-    return new CCentaurusTask(run);
+    return new CentaurusTask(run);
 }
 
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank,
     const std::wstring& path)
 {
-    return new CCentaurusExport(bank, path);
+    return new CentaurusExport(bank, path);
 }

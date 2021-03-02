@@ -7,11 +7,11 @@
 #include <utility>
 #include <string>
 
-class CCentaurusBank : public ICentaurusBank
+class CentaurusBank : public ICentaurusBank
 {
 public:
-    CCentaurusBank();
-    virtual ~CCentaurusBank();
+    CentaurusBank();
+    virtual ~CentaurusBank();
 
     bool LoadPath(const std::wstring& path) override;
     CroFile* File(CroBankFile type) const override;

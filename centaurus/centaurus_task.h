@@ -10,12 +10,12 @@
 #include <boost/atomic.hpp>
 #include <boost/thread/mutex.hpp>
 
-class CCentaurusTask : public ICentaurusTask
+class CentaurusTask : public ICentaurusTask
 {
 public:
-    CCentaurusTask();
-    CCentaurusTask(CentaurusRun run);
-    virtual ~CCentaurusTask();
+    CentaurusTask();
+    CentaurusTask(CentaurusRun run);
+    virtual ~CentaurusTask();
 
     virtual void StartTask();
     virtual void EndTask();

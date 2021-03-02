@@ -6,10 +6,10 @@
 #include "centaurus_task.h"
 #include <string>
 
-class CCentaurusExport : public CCentaurusTask
+class CentaurusExport : public CentaurusTask
 {
 public:
-    CCentaurusExport(ICentaurusBank* bank, const std::wstring& path);
+    CentaurusExport(ICentaurusBank* bank, const std::wstring& path);
     void PrepareDirs();
 
     void Run() override;

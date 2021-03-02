@@ -5,11 +5,11 @@
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
-CCentaurusBank::CCentaurusBank()
+CentaurusBank::CentaurusBank()
 {
 }
 
-CCentaurusBank::~CCentaurusBank()
+CentaurusBank::~CentaurusBank()
 {
     CroFile* stru = File(CroStru);
     CroFile* bank = File(CroBank);
@@ -20,7 +20,7 @@ CCentaurusBank::~CCentaurusBank()
     if (index) index->Close();
 }
 
-bool CCentaurusBank::LoadPath(const std::wstring& path)
+bool CentaurusBank::LoadPath(const std::wstring& path)
 {
     m_Path = path;
 
@@ -51,12 +51,12 @@ bool CCentaurusBank::LoadPath(const std::wstring& path)
     return File(CroStru) || File(CroBank) || File(CroIndex);
 }
 
-CroFile* CCentaurusBank::File(CroBankFile type) const
+CroFile* CentaurusBank::File(CroBankFile type) const
 {
     return !m_Files[type] ? NULL : m_Files[type].get();
 }
 
-void CCentaurusBank::ExportHeaders() const
+void CentaurusBank::ExportHeaders() const
 {
     sc::error_code ec;
     std::wstring headerPath = m_Path + L"\\include";

@@ -10,7 +10,7 @@
 #include <boost/atomic.hpp>
 #include <boost/thread.hpp>
 
-class CCentaurusAPI : public ICentaurusAPI
+class CentaurusAPI : public ICentaurusAPI
 {
     using Task = std::tuple<std::unique_ptr<ICentaurusTask>, boost::thread>;
 public:
@@ -25,6 +25,7 @@ public:
     void ExportABIHeader(const CronosABI* abi, FILE* out) const override;
     void LogBankFiles(ICentaurusBank* bank) const override;
     void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) override;
+    void LogTable(const CroTable& table) override;
 
     void StartTask(ICentaurusTask* task) override;
     void EndTask(ICentaurusTask* task) override;

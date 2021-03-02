@@ -13,6 +13,8 @@
 
 typedef uint64_t centaurus_size;
 
+/* CentaurusBank */
+
 enum CroBankFile {
     CroStru,
     CroBank,
@@ -36,6 +38,8 @@ public:
     virtual void ExportHeaders() const = 0;
 };
 
+/* CentaurusTask */
+
 class ICentaurusTask
 {
 public:
@@ -58,6 +62,8 @@ public:
 };
 using CentaurusRun = std::function<void(ICentaurusTask*)>;
 
+/* CentaurusAPI */
+
 class ICentaurusAPI
 {
 public:
@@ -76,6 +82,7 @@ public:
 
     virtual void LogBankFiles(ICentaurusBank* bank) const = 0;
     virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
+    virtual void LogTable(const CroTable& table) = 0;
 
     virtual void StartTask(ICentaurusTask* task) = 0;
     virtual void EndTask(ICentaurusTask* task) = 0;
@@ -88,6 +95,8 @@ public:
     virtual centaurus_size TotalMemoryUsage() = 0;
     virtual centaurus_size RequestTableLimit() = 0;
 };
+
+/* Centaurus */
 
 extern CENTAURUS_API ICentaurusAPI* centaurus;
 

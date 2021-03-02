@@ -19,7 +19,7 @@
 
 #include <algorithm>
 
-void CCentaurusAPI::Init()
+void CentaurusAPI::Init()
 {
     m_fOutput = stdout;
     m_fError = stderr;
@@ -27,7 +27,7 @@ void CCentaurusAPI::Init()
     SetTableSizeLimit(512 * 1024 * 1024); //512 MB
 }
 
-void CCentaurusAPI::Exit()
+void CentaurusAPI::Exit()
 {
     if (m_fOutput != stdout) fclose(m_fOutput);
     if (m_fError != stderr) fclose(m_fError);
@@ -44,12 +44,12 @@ void CCentaurusAPI::Exit()
     m_Banks.clear();
 }
 
-void CCentaurusAPI::SetTableSizeLimit(centaurus_size limit)
+void CentaurusAPI::SetTableSizeLimit(centaurus_size limit)
 {
     m_TableSizeLimit = limit;
 }
 
-ICentaurusBank* CCentaurusAPI::ConnectBank(const std::wstring& path)
+ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
     CCentaurusBank* bank = new CCentaurusBank();
@@ -65,7 +65,7 @@ ICentaurusBank* CCentaurusAPI::ConnectBank(const std::wstring& path)
     return bank;
 }
 
-void CCentaurusAPI::DisconnectBank(ICentaurusBank* bank)
+void CentaurusAPI::DisconnectBank(ICentaurusBank* bank)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
     for (auto it = m_Banks.begin(); it != m_Banks.end(); it++)
@@ -81,7 +81,7 @@ void CCentaurusAPI::DisconnectBank(ICentaurusBank* bank)
     }
 }
 
-void CCentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
+void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
 {
     if (!out) out = m_fOutput;
 
@@ -180,7 +180,7 @@ void CCentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
     fprintf(out, "\n");
 }
 
-void CCentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
+void CentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
 {
     for (unsigned i = 0; i < CroBankFile_Count; i++)
     {
@@ -216,7 +216,7 @@ void CCentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
     }
 }
 
-void CCentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
+void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
 {
     const char ascii_lup = 201, ascii_rup = 187,
         ascii_lsp = 199, ascii_rsp = 182,
@@ -331,7 +331,19 @@ void CCentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
     putc('\n', m_fOutput);
 }
 
-void CCentaurusAPI::StartTask(ICentaurusTask* task)
+void CentaurusAPI::LogTable(const CroTable& table)
+{
+    fprintf(m_fOutput,
+        "== %s TABLE 0x%" FCroOff " %" FCroSize " ID "
+        "%" FCroId "-%" FCroId " COUNT %" FCroIdx "\n",
+        table.GetFileType() == CRONOS_TAD ? "TAD" : "DAT",
+        table.TableOffset(), table.TableSize(),
+        table.IdStart(), table.IdEnd(),
+        table.GetEntryCount()
+    );
+}
+
+void CentaurusAPI::StartTask(ICentaurusTask* task)
 {
     printf("start task %p\n", task);
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
@@ -339,7 +351,7 @@ void CCentaurusAPI::StartTask(ICentaurusTask* task)
         &ICentaurusTask::StartTask, task));
 }
 
-void CCentaurusAPI::EndTask(ICentaurusTask* task)
+void CentaurusAPI::EndTask(ICentaurusTask* task)
 {
     printf("end task %p\n", task);
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
@@ -358,7 +370,7 @@ void CCentaurusAPI::EndTask(ICentaurusTask* task)
     throw std::runtime_error("centaurus->EndTask with no task");
 }
 
-CCentaurusAPI::Task* CCentaurusAPI::GetTask(ICentaurusTask* task)
+CentaurusAPI::Task* CentaurusAPI::GetTask(ICentaurusTask* task)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
     for (auto it = m_Tasks.begin(); it != m_Tasks.end(); it++)
@@ -371,20 +383,20 @@ CCentaurusAPI::Task* CCentaurusAPI::GetTask(ICentaurusTask* task)
     return NULL;
 }
 
-void CCentaurusAPI::TaskAwait()
+void CentaurusAPI::TaskAwait()
 {
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
     m_TaskCond.wait(lock);
 }
 
-void CCentaurusAPI::TaskNotify(ICentaurusTask* task)
+void CentaurusAPI::TaskNotify(ICentaurusTask* task)
 {
     m_Notifier = task;
     m_fNotifierProgress = task->GetTaskProgress();
     m_TaskCond.notify_all();
 }
 
-void CCentaurusAPI::Idle(ICentaurusTask* task)
+void CentaurusAPI::Idle(ICentaurusTask* task)
 {
     {
         auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
@@ -412,7 +424,7 @@ void CCentaurusAPI::Idle(ICentaurusTask* task)
     } while (!m_Tasks.empty());
 }
 
-bool CCentaurusAPI::IsBankAcquired(ICentaurusBank* bank)
+bool CentaurusAPI::IsBankAcquired(ICentaurusBank* bank)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
     for (auto& task : m_Tasks)
@@ -424,7 +436,7 @@ bool CCentaurusAPI::IsBankAcquired(ICentaurusBank* bank)
     return false;
 }
 
-centaurus_size CCentaurusAPI::TotalMemoryUsage()
+centaurus_size CentaurusAPI::TotalMemoryUsage()
 {
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
 
@@ -434,7 +446,7 @@ centaurus_size CCentaurusAPI::TotalMemoryUsage()
     return total;
 }
 
-centaurus_size CCentaurusAPI::RequestTableLimit()
+centaurus_size CentaurusAPI::RequestTableLimit()
 {
     centaurus_size ramUsage = TotalMemoryUsage();
     if (ramUsage > m_TableSizeLimit)
