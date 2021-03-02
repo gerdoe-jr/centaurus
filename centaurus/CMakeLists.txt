@@ -2,12 +2,19 @@ cmake_minimum_required(VERSION 3.18)
 project(centaurus)
 
 set(HEADERS
-    centaurus_api.h
     centaurus.h
+    centaurus_api.h
+    centaurus_bank.h
+    centaurus_task.h
+    centaurus_export.h
 )
 
 set(SOURCES
     centaurus.cpp
+    centaurus_api.cpp
+    centaurus_bank.cpp
+    centaurus_task.cpp
+    centaurus_export.cpp
 )
 
 if(MSVC)

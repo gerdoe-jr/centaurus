@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv)
 {
-    if (!InitCentaurusAPI())
+    if (!Centaurus_Init())
     {
         fprintf(stderr, "Failed to init centaurus API!\n");
         return 1;
@@ -40,6 +40,6 @@ int main(int argc, char** argv)
     }
 
     centaurus->DisconnectBank(bank);
-    ExitCentaurusAPI();
+    Centaurus_Exit();
     return 0;
 }

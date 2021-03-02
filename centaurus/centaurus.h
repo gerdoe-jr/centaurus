@@ -1,9 +1,15 @@
-#ifndef __CENTAURUS_H
+﻿#ifndef __CENTAURUS_H
 #define __CENTAURUS_H
 
-#include "centaurus_api.h"
 #include <stdint.h>
 #include <string>
+#include <functional>
+
+#ifdef CENTAURUS_INTERNAL
+#define CENTAURUS_API __declspec(dllexport)
+#else
+#define CENTAURUS_API __declspec(dllimport)
+#endif
 
 typedef uint64_t centaurus_size;
 
@@ -50,6 +56,7 @@ public:
 
     virtual centaurus_size GetMemoryUsage() = 0;
 };
+using CentaurusRun = std::function<void(ICentaurusTask*)>;
 
 class ICentaurusAPI
 {
@@ -66,7 +73,7 @@ public:
 
     virtual void ExportABIHeader(const CronosABI* abi,
         FILE* out = NULL) const = 0;
-    
+
     virtual void LogBankFiles(ICentaurusBank* bank) const = 0;
     virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
 
@@ -84,9 +91,10 @@ public:
 
 extern CENTAURUS_API ICentaurusAPI* centaurus;
 
-CENTAURUS_API bool InitCentaurusAPI();
-CENTAURUS_API void ExitCentaurusAPI();
+CENTAURUS_API bool Centaurus_Init();
+CENTAURUS_API void Centaurus_Exit();
 
+CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run);
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank,
     const std::wstring& path);
 
