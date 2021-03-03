@@ -99,25 +99,19 @@ void CentaurusBank::ExportHeaders() const
 
 void CentaurusBank::LoadBase(ICentaurusExport* exp, CroAttr& attr)
 {
-    CroBuffer base;
+    CroBuffer rec;
     if (attr.IsEntryId())
     {
         uint32_t id = *(uint32_t*)attr.GetAttr().GetData();
-        exp->ReadRecord(File(CroStru), id, base);
+        exp->ReadRecord(File(CroStru), id, rec);
     }
-    else base = CroBuffer(attr.GetAttr());
+    else rec = CroBuffer(attr.GetAttr());
 
+    CroStream stream = CroStream(rec);
+    CroBase base;
+
+    base.Parse(stream, attr.IsEntryId());
     m_Bases.push_back(base);
-}
-
-void CentaurusBank::ParseAttr(ICentaurusExport* exp,
-    CroStream& stream, CroAttr& attr)
-{
-    attr.Parse(stream);
-    std::string name = attr.GetName();
-
-    if (name.starts_with("Base") && name.length() == 7)
-        LoadBase(exp, attr);
 }
 
 void CentaurusBank::LoadStructure(ICentaurusExport* exp)
@@ -129,22 +123,59 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
     exp->ReadRecord(stru, 1, bankStruct);
     
     CroStream stream = CroStream(bankStruct);
-    stream.Read<uint8_t>(); // record prefix
+    if (stream.Read<uint8_t>() != CROATTR_PREFIX)
+        throw std::runtime_error("not an attr prefix");
 
     while (!stream.IsOverflowed())
     {
         CroAttr attr;
-        ParseAttr(exp, stream, attr);
+        attr.Parse(stream);
 
         m_Attrs.push_back(attr);
+    }
+
+    for (auto& attr : m_Attrs)
+    {
+        std::string name = attr.GetName();
+        if (name.starts_with("Base") && name.length() == 7)
+            LoadBase(exp, attr);
     }
 }
 
 void CentaurusBank::ExportStructure(ICentaurusExport* exp)
 {
     ptree bank;
+    ptree bases;
+
     for (auto& attr : m_Attrs)
-        bank.put(attr.GetName(), attr.GetString());
+    {
+        std::string name = attr.GetName();
+        if (name.starts_with("Base"))
+            continue;
+        else bank.put(name, attr.GetString());
+    }
+
+    for (auto& _base : m_Bases)
+    {
+        ptree base;
+        base.put("BaseName", _base.GetName());
+
+        ptree fields;
+        for (unsigned i = 0; i < _base.FieldCount(); i++)
+        {
+            ptree field;
+            
+            auto& _field = _base.Field(i);
+            field.put("FieldName", _field.GetName());
+            field.put("FieldType", _field.GetType());
+            fields.push_back(std::make_pair("", field));
+        }
+        base.add_child("Fields", fields);
+
+        bases.push_back(std::make_pair("", base));
+    }
+
+    bank.add_child("Bases", bases);
 
     std::ofstream json = std::ofstream(exp->ExportPath() + L"\\bank.json");
     pt::write_json(json, bank);
@@ -160,4 +191,15 @@ CroAttr& CentaurusBank::Attr(const std::string& name)
     }
 
     throw std::runtime_error("invalid attribute");
+}
+
+const CroBase& CentaurusBank::Base(unsigned index) const
+{
+    for (auto& base : m_Bases)
+    {
+        if (base.Index() == index)
+            return base;
+    }
+
+    throw std::runtime_error("invalid base");
 }

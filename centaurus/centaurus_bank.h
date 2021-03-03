@@ -21,18 +21,18 @@ public:
     void ExportHeaders() const override;
 
     void LoadBase(ICentaurusExport* exp, CroAttr& base);
-    void ParseAttr(ICentaurusExport* exp, CroStream& stream, CroAttr& attr);
     
     void LoadStructure(ICentaurusExport* exp) override;
     void ExportStructure(ICentaurusExport* exp) override;
 
     CroAttr& Attr(const std::string& name) override;
+    const CroBase& Base(unsigned index) const override;
 private:
     std::wstring m_Path;
     std::unique_ptr<CroFile> m_Files[CroBankFile_Count];
 
     std::vector<CroAttr> m_Attrs;
-    std::vector<CroBuffer> m_Bases;
+    std::vector<CroBase> m_Bases;
 };
 #endif
 

@@ -27,6 +27,7 @@ class CroBuffer;
 class CroTable;
 class CroFile;
 class CroAttr;
+class CroBase;
 
 class ICentaurusExport;
 
@@ -44,6 +45,7 @@ public:
     virtual void ExportStructure(ICentaurusExport* exp) = 0;
 
     virtual CroAttr& Attr(const std::string& name) = 0;
+    virtual const CroBase& Base(unsigned index) const = 0;
 };
 
 /* CentaurusTask */
