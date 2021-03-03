@@ -52,7 +52,7 @@ void CentaurusAPI::SetTableSizeLimit(centaurus_size limit)
 ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
-    CCentaurusBank* bank = new CCentaurusBank();
+    CentaurusBank* bank = new CentaurusBank();
     if (!bank->LoadPath(path))
     {
         fwprintf(m_fError, L"centaurus: failed to open bank %s\n",
@@ -61,7 +61,7 @@ ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)
         return NULL;
     }
 
-    m_Banks.emplace_back(std::unique_ptr<CCentaurusBank>(bank));
+    m_Banks.emplace_back(bank);
     return bank;
 }
 

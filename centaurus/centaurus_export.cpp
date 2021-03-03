@@ -79,12 +79,12 @@ void CentaurusExport::ExportCroFile(CroFile* file)
 
                 printf("%" FCroId " entry offset %" FCroOff "\n", id, entry.EntryOffset());
                 try {
-                    CroBlock block = dat->FirstBlock(id);
-                    /*CroBlock block = dat->FirstBlock(id);
-                    printf("BLOCK %" FCroOff " NEXT %" FCroOff "\n",
-                        block.GetStartOffset(), block.BlockNext());*/
-                    //CroBuffer record = GetRecord(file, entry, dat);
-                    //centaurus->LogBuffer(record, 1251);
+                    ExportRecord record = ReadExportRecord(file, entry);
+                    for (const auto& block : record.m_Blocks)
+                    {
+                        printf("\tdata %" FCroOff " size %" FCroSize "\n",
+                            block.m_DataPos, block.m_DataSize);
+                    }
                 }
                 catch (CroException& ce) {
                     fprintf(stderr, "%" FCroId " record exception: %s\n",
@@ -102,6 +102,44 @@ void CentaurusExport::ExportCroFile(CroFile* file)
         tad_start_id = tad->IdEnd();
         ReleaseTable(tad);
     }
+}
+
+ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
+    CroEntry& entry)
+{
+    const CronosABI* abi = file->ABI();
+    ExportRecord record = ExportRecord(entry);
+
+    CroBlock block = CroBlock(true);
+    block.InitData(file, entry.Id(), CRONOS_DAT, entry.EntryOffset(),
+        abi->Size(cronos_first_block_hdr));
+    file->Read(block, 1, block.GetSize());
+
+    cronos_off nextOff = block.BlockNext();
+    cronos_size recordSize = block.BlockSize();
+
+    cronos_off dataOff = block.GetStartOffset() + block.GetSize();
+    cronos_size dataSize = entry.EntrySize() - block.GetSize();
+    record.AddBlock(dataOff, dataSize);
+    recordSize -= dataSize;
+
+    while (nextOff != 0 && recordSize > 0)
+    {
+        block = CroBlock(false);
+        block.SetOffset(nextOff, CRONOS_DAT);
+        block.InitData(file, entry.Id(), CRONOS_DAT, nextOff,
+            abi->Size(cronos_block_hdr));
+        file->Read(block, 1, block.GetSize());
+
+        nextOff = block.BlockNext();
+
+        dataOff = block.GetStartOffset() + block.GetSize();
+        dataSize = std::min(recordSize, file->GetDefaultBlockSize());
+        record.AddBlock(dataSize, dataOff);
+        recordSize -= dataSize;
+    }
+
+    return record;
 }
 
 CroBuffer CentaurusExport::GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat)
