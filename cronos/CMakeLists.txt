@@ -13,6 +13,8 @@ set(SOURCES
     crofile.cpp
     cronos02.cpp
     cronos_abi.cpp
+    crostream.cpp
+    croattr.cpp
 )
 
 set(HEADERS
@@ -26,6 +28,8 @@ set(HEADERS
     cronos02.h
     cronos_format.h
     cronos_abi.h
+    crostream.h
+    croattr.h
 )
 
 add_library(cronos ${SOURCES} ${HEADERS})

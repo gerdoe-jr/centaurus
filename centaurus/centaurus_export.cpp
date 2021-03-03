@@ -22,7 +22,9 @@ void CentaurusExport::Run()
     AcquireBank(m_pBank);
     PrepareDirs();
 
-    ExportCroFile(m_pBank->File(CroStru));
+    //ExportCroFile(m_pBank->File(CroStru));
+    ExportCroFile(m_pBank->File(CroBank));
+    //ExportCroFile(m_pBank->File(CroIndex));
 }
 
 std::wstring CentaurusExport::GetFileName(CroFile* file)
@@ -81,7 +83,13 @@ void CentaurusExport::ExportCroFile(CroFile* file)
                 try {
                     ExportRecord exp = ReadExportRecord(file, entry);
                     CroBuffer record = ReadFileRecord(file, exp);
-                    centaurus->LogBuffer(record, 1251);
+                    //centaurus->LogBuffer(record, 1251);
+
+                    FILE* fBin = _wfopen(
+                        (outPath + L"\\" + std::to_wstring(entry.Id())
+                            + L".bin").c_str(), L"wb");
+                    fwrite(record.GetData(), record.GetSize(), 1, fBin);
+                    fclose(fBin);
                 }
                 catch (CroException& ce) {
                     fprintf(stderr, "%" FCroId " record exception: %s\n",
@@ -116,7 +124,10 @@ ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
     cronos_size recordSize = block.BlockSize();
 
     cronos_off dataOff = block.GetStartOffset() + block.GetSize();
-    cronos_size dataSize = entry.EntrySize() - block.GetSize();
+    cronos_size dataSize = std::min(recordSize,
+        entry.EntrySize() - block.GetSize());
+    printf("entry size %" FCroSize " data Size %" FCroSize " total %" FCroSize "\n",
+        entry.EntrySize(), dataSize, recordSize);
     record.AddBlock(dataOff, dataSize);
     recordSize -= dataSize;
 
