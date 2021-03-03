@@ -79,12 +79,9 @@ void CentaurusExport::ExportCroFile(CroFile* file)
 
                 printf("%" FCroId " entry offset %" FCroOff "\n", id, entry.EntryOffset());
                 try {
-                    ExportRecord record = ReadExportRecord(file, entry);
-                    for (const auto& block : record.m_Blocks)
-                    {
-                        printf("\tdata %" FCroOff " size %" FCroSize "\n",
-                            block.m_DataPos, block.m_DataSize);
-                    }
+                    ExportRecord exp = ReadExportRecord(file, entry);
+                    CroBuffer record = ReadFileRecord(file, exp);
+                    centaurus->LogBuffer(record, 1251);
                 }
                 catch (CroException& ce) {
                     fprintf(stderr, "%" FCroId " record exception: %s\n",
@@ -126,7 +123,6 @@ ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
     while (nextOff != 0 && recordSize > 0)
     {
         block = CroBlock(false);
-        block.SetOffset(nextOff, CRONOS_DAT);
         block.InitData(file, entry.Id(), CRONOS_DAT, nextOff,
             abi->Size(cronos_block_hdr));
         file->Read(block, 1, block.GetSize());
@@ -140,6 +136,26 @@ ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
     }
 
     return record;
+}
+
+CroBuffer CentaurusExport::ReadFileRecord(CroFile* file, ExportRecord& record)
+{
+    CroBuffer buf;
+    for (const auto& block : record.m_Blocks)
+    {
+        CroData data;
+        data.InitData(file, record.m_RecordId, CRONOS_DAT,
+            block.m_DataPos, block.m_DataSize);
+        file->Read(data, 1, data.GetSize());
+        buf.Write(data.GetData(), data.GetSize());
+    }
+
+    if (file->IsEncrypted())
+    {
+        file->Decrypt(buf.GetData(), buf.GetSize(), record.m_RecordId);
+    }
+
+    return buf;
 }
 
 CroBuffer CentaurusExport::GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat)

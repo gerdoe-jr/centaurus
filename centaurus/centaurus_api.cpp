@@ -333,14 +333,14 @@ void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
 
 void CentaurusAPI::LogTable(const CroTable& table)
 {
-    fprintf(m_fOutput,
+    /*fprintf(m_fOutput,
         "== %s TABLE 0x%" FCroOff " %" FCroSize " ID "
         "%" FCroId "-%" FCroId " COUNT %" FCroIdx "\n",
         table.GetFileType() == CRONOS_TAD ? "TAD" : "DAT",
         table.TableOffset(), table.TableSize(),
         table.IdStart(), table.IdEnd(),
         table.GetEntryCount()
-    );
+    );*/
 }
 
 void CentaurusAPI::StartTask(ICentaurusTask* task)

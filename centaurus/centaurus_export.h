@@ -43,6 +43,7 @@ public:
     void ExportCroFile(CroFile* file);
 
     ExportRecord ReadExportRecord(CroFile* file, CroEntry& entry);
+    CroBuffer ReadFileRecord(CroFile* file, ExportRecord& record);
 
     CroBuffer GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat);
 private:
