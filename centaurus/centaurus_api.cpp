@@ -1,5 +1,6 @@
 ﻿#include "centaurus_api.h"
 #include "centaurus_bank.h"
+#include "centaurus_export.h"
 
 #include "crofile.h"
 #include "crobuffer.h"
@@ -18,6 +19,27 @@
 #endif
 
 #include <algorithm>
+
+/* Centaurus Bank Loader*/
+
+class CentaurusBankLoader : public CentaurusExport
+{
+public:
+    CentaurusBankLoader(ICentaurusBank* bank)
+        : CentaurusExport(bank, L"")
+    {
+    }
+
+    void Run() override
+    {
+        CentaurusBank* bank = (CentaurusBank*)TargetBank();
+        AcquireBank(bank);
+
+        bank->LoadStructure(this);
+    }
+};
+
+/* CentaurusAPI */
 
 void CentaurusAPI::Init()
 {
@@ -53,10 +75,18 @@ ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
     CentaurusBank* bank = new CentaurusBank();
-    if (!bank->LoadPath(path))
-    {
-        fwprintf(m_fError, L"centaurus: failed to open bank %s\n",
-            path.c_str());
+
+    try {
+        if (!bank->LoadPath(path))
+            throw std::runtime_error("failed to open bank");
+        // загрузить атрибуты и базы банка
+        CentaurusBankLoader* loader = new CentaurusBankLoader(bank);
+        StartTask(loader);
+
+        Idle(loader);
+    } catch (const std::exception& e) {
+        fprintf(m_fError, "ConnectBank: %s\n", e.what());
+
         delete bank;
         return NULL;
     }

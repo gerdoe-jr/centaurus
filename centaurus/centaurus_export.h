@@ -31,7 +31,7 @@ public:
     std::vector<FileBlock> m_Blocks;
 };
 
-class CentaurusExport : public CentaurusTask
+class CentaurusExport : public CentaurusTask, public ICentaurusExport
 {
 public:
     CentaurusExport(ICentaurusBank* bank, const std::wstring& path);
@@ -45,7 +45,10 @@ public:
     ExportRecord ReadExportRecord(CroFile* file, CroEntry& entry);
     CroBuffer ReadFileRecord(CroFile* file, ExportRecord& record);
 
-    CroBuffer GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat);
+    //CroBuffer GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat);
+    ICentaurusBank* TargetBank() override;
+    const std::wstring& ExportPath() const override;
+    void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) override;
 private:
     ICentaurusBank* m_pBank;
     std::wstring m_ExportPath;

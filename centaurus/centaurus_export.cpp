@@ -22,9 +22,11 @@ void CentaurusExport::Run()
     AcquireBank(m_pBank);
     PrepareDirs();
 
-    //ExportCroFile(m_pBank->File(CroStru));
+    m_pBank->ExportStructure(this);
+
+    ExportCroFile(m_pBank->File(CroStru));
     ExportCroFile(m_pBank->File(CroBank));
-    //ExportCroFile(m_pBank->File(CroIndex));
+    ExportCroFile(m_pBank->File(CroIndex));
 }
 
 std::wstring CentaurusExport::GetFileName(CroFile* file)
@@ -169,54 +171,24 @@ CroBuffer CentaurusExport::ReadFileRecord(CroFile* file, ExportRecord& record)
     return buf;
 }
 
-CroBuffer CentaurusExport::GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat)
+ICentaurusBank* CentaurusExport::TargetBank()
 {
-    CroBuffer record;
-    const CronosABI* abi = file->ABI();
+    return m_pBank;
+}
 
-    if (!entry.HasBlock())
-    {
-        cronos_rel off = dat->DataOffset(entry.EntryOffset());
-        record.Write(dat->Data(off), entry.EntrySize());
+const std::wstring& CentaurusExport::ExportPath() const
+{
+    return m_ExportPath;
+}
 
-        return record;
-    }
+void CentaurusExport::ReadRecord(CroFile* file, uint32_t id, CroBuffer& out)
+{
+    CroEntryTable tad = file->LoadEntryTable(id, 1);
+    if (tad.IsEmpty()) throw std::runtime_error("no entry table");
 
-    // здесь нужно загрузить несколько таблиц
-    CroBlock block = dat->FirstBlock(entry.Id());
-    cronos_size recordSize = block.BlockSize();
+    CroEntry entry = tad.GetEntry(id);
+    if (!entry.IsActive()) throw std::runtime_error("not active entry");
 
-    cronos_rel dataOff = block.RecordOffset();
-    cronos_size dataSize = entry.EntrySize()
-        - abi->Size(cronos_first_block_hdr);
-    if (!dat->IsValidOffset(dat->FileOffset(dataOff)))
-    {
-        throw std::runtime_error("first block invalid offset "
-            + std::to_string(dat->FileOffset(dataOff)));
-    }
-
-    record.Write(dat->Data(dataOff), dataSize);
-    recordSize -= dataSize;
-
-    while (dat->NextBlock(block))
-    {
-        dataOff = block.RecordOffset();
-        dataSize = std::min(recordSize, file->GetDefaultBlockSize());
-        if (!dat->IsValidOffset(dat->FileOffset(dataOff)))
-        {
-            throw std::runtime_error("next block invalid offset "
-                + std::to_string(dat->FileOffset(dataOff)));
-        }
-
-        record.Write(dat->Data(dataOff), dataSize);
-        recordSize -= dataSize;
-        if (!recordSize) break;
-    }
-
-    if (file->IsEncrypted())
-    {
-        file->Decrypt(record.GetData(), record.GetSize(), entry.Id());
-    }
-
-    return record;
+    ExportRecord record = ReadExportRecord(file, entry);
+    out = ReadFileRecord(file, record);
 }

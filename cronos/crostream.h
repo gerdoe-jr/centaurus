@@ -9,7 +9,7 @@ class CroStream
 public:
     CroStream(CroBuffer& buf);
 
-    bool IsOverflowed() const;
+    bool IsOverflowed(cronos_size newSize = 0) const;
     uint8_t* Read(cronos_size size);
 
     template<typename T>

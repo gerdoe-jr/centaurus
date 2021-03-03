@@ -21,6 +21,8 @@ CroBuffer::CroBuffer(uint8_t* data, cronos_size size, bool owner)
 
 CroBuffer::CroBuffer(const CroBuffer& other)
 {
+    InitBuffer(NULL, 0, false);
+
     cronos_size size = other.GetSize();
     if (size)
     {

@@ -1,7 +1,15 @@
 ﻿#include "centaurus_bank.h"
+#include "centaurus_export.h"
+#include "croattr.h"
 #include <stdexcept>
+#include <fstream>
 
+#include <boost/json.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+using boost::property_tree::ptree;
+namespace pt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
@@ -87,4 +95,58 @@ void CentaurusBank::ExportHeaders() const
         centaurus->ExportABIHeader(file->ABI(), fHdr);
         fclose(fHdr);
     }
+}
+
+void CentaurusBank::LoadBase(ICentaurusExport* exp, CroAttr& attr)
+{
+    CroBuffer base;
+    if (attr.IsEntryId())
+    {
+        uint32_t id = *(uint32_t*)attr.GetAttr().GetData();
+        exp->ReadRecord(File(CroStru), id, base);
+    }
+    else base = CroBuffer(attr.GetAttr());
+
+    m_Bases.push_back(base);
+}
+
+void CentaurusBank::ParseAttr(ICentaurusExport* exp,
+    CroStream& stream, CroAttr& attr)
+{
+    attr.Parse(stream);
+    std::string name = attr.GetName();
+
+    if (name.starts_with("Base") && name.length() == 7)
+        LoadBase(exp, attr);
+}
+
+void CentaurusBank::LoadStructure(ICentaurusExport* exp)
+{
+    CroFile* stru = File(CroStru);
+    if (!stru) throw std::runtime_error("no structure");
+
+    CroBuffer bankStruct;
+    exp->ReadRecord(stru, 1, bankStruct);
+    
+    CroStream stream = CroStream(bankStruct);
+    stream.Read<uint8_t>(); // record prefix
+
+    while (!stream.IsOverflowed())
+    {
+        CroAttr attr;
+        ParseAttr(exp, stream, attr);
+
+        m_Attrs.push_back(attr);
+    }
+}
+
+void CentaurusBank::ExportStructure(ICentaurusExport* exp)
+{
+    ptree bank;
+    for (auto& attr : m_Attrs)
+        bank.put(attr.GetName(), attr.GetString());
+
+    std::ofstream json = std::ofstream(exp->ExportPath() + L"\\bank.json");
+    pt::write_json(json, bank);
+    json.close();
 }

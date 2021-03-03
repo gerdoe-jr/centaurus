@@ -27,6 +27,8 @@ class CroBuffer;
 class CroTable;
 class CroFile;
 
+class ICentaurusExport;
+
 class ICentaurusBank
 {
 public:
@@ -36,6 +38,9 @@ public:
     virtual CroFile* File(CroBankFile file) const = 0;
 
     virtual void ExportHeaders() const = 0;
+
+    virtual void LoadStructure(ICentaurusExport* exp) = 0;
+    virtual void ExportStructure(ICentaurusExport* exp) = 0;
 };
 
 /* CentaurusTask */
@@ -61,6 +66,16 @@ public:
     virtual centaurus_size GetMemoryUsage() = 0;
 };
 using CentaurusRun = std::function<void(ICentaurusTask*)>;
+
+/* CentaurusExport */
+
+class ICentaurusExport
+{
+public:
+    virtual ICentaurusBank* TargetBank() = 0;
+    virtual const std::wstring& ExportPath() const = 0;
+    virtual void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) = 0;
+};
 
 /* CentaurusAPI */
 
