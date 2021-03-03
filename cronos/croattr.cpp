@@ -1,6 +1,7 @@
 ﻿#include "croattr.h"
 
 CroAttr::CroAttr()
+    : m_bIsEntryId(false)
 {
 }
 
@@ -25,13 +26,16 @@ void CroAttr::Parse(CroStream& stream)
     m_AttrName = std::string((const char*)stream.Read(nameLen), nameLen);
 
     uint32_t attrValue = stream.Read<uint32_t>();
-    m_bIsEntryId = !(attrValue & 0x80000000);
 
-    if (IsEntryId())
-        m_Attr.Write((uint8_t*)&attrValue, sizeof(attrValue));
-    else
+    if (attrValue & 0x80000000)
     {
         uint32_t attrLen = attrValue & 0x7FFFFFFF;
         m_Attr.Copy(stream.Read(attrLen), attrLen);
+        m_bIsEntryId = false;
+    }
+    else
+    {
+        m_Attr.Write((uint8_t*)&attrValue, sizeof(attrValue));
+        m_bIsEntryId = true;
     }
 }

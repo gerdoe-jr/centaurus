@@ -25,18 +25,32 @@
 class CentaurusBankLoader : public CentaurusExport
 {
 public:
-    CentaurusBankLoader(ICentaurusBank* bank)
-        : CentaurusExport(bank, L"")
+    CentaurusBankLoader(ICentaurusBank* bank, const std::wstring& path)
+        : CentaurusExport(bank, L""),
+        m_BankPath(path)
     {
     }
 
     void Run() override
     {
         CentaurusBank* bank = (CentaurusBank*)TargetBank();
-        AcquireBank(bank);
+        try {
+            if (!bank->LoadPath(m_BankPath))
+                throw std::runtime_error("failed to open bank");
+            
+            bank->LoadStructure(this);
+            AcquireBank(bank);
 
-        bank->LoadStructure(this);
+            printf("CentaurusBankLoader: bank \"%s\" loaded\n",
+                bank->Attr("BankName").GetString().c_str());
+        } catch (const std::exception& e) {
+            fprintf(stderr, "CentaurusBankLoader: %s\n", e.what());
+            
+            centaurus->DisconnectBank(bank);
+        }
     }
+private:
+    std::wstring m_BankPath;
 };
 
 /* CentaurusAPI */
@@ -73,25 +87,13 @@ void CentaurusAPI::SetTableSizeLimit(centaurus_size limit)
 
 ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)
 {
-    auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
-    CentaurusBank* bank = new CentaurusBank();
-
-    try {
-        if (!bank->LoadPath(path))
-            throw std::runtime_error("failed to open bank");
-        // загрузить атрибуты и базы банка
-        CentaurusBankLoader* loader = new CentaurusBankLoader(bank);
-        StartTask(loader);
-
-        Idle(loader);
-    } catch (const std::exception& e) {
-        fprintf(m_fError, "ConnectBank: %s\n", e.what());
-
-        delete bank;
-        return NULL;
+    ICentaurusBank* bank;
+    {
+        auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
+        bank = m_Banks.emplace_back(new CentaurusBank).get();
     }
 
-    m_Banks.emplace_back(bank);
+    StartTask(new CentaurusBankLoader(bank, path));
     return bank;
 }
 
@@ -109,6 +111,11 @@ void CentaurusAPI::DisconnectBank(ICentaurusBank* bank)
             return;
         }
     }
+}
+
+void CentaurusAPI::WaitBank()
+{
+    Idle();
 }
 
 void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
@@ -375,7 +382,6 @@ void CentaurusAPI::LogTable(const CroTable& table)
 
 void CentaurusAPI::StartTask(ICentaurusTask* task)
 {
-    printf("start task %p\n", task);
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
     m_Tasks.emplace_back(task, boost::thread(
         &ICentaurusTask::StartTask, task));
@@ -383,7 +389,6 @@ void CentaurusAPI::StartTask(ICentaurusTask* task)
 
 void CentaurusAPI::EndTask(ICentaurusTask* task)
 {
-    printf("end task %p\n", task);
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
     for (auto it = m_Tasks.begin(); it != m_Tasks.end(); it++)
     {
@@ -452,6 +457,14 @@ void CentaurusAPI::Idle(ICentaurusTask* task)
         if (task && notifier == task)
             if (progress >= 100) break;
     } while (!m_Tasks.empty());
+}
+
+bool CentaurusAPI::IsBankLoaded(ICentaurusBank* bank)
+{
+    auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
+    for (const auto& _bank : m_Banks)
+        if (_bank.get() == bank) return true;
+    return false;
 }
 
 bool CentaurusAPI::IsBankAcquired(ICentaurusBank* bank)

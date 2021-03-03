@@ -6,14 +6,14 @@ CroStream::CroStream(CroBuffer& buf)
 {
 }
 
-bool CroStream::IsOverflowed(cronos_size newSize) const
+bool CroStream::IsOverflowed() const
 {
-    return m_Pos + newSize > m_Buffer.GetSize();
+    return m_Pos >= m_Buffer.GetSize();
 }
 
 uint8_t* CroStream::Read(cronos_size size)
 {
-    if (IsOverflowed(size))
+    if (m_Pos + size > m_Buffer.GetSize())
         throw std::runtime_error("CroStream overflow");
     uint8_t* data = m_Buffer.GetData() + m_Pos;
     m_Pos += size;

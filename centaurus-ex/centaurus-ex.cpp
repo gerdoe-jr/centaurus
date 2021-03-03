@@ -12,20 +12,20 @@ int main(int argc, char** argv)
 
     //std::wstring bankPath = L"K:\\Cronos\\TestBanks\\Test1"
     //    L"\\11_Республика Коми Нарьян-Мар\\Phones";
-    std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test1"
-        L"\\11_Республика Коми РЕГ_Коми Прописка 2005";
-    //std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test4\\testbank1";
+    //std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test1"
+    //    L"\\11_Республика Коми РЕГ_Коми Прописка 2005";
+    std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test4\\testbank1";
     std::wstring bankPath = argc >= 2
         ? AnsiToWchar(argv[1]) : defaultBank;
 
     ICentaurusBank* bank = centaurus->ConnectBank(bankPath);
+    centaurus->WaitBank();
 
-    if (!bank)
+    if (!centaurus->IsBankLoaded(bank))
     {
         fprintf(stderr, "Failed to open bank!\n");
         return 1;
     }
-    printf("bank %p\n", bank);
 
     try {
         centaurus->LogBankFiles(bank);

@@ -25,6 +25,8 @@ public:
     
     void LoadStructure(ICentaurusExport* exp) override;
     void ExportStructure(ICentaurusExport* exp) override;
+
+    CroAttr& Attr(const std::string& name) override;
 private:
     std::wstring m_Path;
     std::unique_ptr<CroFile> m_Files[CroBankFile_Count];

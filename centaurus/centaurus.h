@@ -26,6 +26,7 @@ class CronosABI;
 class CroBuffer;
 class CroTable;
 class CroFile;
+class CroAttr;
 
 class ICentaurusExport;
 
@@ -41,6 +42,8 @@ public:
 
     virtual void LoadStructure(ICentaurusExport* exp) = 0;
     virtual void ExportStructure(ICentaurusExport* exp) = 0;
+
+    virtual CroAttr& Attr(const std::string& name) = 0;
 };
 
 /* CentaurusTask */
@@ -91,6 +94,7 @@ public:
 
     virtual ICentaurusBank* ConnectBank(const std::wstring& dir) = 0;
     virtual void DisconnectBank(ICentaurusBank* bank) = 0;
+    virtual void WaitBank() = 0;
 
     virtual void ExportABIHeader(const CronosABI* abi,
         FILE* out = NULL) const = 0;
@@ -105,6 +109,7 @@ public:
     virtual void TaskNotify(ICentaurusTask* task) = 0;
     virtual void Idle(ICentaurusTask* task = NULL) = 0;
 
+    virtual bool IsBankLoaded(ICentaurusBank* bank) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
 
     virtual centaurus_size TotalMemoryUsage() = 0;

@@ -150,3 +150,14 @@ void CentaurusBank::ExportStructure(ICentaurusExport* exp)
     pt::write_json(json, bank);
     json.close();
 }
+
+CroAttr& CentaurusBank::Attr(const std::string& name)
+{
+    for (auto& attr : m_Attrs)
+    {
+        if (attr.GetName() == name)
+            return attr;
+    }
+
+    throw std::runtime_error("invalid attribute");
+}

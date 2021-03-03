@@ -21,6 +21,7 @@ public:
 
     ICentaurusBank* ConnectBank(const std::wstring& path) override;
     void DisconnectBank(ICentaurusBank* bank) override;
+    void WaitBank() override;
     
     void ExportABIHeader(const CronosABI* abi, FILE* out) const override;
     void LogBankFiles(ICentaurusBank* bank) const override;
@@ -36,6 +37,7 @@ public:
     void TaskNotify(ICentaurusTask* task) override;
     void Idle(ICentaurusTask* task = NULL) override;
 
+    bool IsBankLoaded(ICentaurusBank* bank) override;
     bool IsBankAcquired(ICentaurusBank* bank) override;
     
     centaurus_size TotalMemoryUsage() override;
