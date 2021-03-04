@@ -23,10 +23,10 @@ std::string CroAttr::GetString() const
     return std::string((const char*)m_Attr.GetData(), m_Attr.GetSize());
 }
 
-void CroAttr::Parse(CroStream& stream)
+void CroAttr::Parse(ICroParser* parser, CroStream& stream)
 {
     uint8_t nameLen = stream.Read<uint8_t>();
-    m_AttrName = std::string((const char*)stream.Read(nameLen), nameLen);
+    m_AttrName = parser->String((const char*)stream.Read(nameLen), nameLen);
 
     uint32_t attrValue = stream.Read<uint32_t>();
 
@@ -64,14 +64,16 @@ cronos_flags CroField::GetFlags() const
     return m_Flags;
 }
 
-cronos_idx CroField::Parse(CroStream& stream)
+cronos_idx CroField::Parse(ICroParser* parser, CroStream& stream)
 {
-    stream.Read<uint16_t>(); // size
+    uint16_t size = stream.Read<uint16_t>();
+    cronos_rel pos = stream.GetPosition();
+
     m_Type = (CroFieldType)stream.Read<uint16_t>();
     cronos_idx index = stream.Read<uint32_t>();
 
     uint8_t nameLen = stream.Read<uint8_t>();
-    m_Name = std::string((const char*)stream.Read(nameLen), nameLen);
+    m_Name = parser->String((const char*)stream.Read(nameLen), nameLen);
     m_Flags = stream.Read<uint32_t>();
 
     if (stream.Read<uint8_t>())
@@ -80,6 +82,7 @@ cronos_idx CroField::Parse(CroStream& stream)
         stream.Read<uint32_t>(); // datalength
     }
 
+    stream.SetPosition(pos + size);
     return index;
 }
 
@@ -88,7 +91,6 @@ cronos_idx CroField::Parse(CroStream& stream)
 CroBase::CroBase()
 {
     m_BitcardId = INVALID_CRONOS_ID;
-    m_Index = INVALID_CRONOS_ID;
     m_Flags = 0;
 }
 
@@ -110,7 +112,7 @@ cronos_idx CroBase::FieldCount() const
     return m_Fields.size();
 }
 
-void CroBase::Parse(CroStream& stream, bool hasPrefix)
+cronos_idx CroBase::Parse(ICroParser* parser, CroStream& stream, bool hasPrefix)
 {
     if (hasPrefix)
     {
@@ -122,13 +124,13 @@ void CroBase::Parse(CroStream& stream, bool hasPrefix)
     if (stream.Read<uint16_t>() == CROBASE_LINKED)
         stream.Read<uint32_t>(); // linked data id
     m_BitcardId = stream.Read<uint32_t>();
-    m_Index = stream.Read<uint32_t>();
+    cronos_idx baseIndex = stream.Read<uint32_t>();
 
     uint8_t nameLen = stream.Read<uint8_t>();
-    m_Name = std::string((const char*)stream.Read(nameLen), nameLen);
+    m_Name = parser->String((const char*)stream.Read(nameLen), nameLen);
 
     uint8_t mcLen = stream.Read<uint8_t>();
-    m_Mnemocode = std::string((const char*)stream.Read(mcLen), mcLen);
+    m_Mnemocode = parser->String((const char*)stream.Read(mcLen), mcLen);
     
     m_Flags = stream.Read<uint32_t>();
     
@@ -136,7 +138,9 @@ void CroBase::Parse(CroStream& stream, bool hasPrefix)
     for (unsigned i = 0; i < fieldNum; i++)
     {
         CroField field;
-        cronos_idx index = field.Parse(stream);
-        m_Fields.insert(std::make_pair(index, field));
+        cronos_idx fieldIndex = field.Parse(parser, stream);
+        m_Fields.insert(std::make_pair(fieldIndex, field));
     }
+
+    return baseIndex;
 }

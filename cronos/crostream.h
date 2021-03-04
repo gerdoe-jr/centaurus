@@ -17,6 +17,9 @@ public:
     {
         return *(T*)Read(sizeof(T));
     }
+
+    inline cronos_rel GetPosition() const { return m_Pos; }
+    inline void SetPosition(cronos_rel pos) { m_Pos = pos; }
 private:
     CroBuffer& m_Buffer;
     cronos_rel m_Pos;

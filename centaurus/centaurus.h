@@ -38,6 +38,8 @@ public:
 
     virtual bool LoadPath(const std::wstring& dir) = 0;
     virtual CroFile* File(CroBankFile file) const = 0;
+    virtual void SetCodePage(unsigned codepage) = 0;
+    virtual std::string String(const char* data, size_t len) = 0;
 
     virtual void ExportHeaders() const = 0;
 
@@ -45,7 +47,9 @@ public:
     virtual void ExportStructure(ICentaurusExport* exp) = 0;
 
     virtual CroAttr& Attr(const std::string& name) = 0;
-    virtual const CroBase& Base(unsigned index) const = 0;
+    virtual bool IsValidBase(unsigned index) const = 0;
+    virtual CroBase& Base(unsigned index) = 0;
+    virtual unsigned BaseCount() const = 0;
 };
 
 /* CentaurusTask */

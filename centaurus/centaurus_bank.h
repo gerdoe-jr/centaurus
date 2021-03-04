@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 
-class CentaurusBank : public ICentaurusBank
+class CentaurusBank : public ICentaurusBank, public ICroParser
 {
 public:
     CentaurusBank();
@@ -17,6 +17,9 @@ public:
 
     bool LoadPath(const std::wstring& path) override;
     CroFile* File(CroBankFile type) const override;
+    void SetCodePage(unsigned codepage) override;
+    
+    std::string String(const char* data, size_t len) override;
 
     void ExportHeaders() const override;
 
@@ -26,13 +29,16 @@ public:
     void ExportStructure(ICentaurusExport* exp) override;
 
     CroAttr& Attr(const std::string& name) override;
-    const CroBase& Base(unsigned index) const override;
+    bool IsValidBase(unsigned index) const override;
+    CroBase& Base(unsigned index) override;
+    unsigned BaseCount() const override;
 private:
     std::wstring m_Path;
+    unsigned m_uCodePage;
     std::unique_ptr<CroFile> m_Files[CroBankFile_Count];
 
     std::vector<CroAttr> m_Attrs;
-    std::vector<CroBase> m_Bases;
+    std::map<cronos_idx, CroBase> m_Bases;
 };
 #endif
 

@@ -6,6 +6,12 @@
 #include <string>
 #include <map>
 
+class ICroParser
+{
+public:
+    virtual std::string String(const char* data, size_t len) = 0;
+};
+
 #define CROATTR_PREFIX 0x03
 
 class CroAttr
@@ -16,8 +22,12 @@ public:
     const std::string& GetName() const;
     CroBuffer& GetAttr();
     std::string GetString() const;
+    inline const char* String() const
+    {
+        return (const char*)m_Attr.GetData();
+    }
 
-    void Parse(CroStream& stream);
+    void Parse(ICroParser* parser, CroStream& stream);
     inline bool IsEntryId() const { return m_bIsEntryId; }
 private:
     std::string m_AttrName;
@@ -53,7 +63,7 @@ public:
     CroFieldType GetType() const;
     cronos_flags GetFlags() const;
 
-    cronos_idx Parse(CroStream& stream);
+    cronos_idx Parse(ICroParser* parser, CroStream& stream);
 private:
     CroFieldType m_Type;
     
@@ -70,12 +80,10 @@ public:
     const CroField& Field(cronos_idx idx) const;
     cronos_idx FieldCount() const;
 
-    void Parse(CroStream& stream, bool hasPrefix = true);
-
-    inline cronos_idx Index() const { return m_Index; }
+    cronos_idx Parse(ICroParser* parser, CroStream& stream,
+        bool hasPrefix = true);
 private:
     cronos_id m_BitcardId;
-    cronos_idx m_Index;
     cronos_flags m_Flags;
     
     std::string m_Name;

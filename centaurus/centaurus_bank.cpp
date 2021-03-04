@@ -1,10 +1,12 @@
 ﻿#include "centaurus_bank.h"
 #include "centaurus_export.h"
 #include "croattr.h"
+#include "win32util.h"
 #include <stdexcept>
 #include <fstream>
 
 #include <boost/json.hpp>
+#include <boost/locale.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -15,6 +17,7 @@ namespace sc = boost::system;
 
 CentaurusBank::CentaurusBank()
 {
+    m_uCodePage = 1251;
 }
 
 CentaurusBank::~CentaurusBank()
@@ -64,6 +67,16 @@ CroFile* CentaurusBank::File(CroBankFile type) const
     return !m_Files[type] ? NULL : m_Files[type].get();
 }
 
+void CentaurusBank::SetCodePage(unsigned codepage)
+{
+    m_uCodePage = codepage;
+}
+
+std::string CentaurusBank::String(const char* data, size_t len)
+{
+    return WcharToText(AnsiToWchar(std::string(data, len), m_uCodePage));
+}
+
 void CentaurusBank::ExportHeaders() const
 {
     sc::error_code ec;
@@ -110,8 +123,8 @@ void CentaurusBank::LoadBase(ICentaurusExport* exp, CroAttr& attr)
     CroStream stream = CroStream(rec);
     CroBase base;
 
-    base.Parse(stream, attr.IsEntryId());
-    m_Bases.push_back(base);
+    cronos_idx index = base.Parse(this, stream, attr.IsEntryId());
+    m_Bases.insert(std::make_pair(index, base));
 }
 
 void CentaurusBank::LoadStructure(ICentaurusExport* exp)
@@ -129,7 +142,7 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
     while (!stream.IsOverflowed())
     {
         CroAttr attr;
-        attr.Parse(stream);
+        attr.Parse(this, stream);
 
         m_Attrs.push_back(attr);
     }
@@ -150,12 +163,15 @@ void CentaurusBank::ExportStructure(ICentaurusExport* exp)
     for (auto& attr : m_Attrs)
     {
         std::string name = attr.GetName();
-        if (name.starts_with("Base"))
-            continue;
-        else bank.put(name, attr.GetString());
+        if (!name.starts_with("Base"))
+        {
+            auto& _attr = attr.GetAttr();
+            bank.put(name, String((const char*)
+                _attr.GetData(), _attr.GetSize()));
+        }
     }
 
-    for (auto& _base : m_Bases)
+    for (auto& [_index, _base] : m_Bases)
     {
         ptree base;
         base.put("BaseName", _base.GetName());
@@ -193,13 +209,20 @@ CroAttr& CentaurusBank::Attr(const std::string& name)
     throw std::runtime_error("invalid attribute");
 }
 
-const CroBase& CentaurusBank::Base(unsigned index) const
+bool CentaurusBank::IsValidBase(unsigned index) const
 {
-    for (auto& base : m_Bases)
-    {
-        if (base.Index() == index)
-            return base;
-    }
+    return m_Bases.find(index) != m_Bases.end();
+}
 
-    throw std::runtime_error("invalid base");
+CroBase& CentaurusBank::Base(unsigned index)
+{
+    auto it = m_Bases.find(index);
+    if (it == m_Bases.end())
+        throw std::runtime_error("invalid base");;
+    return it->second;
+}
+
+unsigned CentaurusBank::BaseCount() const
+{
+    return m_Bases.size();
 }

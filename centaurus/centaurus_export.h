@@ -31,11 +31,38 @@ public:
     std::vector<FileBlock> m_Blocks;
 };
 
+class CsvBuffer : public CroBuffer
+{
+public:
+    CsvBuffer();
+    CsvBuffer(unsigned columns);
+
+    void Write(const std::string& column);
+    void Flush(FILE* fCsv);
+private:
+    unsigned m_uIndex;
+    unsigned m_uColumns;
+    cronos_off m_CsvOffset;
+};
+
+struct ExportOutput {
+    FILE* m_fCsv;
+    CsvBuffer m_CsvBuffer;
+};
+
+#include <map>
+
 class CentaurusExport : public CentaurusTask, public ICentaurusExport
 {
 public:
     CentaurusExport(ICentaurusBank* bank, const std::wstring& path);
+    virtual ~CentaurusExport();
+
     void PrepareDirs();
+    void OpenExport();
+    void CloseExport();
+    void FlushExport();
+    void SaveExportRecord(CroBuffer& record, uint32_t id);
 
     void Run() override;
 
@@ -52,6 +79,7 @@ public:
 private:
     ICentaurusBank* m_pBank;
     std::wstring m_ExportPath;
+    std::map<cronos_idx, ExportOutput> m_Export;
 };
 #endif
 
