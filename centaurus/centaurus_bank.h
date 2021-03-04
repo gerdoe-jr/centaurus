@@ -23,15 +23,16 @@ public:
 
     void ExportHeaders() const override;
 
-    void LoadBase(ICentaurusExport* exp, CroAttr& base);
-    
     void LoadStructure(ICentaurusExport* exp) override;
-    void ExportStructure(ICentaurusExport* exp) override;
+    void LoadBases(ICentaurusExport* exp) override;
 
     CroAttr& Attr(const std::string& name) override;
+    CroAttr& Attr(unsigned index) override;
+    unsigned AttrCount() const override;
+
     bool IsValidBase(unsigned index) const override;
     CroBase& Base(unsigned index) override;
-    unsigned BaseCount() const override;
+    unsigned BaseEnd() const override;
 private:
     std::wstring m_Path;
     unsigned m_uCodePage;

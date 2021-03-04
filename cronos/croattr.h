@@ -63,7 +63,7 @@ public:
     CroFieldType GetType() const;
     cronos_flags GetFlags() const;
 
-    cronos_idx Parse(ICroParser* parser, CroStream& stream);
+    unsigned Parse(ICroParser* parser, CroStream& stream);
 private:
     CroFieldType m_Type;
     
@@ -77,10 +77,11 @@ public:
     CroBase();
 
     const std::string& GetName() const;
-    const CroField& Field(cronos_idx idx) const;
-    cronos_idx FieldCount() const;
-
-    cronos_idx Parse(ICroParser* parser, CroStream& stream,
+    const CroField& Field(unsigned idx) const;
+    unsigned FieldCount() const;
+    unsigned FieldEnd() const;
+    
+    unsigned Parse(ICroParser* parser, CroStream& stream,
         bool hasPrefix = true);
 private:
     cronos_id m_BitcardId;
@@ -89,7 +90,7 @@ private:
     std::string m_Name;
     std::string m_Mnemocode;
 
-    std::map<cronos_idx, CroField> m_Fields;
+    std::map<unsigned, CroField> m_Fields;
 };
 
 #endif

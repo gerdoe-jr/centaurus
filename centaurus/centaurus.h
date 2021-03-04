@@ -44,12 +44,15 @@ public:
     virtual void ExportHeaders() const = 0;
 
     virtual void LoadStructure(ICentaurusExport* exp) = 0;
-    virtual void ExportStructure(ICentaurusExport* exp) = 0;
+    virtual void LoadBases(ICentaurusExport* exp) = 0;
 
     virtual CroAttr& Attr(const std::string& name) = 0;
+    virtual CroAttr& Attr(unsigned index) = 0;
+    virtual unsigned AttrCount() const = 0;
+
     virtual bool IsValidBase(unsigned index) const = 0;
     virtual CroBase& Base(unsigned index) = 0;
-    virtual unsigned BaseCount() const = 0;
+    virtual unsigned BaseEnd() const = 0;
 };
 
 /* CentaurusTask */
@@ -78,11 +81,18 @@ using CentaurusRun = std::function<void(ICentaurusTask*)>;
 
 /* CentaurusExport */
 
+enum ExportFormat {
+    ExportCSV,
+    ExportJSON
+};
+
 class ICentaurusExport
 {
 public:
     virtual ICentaurusBank* TargetBank() = 0;
     virtual const std::wstring& ExportPath() const = 0;
+    virtual ExportFormat GetExportFormat() const = 0;
+    virtual void SetExportFormat(ExportFormat fmt) = 0;
     virtual void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) = 0;
 };
 

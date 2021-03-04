@@ -5,6 +5,10 @@
 #include "croattr.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+using boost::property_tree::ptree;
+namespace pt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
@@ -14,27 +18,29 @@ namespace sc = boost::system;
 
 #include <algorithm>
 
-/* CsvBuffer */
+/* ExportBuffer */
 
-CsvBuffer::CsvBuffer()
+ExportBuffer::ExportBuffer()
 {
+    m_Format = ExportCSV;
     m_uIndex = 0;
     m_uColumns = 0;
-    m_CsvOffset = 0;
+    m_TextOffset = 0;
 }
 
-CsvBuffer::CsvBuffer(unsigned columns)
+ExportBuffer::ExportBuffer(ExportFormat fmt, unsigned columns)
 {
+    m_Format = fmt;
     m_uIndex = 0;
     m_uColumns = columns;
-    m_CsvOffset = 0;
+    m_TextOffset = 0;
 }
 
-void CsvBuffer::Write(const std::string& column)
+void ExportBuffer::WriteCSV(const std::string& column)
 {
     Alloc(GetSize() + column.size() * 2 + 16);
 
-    char* pColumn = (char*)GetData() + m_CsvOffset;
+    char* pColumn = (char*)GetData() + m_TextOffset;
     char* pCursor = pColumn;
 
     *pCursor++ = '"';
@@ -53,24 +59,34 @@ void CsvBuffer::Write(const std::string& column)
     }
     else *pCursor++ = ',';
 
-    m_CsvOffset += (ptrdiff_t)pCursor - (ptrdiff_t)pColumn;
+    m_TextOffset += (ptrdiff_t)pCursor - (ptrdiff_t)pColumn;
 }
 
-void CsvBuffer::Flush(FILE* fCsv)
+void ExportBuffer::WriteJSON(const std::string& column)
 {
-    fwrite(GetData(), m_CsvOffset, 1, fCsv);
+}
+
+void ExportBuffer::Write(const std::string& column)
+{
+    if (m_Format == ExportCSV) WriteCSV(column);
+    else WriteJSON(column);
+}
+
+void ExportBuffer::Flush(FILE* fCsv)
+{
+    fwrite(GetData(), m_TextOffset, 1, fCsv);
     fflush(fCsv);
 
     Free();
     m_uIndex = 0;
-    m_CsvOffset = 0;
+    m_TextOffset = 0;
 }
 
 /* CentaurusExport*/
 
 CentaurusExport::CentaurusExport(ICentaurusBank* bank,
-    const std::wstring& path)
-    : m_pBank(bank), m_ExportPath(path)
+    const std::wstring& path, ExportFormat fmt)
+    : m_pBank(bank), m_ExportPath(path), m_ExportFormat(fmt)
 {
 }
 
@@ -79,9 +95,23 @@ CentaurusExport::~CentaurusExport()
     if (!m_Export.empty()) CloseExport();
 }
 
+std::wstring CentaurusExport::GetFileName(CroFile* file)
+{
+    std::wstring filePath = file->GetPath();
+    std::size_t fileNamePos = filePath.find_last_of(L'\\');
+    return fileNamePos != std::wstring::npos
+        ? filePath.substr(fileNamePos + 1)
+        : filePath;
+}
+
 void CentaurusExport::PrepareDirs()
 {
     fs::create_directories(m_ExportPath);
+
+    if (m_ExportFormat == ExportCSV)
+        fs::create_directories(m_ExportPath + L"\\csv");
+    else if (m_ExportFormat == ExportJSON)
+        fs::create_directories(m_ExportPath + L"\\json");
 }
 
 void CentaurusExport::OpenExport()
@@ -89,34 +119,33 @@ void CentaurusExport::OpenExport()
     std::wstring csvPath = m_ExportPath + L"\\csv";
     fs::create_directories(csvPath);
 
-    for (unsigned i = 0; i <= m_pBank->BaseCount(); i++)
+    for (unsigned i = 0; i != m_pBank->BaseEnd(); i++)
     {
-        if (!m_pBank->IsValidBase(i))
-            continue;
-        
+        if (!m_pBank->IsValidBase(i)) continue;
         auto& base = m_pBank->Base(i);
+
         std::wstring csvFilePath = csvPath + L"\\"
-            + AnsiToWchar(base.GetName(), CP_UTF8) + L".csv";
+            + TextToWchar(base.GetName()) + L".csv";
 
         m_Export[i] = ExportOutput {
-            .m_fCsv = _wfopen(csvFilePath.c_str(), L"wb"),
-            .m_CsvBuffer = CsvBuffer(base.FieldCount())
+            .m_fExport = _wfopen(csvFilePath.c_str(), L"wb"),
+            .m_Buffer = ExportBuffer(ExportCSV, base.FieldCount())
         };
 
         auto& out = m_Export[i];
         for (unsigned j = 0; j < base.FieldCount(); j++)
         {
             auto& field = base.Field(j);
-            out.m_CsvBuffer.Write(field.GetName());
+            out.m_Buffer.Write(field.GetName());
         }
-        out.m_CsvBuffer.Flush(out.m_fCsv);
+        out.m_Buffer.Flush(out.m_fExport);
     }
 }
 
 void CentaurusExport::CloseExport()
 {
     for (auto& _export : m_Export)
-        fclose(_export.second.m_fCsv);
+        fclose(_export.second.m_fExport);
     m_Export.clear();
 }
 
@@ -124,7 +153,7 @@ void CentaurusExport::FlushExport()
 {
     for (auto& _export : m_Export)
     {
-        _export.second.m_CsvBuffer.Flush(_export.second.m_fCsv);
+        _export.second.m_Buffer.Flush(_export.second.m_fExport);
     }
 }
 
@@ -138,9 +167,8 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
         return;
 
     auto& base = m_pBank->Base(baseIndex);
-    auto& out = m_Export[baseIndex];
-
-    out.m_CsvBuffer.Write(std::to_string(id));
+    //auto& out = m_Export[baseIndex];
+    auto& [_, out] = m_Export[baseIndex];
     
     char* data = (char*)record.GetData() + 1;
     char* cursor = data;
@@ -152,7 +180,7 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
         {
             size_t length = (ptrdiff_t)&data[i] - (ptrdiff_t)cursor;
             std::string value = m_pBank->String(cursor, length);
-            out.m_CsvBuffer.Write(value);
+            out.Write(value);
             
             cursor = &data[i+1];
             if (++field == base.FieldCount() - 1)
@@ -161,7 +189,7 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
     }
 
     for (; field < base.FieldCount() - 1; field++)
-        out.m_CsvBuffer.Write("");
+        out.Write("");
 }
 
 void CentaurusExport::Run()
@@ -169,20 +197,58 @@ void CentaurusExport::Run()
     AcquireBank(m_pBank);
     PrepareDirs();
 
-    m_pBank->ExportStructure(this);
+    ExportStructure();
 
     //ExportCroFile(m_pBank->File(CroStru));
     ExportCroFile(m_pBank->File(CroBank));
     //ExportCroFile(m_pBank->File(CroIndex));
 }
 
-std::wstring CentaurusExport::GetFileName(CroFile* file)
+void CentaurusExport::ExportStructure()
 {
-    std::wstring filePath = file->GetPath();
-    std::size_t fileNamePos = filePath.find_last_of(L'\\');
-    return fileNamePos != std::wstring::npos
-        ? filePath.substr(fileNamePos + 1)
-        : filePath;
+    ptree bank;
+    ptree bases;
+
+    for (unsigned i = 0; i < m_pBank->AttrCount(); i++)
+    {
+        auto& attr = m_pBank->Attr(i);
+        std::string name = attr.GetName();
+        
+        if (!name.starts_with("Base"))
+        {
+            auto& _attr = attr.GetAttr();
+            bank.put(name, m_pBank->String((const char*)
+                _attr.GetData(), _attr.GetSize()));
+        }
+    }
+
+    for (unsigned i = 0; i != m_pBank->BaseEnd(); i++)
+    {
+        auto& _base = m_pBank->Base(i);
+
+        ptree base;
+        ptree fields;
+        base.put("BaseName", _base.GetName());
+
+        for (unsigned i = 0; i < _base.FieldCount(); i++)
+        {
+            ptree field;
+
+            auto& _field = _base.Field(i);
+            field.put("FieldName", _field.GetName());
+            field.put("FieldType", _field.GetType());
+            fields.push_back(std::make_pair("", field));
+        }
+        base.add_child("Fields", fields);
+
+        bases.push_back(std::make_pair("", base));
+    }
+
+    bank.add_child("Bases", bases);
+
+    std::ofstream json = std::ofstream(m_ExportPath + L"\\bank.json");
+    pt::write_json(json, bank);
+    json.close();
 }
 
 void CentaurusExport::ExportCroFile(CroFile* file)
@@ -310,6 +376,16 @@ ICentaurusBank* CentaurusExport::TargetBank()
 const std::wstring& CentaurusExport::ExportPath() const
 {
     return m_ExportPath;
+}
+
+ExportFormat CentaurusExport::GetExportFormat() const
+{
+    return m_ExportFormat;
+}
+
+void CentaurusExport::SetExportFormat(ExportFormat fmt)
+{
+    m_ExportFormat = fmt;
 }
 
 void CentaurusExport::ReadRecord(CroFile* file, uint32_t id, CroBuffer& out)

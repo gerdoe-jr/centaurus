@@ -31,23 +31,27 @@ public:
     std::vector<FileBlock> m_Blocks;
 };
 
-class CsvBuffer : public CroBuffer
+class ExportBuffer : public CroBuffer
 {
 public:
-    CsvBuffer();
-    CsvBuffer(unsigned columns);
+    ExportBuffer();
+    ExportBuffer(ExportFormat fmt, unsigned columns);
+
+    void WriteCSV(const std::string& column);
+    void WriteJSON(const std::string& column);
 
     void Write(const std::string& column);
     void Flush(FILE* fCsv);
 private:
+    ExportFormat m_Format;
     unsigned m_uIndex;
     unsigned m_uColumns;
-    cronos_off m_CsvOffset;
+    cronos_off m_TextOffset;
 };
 
 struct ExportOutput {
-    FILE* m_fCsv;
-    CsvBuffer m_CsvBuffer;
+    FILE* m_fExport;
+    ExportBuffer m_Buffer;
 };
 
 #include <map>
@@ -55,8 +59,11 @@ struct ExportOutput {
 class CentaurusExport : public CentaurusTask, public ICentaurusExport
 {
 public:
-    CentaurusExport(ICentaurusBank* bank, const std::wstring& path);
+    CentaurusExport(ICentaurusBank* bank, const std::wstring& path,
+        ExportFormat fmt = ExportCSV);
     virtual ~CentaurusExport();
+
+    std::wstring GetFileName(CroFile* file);
 
     void PrepareDirs();
     void OpenExport();
@@ -65,8 +72,9 @@ public:
     void SaveExportRecord(CroBuffer& record, uint32_t id);
 
     void Run() override;
-
-    std::wstring GetFileName(CroFile* file);
+    
+    void ExportStructure();
+    void ExportBank();
     void ExportCroFile(CroFile* file);
 
     ExportRecord ReadExportRecord(CroFile* file, CroEntry& entry);
@@ -75,10 +83,13 @@ public:
     //CroBuffer GetRecord(CroFile* file, CroEntry& entry, CroRecordTable* dat);
     ICentaurusBank* TargetBank() override;
     const std::wstring& ExportPath() const override;
+    ExportFormat GetExportFormat() const override;
+    void SetExportFormat(ExportFormat fmt) override;
     void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) override;
 private:
     ICentaurusBank* m_pBank;
     std::wstring m_ExportPath;
+    ExportFormat m_ExportFormat;
     std::map<cronos_idx, ExportOutput> m_Export;
 };
 #endif

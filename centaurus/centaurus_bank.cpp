@@ -8,10 +8,6 @@
 #include <boost/json.hpp>
 #include <boost/locale.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-using boost::property_tree::ptree;
-namespace pt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
@@ -110,23 +106,6 @@ void CentaurusBank::ExportHeaders() const
     }
 }
 
-void CentaurusBank::LoadBase(ICentaurusExport* exp, CroAttr& attr)
-{
-    CroBuffer rec;
-    if (attr.IsEntryId())
-    {
-        uint32_t id = *(uint32_t*)attr.GetAttr().GetData();
-        exp->ReadRecord(File(CroStru), id, rec);
-    }
-    else rec = CroBuffer(attr.GetAttr());
-
-    CroStream stream = CroStream(rec);
-    CroBase base;
-
-    cronos_idx index = base.Parse(this, stream, attr.IsEntryId());
-    m_Bases.insert(std::make_pair(index, base));
-}
-
 void CentaurusBank::LoadStructure(ICentaurusExport* exp)
 {
     CroFile* stru = File(CroStru);
@@ -146,56 +125,30 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
 
         m_Attrs.push_back(attr);
     }
-
-    for (auto& attr : m_Attrs)
-    {
-        std::string name = attr.GetName();
-        if (name.starts_with("Base") && name.length() == 7)
-            LoadBase(exp, attr);
-    }
 }
 
-void CentaurusBank::ExportStructure(ICentaurusExport* exp)
+void CentaurusBank::LoadBases(ICentaurusExport* exp)
 {
-    ptree bank;
-    ptree bases;
-
     for (auto& attr : m_Attrs)
     {
-        std::string name = attr.GetName();
-        if (!name.starts_with("Base"))
+        std::string attrName = attr.GetName();
+        if (!attrName.starts_with("Bank") || attrName.size() != 7)
+            continue;
+
+        CroBuffer rec;
+        if (attr.IsEntryId())
         {
-            auto& _attr = attr.GetAttr();
-            bank.put(name, String((const char*)
-                _attr.GetData(), _attr.GetSize()));
+            uint32_t id = *(uint32_t*)attr.GetAttr().GetData();
+            exp->ReadRecord(File(CroStru), id, rec);
         }
+        else rec = CroBuffer(attr.GetAttr());
+
+        CroStream stream = CroStream(rec);
+        CroBase base;
+
+        cronos_idx index = base.Parse(this, stream, attr.IsEntryId());
+        m_Bases.insert(std::make_pair(index, base));
     }
-
-    for (auto& [_index, _base] : m_Bases)
-    {
-        ptree base;
-        base.put("BaseName", _base.GetName());
-
-        ptree fields;
-        for (unsigned i = 0; i < _base.FieldCount(); i++)
-        {
-            ptree field;
-            
-            auto& _field = _base.Field(i);
-            field.put("FieldName", _field.GetName());
-            field.put("FieldType", _field.GetType());
-            fields.push_back(std::make_pair("", field));
-        }
-        base.add_child("Fields", fields);
-
-        bases.push_back(std::make_pair("", base));
-    }
-
-    bank.add_child("Bases", bases);
-
-    std::ofstream json = std::ofstream(exp->ExportPath() + L"\\bank.json");
-    pt::write_json(json, bank);
-    json.close();
 }
 
 CroAttr& CentaurusBank::Attr(const std::string& name)
@@ -207,6 +160,16 @@ CroAttr& CentaurusBank::Attr(const std::string& name)
     }
 
     throw std::runtime_error("invalid attribute");
+}
+
+CroAttr& CentaurusBank::Attr(unsigned index)
+{
+    return m_Attrs.at(index);
+}
+
+unsigned CentaurusBank::AttrCount() const
+{
+    return m_Attrs.size();
 }
 
 bool CentaurusBank::IsValidBase(unsigned index) const
@@ -222,7 +185,7 @@ CroBase& CentaurusBank::Base(unsigned index)
     return it->second;
 }
 
-unsigned CentaurusBank::BaseCount() const
+unsigned CentaurusBank::BaseEnd() const
 {
-    return m_Bases.size();
+    return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->first;
 }

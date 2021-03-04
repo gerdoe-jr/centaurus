@@ -1,5 +1,6 @@
 ﻿#include "croattr.h"
 #include <stdexcept>
+#include <algorithm>
 
 /* CroAttr */
 
@@ -64,13 +65,13 @@ cronos_flags CroField::GetFlags() const
     return m_Flags;
 }
 
-cronos_idx CroField::Parse(ICroParser* parser, CroStream& stream)
+unsigned CroField::Parse(ICroParser* parser, CroStream& stream)
 {
     uint16_t size = stream.Read<uint16_t>();
     cronos_rel pos = stream.GetPosition();
 
     m_Type = (CroFieldType)stream.Read<uint16_t>();
-    cronos_idx index = stream.Read<uint32_t>();
+    unsigned index = stream.Read<uint32_t>();
 
     uint8_t nameLen = stream.Read<uint8_t>();
     m_Name = parser->String((const char*)stream.Read(nameLen), nameLen);
@@ -99,7 +100,7 @@ const std::string& CroBase::GetName() const
     return m_Name;
 }
 
-const CroField& CroBase::Field(cronos_idx idx) const
+const CroField& CroBase::Field(unsigned idx) const
 {
     auto it = m_Fields.find(idx);
     if (it == m_Fields.end())
@@ -107,9 +108,14 @@ const CroField& CroBase::Field(cronos_idx idx) const
     return it->second;
 }
 
-cronos_idx CroBase::FieldCount() const
+unsigned CroBase::FieldCount() const
 {
     return m_Fields.size();
+}
+
+unsigned CroBase::FieldEnd() const
+{
+    return m_Fields.empty() ? 0 : std::prev(m_Fields.end())->first;
 }
 
 cronos_idx CroBase::Parse(ICroParser* parser, CroStream& stream, bool hasPrefix)
