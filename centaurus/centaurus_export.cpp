@@ -104,8 +104,8 @@ CentaurusExport::CentaurusExport(ICentaurusBank* bank, ExportFormat fmt)
 
 CentaurusExport::~CentaurusExport()
 {
-    if (!m_Export.empty())
-        throw std::runtime_error("export not closed");
+    for (auto& [_, out] : m_Export)
+        if (out.m_fExport) fclose(out.m_fExport);
 }
 
 std::wstring CentaurusExport::GetFileName(CroFile* file)
@@ -263,11 +263,6 @@ void CentaurusExport::Run()
     }
 
     SyncBankJson();
-
-    //if (m_BankJson.contains("exportError"))
-    //    json::
-
-    auto& bankError = m_BankJson["bankError"];
 }
 
 void CentaurusExport::Export()
@@ -297,20 +292,36 @@ void CentaurusExport::Export()
             if (!entry.IsActive()) continue;
 
             // Read record
-            CroBlock block = CroBlock(true);
-            block.InitData(file, entry.Id(), CRONOS_DAT, entry.EntryOffset(),
-                abi->Size(cronos_first_block_hdr));
-            file->Read(block, 1, block.GetSize());
-
-            cronos_off nextOff = block.BlockNext();
-            cronos_size recordSize = block.BlockSize();
-
+            CroBlock block;
             CroData data;
             CroBuffer record;
 
-            cronos_off dataOff = block.GetStartOffset() + block.GetSize();
-            cronos_size dataSize = std::min(recordSize,
-                entry.EntrySize() - block.GetSize());
+            cronos_off dataOff, nextOff;
+            cronos_size dataSize, recordSize;
+
+            if (entry.HasBlock())
+            {
+                block = CroBlock(true);
+                block.InitData(file, entry.Id(), CRONOS_DAT, entry.EntryOffset(),
+                    abi->Size(cronos_first_block_hdr));
+                file->Read(block, 1, block.GetSize());
+
+                nextOff = block.BlockNext();
+                recordSize = block.BlockSize();
+
+                dataOff = block.GetStartOffset() + block.GetSize();
+                dataSize = std::min(recordSize,
+                    entry.EntrySize() - block.GetSize());
+            }
+            else
+            {
+                nextOff = 0;
+                recordSize = entry.EntrySize();
+
+                dataOff = entry.EntryOffset();
+                dataSize = recordSize;
+            }
+
             data.InitData(file, id, CRONOS_DAT, dataOff, dataSize);
             file->Read(data, 1, dataSize);
 
@@ -340,8 +351,6 @@ void CentaurusExport::Export()
             {
                 file->Decrypt(record.GetData(), record.GetSize(), id);
             }
-
-            centaurus->LogBuffer(record);
 
             // Export to CSV base file
             SaveExportRecord(record, id);
