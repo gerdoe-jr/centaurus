@@ -89,15 +89,29 @@ void CentaurusAPI::SetTableSizeLimit(centaurus_size limit)
     m_TableSizeLimit = limit;
 }
 
-void CentaurusAPI::SetExportPath(const std::wstring& path)
+void CentaurusAPI::PrepareDataPath(const std::wstring& path)
 {
-    m_ExportPath = path;
-    fs::create_directories(m_ExportPath);
+    m_DataPath = path;
+    fs::create_directories(m_DataPath);
+
+    fs::create_directory(GetExportPath());
+    fs::create_directory(GetTaskPath());
+    fs::create_directory(GetBankPath());
 }
 
 const std::wstring& CentaurusAPI::GetExportPath() const
 {
-    return m_ExportPath;
+    return m_DataPath + L"\\export";
+}
+
+const std::wstring& CentaurusAPI::GetTaskPath() const
+{
+    return m_DataPath + L"\\task";
+}
+
+const std::wstring& CentaurusAPI::GetBankPath() const
+{
+    return m_DataPath + L"\\bank";
 }
 
 ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)

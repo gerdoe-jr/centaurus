@@ -111,8 +111,11 @@ public:
     virtual void Exit() = 0;
 
     virtual void SetTableSizeLimit(centaurus_size limit) = 0;
-    virtual void SetExportPath(const std::wstring& path) = 0;
+
+    virtual void PrepareDataPath(const std::wstring& path) = 0;
     virtual const std::wstring& GetExportPath() const = 0;
+    virtual const std::wstring& GetTaskPath() const = 0;
+    virtual const std::wstring& GetBankPath() const = 0;
 
     virtual ICentaurusBank* ConnectBank(const std::wstring& dir) = 0;
     virtual void DisconnectBank(ICentaurusBank* bank) = 0;

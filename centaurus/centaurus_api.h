@@ -18,8 +18,11 @@ public:
     void Exit() override;
 
     void SetTableSizeLimit(centaurus_size limit) override;
-    void SetExportPath(const std::wstring& path) override;
+    
+    void PrepareDataPath(const std::wstring& path) override;
     const std::wstring& GetExportPath() const override;
+    const std::wstring& GetTaskPath() const override;
+    const std::wstring& GetBankPath() const override;
 
     ICentaurusBank* ConnectBank(const std::wstring& path) override;
     void DisconnectBank(ICentaurusBank* bank) override;
@@ -49,7 +52,7 @@ private:
     FILE* m_fError;
 
     centaurus_size m_TableSizeLimit;
-    std::wstring m_ExportPath;
+    std::wstring m_DataPath;
 
     boost::mutex m_BankLock;
     std::vector<std::unique_ptr<ICentaurusBank>> m_Banks;
