@@ -42,6 +42,7 @@ public:
                 throw std::runtime_error("failed to open bank");
             
             bank->LoadStructure(this);
+            bank->LoadBases(this);
             AcquireBank(bank);
 
             printf("CentaurusBankLoader: bank \"%s\" loaded\n",

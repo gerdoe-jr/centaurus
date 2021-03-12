@@ -33,12 +33,14 @@ void CroAttr::Parse(ICroParser* parser, CroStream& stream)
 
     if (attrValue & 0x80000000)
     {
-        uint32_t attrLen = attrValue & 0x7FFFFFFF;
+        // block
+        int32_t attrLen = (int32_t)(attrValue & 0x7FFFFFFF);
         m_Attr.Copy(stream.Read(attrLen), attrLen);
         m_bIsEntryId = false;
     }
     else
     {
+        // ref block id
         m_Attr.Write((uint8_t*)&attrValue, sizeof(attrValue));
         m_bIsEntryId = true;
     }

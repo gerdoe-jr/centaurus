@@ -37,6 +37,8 @@ public:
     ExportBuffer();
     ExportBuffer(ExportFormat fmt, unsigned columns);
 
+    void ReserveSize(cronos_size size);
+
     void WriteCSV(const std::string& column);
     void WriteJSON(const std::string& column);
 
@@ -46,6 +48,8 @@ private:
     ExportFormat m_Format;
     unsigned m_uIndex;
     unsigned m_uColumns;
+
+    cronos_size m_Reserve;
     cronos_off m_TextOffset;
 };
 
@@ -55,7 +59,7 @@ struct ExportOutput {
 };
 
 #include <map>
-#include <boost/property_tree/ptree.hpp>
+#include <json.hpp>
 
 class CentaurusExport : public CentaurusTask, public ICentaurusExport
 {
@@ -66,15 +70,11 @@ public:
     std::wstring GetFileName(CroFile* file);
 
     void PrepareDirs();
-    void OpenExport();
-    void CloseExport();
-    void FlushExport();
     void SaveExportRecord(CroBuffer& record, uint32_t id);
 
     void Run() override;
-    
-    void ExportStructure();
-    void ExportBank();
+
+    void Export();
     void ExportCroFile(CroFile* file);
 
     ExportRecord ReadExportRecord(CroFile* file, CroEntry& entry);
@@ -93,7 +93,7 @@ private:
     ExportFormat m_ExportFormat;
     std::map<cronos_idx, ExportOutput> m_Export;
 
-    boost::property_tree::ptree m_BankJson;
+    nlohmann::json m_BankJson;
 };
 #endif
 

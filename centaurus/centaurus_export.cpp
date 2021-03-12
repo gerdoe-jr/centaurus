@@ -4,11 +4,8 @@
 #include "crofile.h"
 #include "croattr.h"
 
+#include <json_file.h>
 #include <boost/filesystem.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-using boost::property_tree::ptree;
-namespace pt = boost::property_tree;
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
@@ -26,6 +23,7 @@ ExportBuffer::ExportBuffer()
     m_uIndex = 0;
     m_uColumns = 0;
     m_TextOffset = 0;
+    m_Reserve = 0;
 }
 
 ExportBuffer::ExportBuffer(ExportFormat fmt, unsigned columns)
@@ -34,11 +32,26 @@ ExportBuffer::ExportBuffer(ExportFormat fmt, unsigned columns)
     m_uIndex = 0;
     m_uColumns = columns;
     m_TextOffset = 0;
+    m_Reserve = 0;
+}
+
+void ExportBuffer::ReserveSize(cronos_size size)
+{
+    m_Reserve = size;
 }
 
 void ExportBuffer::WriteCSV(const std::string& column)
 {
-    Alloc(GetSize() + column.size() * 2 + 16);
+    cronos_size columnSize = column.size();
+    cronos_size bufferSize = GetSize();
+
+    if (!bufferSize) Alloc(m_Reserve);
+    else if (columnSize + 16 + m_TextOffset >= bufferSize)
+    {
+        cronos_size newSize = bufferSize + (columnSize + 16 + m_TextOffset);
+        Alloc(m_Reserve * (newSize / m_Reserve)
+            + (newSize % m_Reserve ? m_Reserve : 0));
+    }
 
     char* pColumn = (char*)GetData() + m_TextOffset;
     char* pCursor = pColumn;
@@ -91,7 +104,8 @@ CentaurusExport::CentaurusExport(ICentaurusBank* bank, ExportFormat fmt)
 
 CentaurusExport::~CentaurusExport()
 {
-    if (!m_Export.empty()) CloseExport();
+    if (!m_Export.empty())
+        throw std::runtime_error("export not closed");
 }
 
 std::wstring CentaurusExport::GetFileName(CroFile* file)
@@ -109,49 +123,6 @@ void CentaurusExport::PrepareDirs()
     fs::create_directory(m_ExportPath);
 }
 
-void CentaurusExport::OpenExport()
-{
-    std::wstring csvPath = m_ExportPath + L"\\csv";
-    fs::create_directories(csvPath);
-
-    for (unsigned i = 0; i != m_pBank->BaseEnd(); i++)
-    {
-        if (!m_pBank->IsValidBase(i)) continue;
-        auto& base = m_pBank->Base(i);
-
-        std::wstring csvFilePath = csvPath + L"\\"
-            + TextToWchar(base.GetName()) + L".csv";
-
-        m_Export[i] = ExportOutput {
-            .m_fExport = _wfopen(csvFilePath.c_str(), L"wb"),
-            .m_Buffer = ExportBuffer(ExportCSV, base.FieldCount())
-        };
-
-        auto& out = m_Export[i];
-        for (unsigned j = 0; j < base.FieldCount(); j++)
-        {
-            auto& field = base.Field(j);
-            out.m_Buffer.Write(field.GetName());
-        }
-        out.m_Buffer.Flush(out.m_fExport);
-    }
-}
-
-void CentaurusExport::CloseExport()
-{
-    for (auto& _export : m_Export)
-        fclose(_export.second.m_fExport);
-    m_Export.clear();
-}
-
-void CentaurusExport::FlushExport()
-{
-    for (auto& _export : m_Export)
-    {
-        _export.second.m_Buffer.Flush(_export.second.m_fExport);
-    }
-}
-
 void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
 {
     const char record_sep = 0x1E;
@@ -164,11 +135,12 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
     auto& base = m_pBank->Base(baseIndex);
     //auto& out = m_Export[baseIndex];
     auto& [_, out] = m_Export[baseIndex];
-    
+
     char* data = (char*)record.GetData() + 1;
     char* cursor = data;
 
     unsigned i, field = 0;
+    out.Write(std::to_string(id));
     for (i = 1; i < record.GetSize(); i++)
     {
         if (data[i] == record_sep || i == record.GetSize() - 1)
@@ -192,10 +164,15 @@ void CentaurusExport::Run()
     AcquireBank(m_pBank);
     PrepareDirs();
 
-    m_BankJson.put<uint64_t>("bankId", m_pBank->BankId());
-    m_BankJson.put("bankName", WcharToText(m_pBank->BankName()));
-    auto& bankAttrs = m_BankJson.put_child("bankAttributes", {});
-    auto& bankBases = m_BankJson.put_child("bankBases", {});
+    m_BankJson = {
+        {"bankId", m_pBank->BankId()},
+        {"bankName", WcharToText(m_pBank->BankName())},
+        {"bankAttributes", json::object()},
+        {"bankBases", json::array()}
+    };
+
+    auto& bankAttrs = m_BankJson["bankAttributes"];
+    auto& bankBases = m_BankJson["bankBases"];
     SyncBankJson();
 
     try {
@@ -204,9 +181,8 @@ void CentaurusExport::Run()
         {
             auto& attr = m_pBank->Attr(i);
             auto& data = attr.GetAttr();
-
-            bankAttrs.put(attr.GetName(), m_pBank->String(
-                (const char*)data.GetData(), data.GetSize()));
+            bankAttrs[attr.GetName()] = m_pBank->String(
+                (const char*)data.GetData(), data.GetSize());
         }
         
         // bankBases
@@ -214,61 +190,101 @@ void CentaurusExport::Run()
         {
             if (!m_pBank->IsValidBase(i)) continue;
             auto& base = m_pBank->Base(i);
-            auto& bankBase = bankBases.put_child("", {});
 
-            ptree baseFields = bankBase.put_child("baseFields", {});
+            json baseFields = json::array();
             for (unsigned j = 0; j < base.FieldCount(); j++)
             {
                 auto& field = base.Field(j);
-
-                ptree baseField;
-                baseField.put("fieldName", field.GetName());
-                baseField.put<unsigned>("fieldType", field.GetType());
-                baseField.put<unsigned>("fieldFlags", field.GetFlags());
-
-                baseField.push_back(std::make_pair("", baseField));
+                baseFields.push_back({
+                    {"fieldName", field.GetName()},
+                    {"fieldType", field.GetType()},
+                    {"fieldFlags", field.GetFlags()}
+                });
             }
 
-            // Export CSV Path
-            std::wstring exportPath = m_ExportPath + L"\\base"
-                + std::to_wstring(i) + L".csv";
-            m_Export[i] = ExportOutput {
-                .m_fExport = _wfopen(exportPath.c_str(), L"wb"),
-                .m_Buffer = ExportBuffer(ExportCSV, base.FieldCount())
+            // Open export
+            std::wstring exportName = L"base" + std::to_wstring(i) + L".csv";
+            std::wstring exportPath = m_ExportPath + L"\\" + exportName;
+
+            json bankBase = {
+                {"baseName", base.GetName()},
+                {"baseFields", baseFields},
+                {"baseExport", WcharToText(exportName)}
             };
-            bankBase.put("baseExport", WcharToText(exportPath));
 
-            // Do export
+            FILE* fExport;
+            if (!_wfopen_s(&fExport, exportPath.c_str(), L"wb"))
+            {
+                m_Export[i] = ExportOutput{
+                    .m_fExport = fExport,
+                    .m_Buffer = ExportBuffer(ExportCSV, base.FieldCount())
+                };
 
+                m_Export[i].m_Buffer.ReserveSize(m_pBank
+                    ->File(CroBank)->GetDefaultBlockSize() * 4);
+            }
+            else bankBase["baseError"] = "failed to open export file";
+
+            bankBases.push_back(bankBase);
+        }
+        SyncBankJson();
+
+        // Do export
+        try {
+            Export();
+        } catch (CroException& ce) {
+            m_BankJson["exportError"] = {
+                {"exception", "CroException" },
+                {"what", ce.what()},
+                {"file", WcharToText(ce.File()->GetPath())}
+            };
+        } catch (const std::exception& e) {
+            m_BankJson["exportError"] = {
+                {"exception", "std::exception" },
+                {"what", e.what()}
+            };
         }
 
-        SyncBankJson();
+        // Close export
+        for (auto& [_, _out] : m_Export)
+            fclose(_out.m_fExport);
+        m_Export.clear();
+    } catch (CroException& ce) {
+        m_BankJson["bankError"] = {
+            {"exception", "CroException" },
+            {"what", ce.what()},
+            {"file", WcharToText(ce.File()->GetPath())}
+        };
     } catch (const std::exception& e) {
-        m_BankJson.put("bankError", e.what());
-        SyncBankJson();
+        m_BankJson["bankError"] = {
+            {"exception", "std::exception" },
+            {"what", e.what()}
+        };
     }
+
+    SyncBankJson();
+
+    //if (m_BankJson.contains("exportError"))
+    //    json::
+
+    auto& bankError = m_BankJson["bankError"];
 }
 
-void CentaurusExport::ExportCroFile(CroFile* file)
+void CentaurusExport::Export()
 {
-    OpenExport();
-
-    std::wstring outPath = m_ExportPath + L"\\" + GetFileName(file);
-    fs::create_directories(outPath);
-
-    const CronosABI* abi = file->ABI();
-    file->Reset();
-
     centaurus_size tableLimit = centaurus->RequestTableLimit();
-    file->SetTableLimits((cronos_size)tableLimit);
+    CroFile* file = m_pBank->File(CroBank);
+    auto* abi = file->ABI();
 
-    cronos_id tad_start_id = 1;
-    while (!file->IsEndOfEntries() && tad_start_id < file->IdEntryEnd())
+    file->Reset();
+    file->SetTableLimits(tableLimit);
+
+    cronos_id tad_cur = 1;
+    while (!file->IsEndOfEntries() && tad_cur <= file->IdEntryEnd())
     {
         cronos_idx tad_optimal = file->OptimalEntryCount();
-
         CroEntryTable* tad = AcquireTable<CroEntryTable>(
-            file->LoadEntryTable(tad_start_id, tad_optimal));
+            file->LoadEntryTable(tad_cur, tad_optimal));
         if (tad->IsEmpty())
         {
             ReleaseTable(tad);
@@ -280,32 +296,64 @@ void CentaurusExport::ExportCroFile(CroFile* file)
             CroEntry entry = tad->GetEntry(id);
             if (!entry.IsActive()) continue;
 
-            try {
-                ExportRecord exp = ReadExportRecord(file, entry);
-                CroBuffer record = ReadFileRecord(file, exp);
-                //centaurus->LogBuffer(record, 1251);
-                SaveExportRecord(record, entry.Id());
-                //centaurus->LogBuffer(record, 1251);
-            }
-            catch (CroException& ce) {
-                fprintf(stderr, "%" FCroId " cronos exception: %s\n",
-                    entry.Id(), ce.what());
-            }
-            catch (const std::exception& e) {
-                fprintf(stderr, "export exception: %s\n", e.what());
+            // Read record
+            CroBlock block = CroBlock(true);
+            block.InitData(file, entry.Id(), CRONOS_DAT, entry.EntryOffset(),
+                abi->Size(cronos_first_block_hdr));
+            file->Read(block, 1, block.GetSize());
+
+            cronos_off nextOff = block.BlockNext();
+            cronos_size recordSize = block.BlockSize();
+
+            CroData data;
+            CroBuffer record;
+
+            cronos_off dataOff = block.GetStartOffset() + block.GetSize();
+            cronos_size dataSize = std::min(recordSize,
+                entry.EntrySize() - block.GetSize());
+            data.InitData(file, id, CRONOS_DAT, dataOff, dataSize);
+            file->Read(data, 1, dataSize);
+
+            record.Write(data.GetData(), dataSize);
+            recordSize -= dataSize;
+
+            while (nextOff != 0 && recordSize > 0)
+            {
+                block = CroBlock(false);
+                block.InitData(file, entry.Id(), CRONOS_DAT, nextOff,
+                    abi->Size(cronos_block_hdr));
+                file->Read(block, 1, block.GetSize());
+
+                nextOff = block.BlockNext();
+
+                dataOff = block.GetStartOffset() + block.GetSize();
+                dataSize = std::min(recordSize, file->GetDefaultBlockSize());
+                data.InitData(file, id, CRONOS_DAT, dataOff, dataSize);
+                file->Read(data, 1, dataSize);
+
+                record.Write(data.GetData(), dataSize);
+                recordSize -= dataSize;
             }
 
-            UpdateProgress(100.0f * (float)id
-                / (float)file->EntryCountFileSize());
+            // Decrypt & parse record
+            if (file->IsEncrypted())
+            {
+                file->Decrypt(record.GetData(), record.GetSize(), id);
+            }
+
+            centaurus->LogBuffer(record);
+
+            // Export to CSV base file
+            SaveExportRecord(record, id);
         }
 
-        tad_start_id = tad->IdEnd();
+        tad_cur = tad->IdEnd();
         ReleaseTable(tad);
 
-        FlushExport();
+        //Flush
+        for (auto& [_, _out] : m_Export)
+            _out.m_Buffer.Flush(_out.m_fExport);
     }
-
-    CloseExport();
 }
 
 ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
@@ -339,7 +387,7 @@ ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
 
         dataOff = block.GetStartOffset() + block.GetSize();
         dataSize = std::min(recordSize, file->GetDefaultBlockSize());
-        record.AddBlock(dataSize, dataOff);
+        record.AddBlock(dataOff, dataSize);
         recordSize -= dataSize;
     }
 
@@ -400,11 +448,5 @@ void CentaurusExport::ReadRecord(CroFile* file, uint32_t id, CroBuffer& out)
 
 void CentaurusExport::SyncBankJson()
 {
-    std::ofstream json = std::ofstream(m_ExportPath + L"\\bank.json");
-    if (json.is_open())
-    {
-        pt::write_json(json, m_BankJson);
-        json.close();
-    }
-    else throw std::runtime_error("failed to open bank.json");
+    WriteJSONFile(m_ExportPath + L"\\bank.json", m_BankJson);
 }

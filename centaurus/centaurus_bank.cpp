@@ -126,7 +126,7 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
     }
 
     m_BankId = atoi(Attr("BankId").String());
-    m_BankName = AnsiToWchar(Attr("BankName").String(), m_uCodePage);
+    m_BankName = AnsiToWchar(Attr("BankName").GetString());
 }
 
 void CentaurusBank::LoadBases(ICentaurusExport* exp)
@@ -134,7 +134,7 @@ void CentaurusBank::LoadBases(ICentaurusExport* exp)
     for (auto& attr : m_Attrs)
     {
         std::string attrName = attr.GetName();
-        if (!attrName.starts_with("Bank") || attrName.size() != 7)
+        if (!attrName.starts_with("Base") || attrName.size() != 7)
             continue;
 
         CroBuffer rec;
@@ -189,7 +189,7 @@ CroBase& CentaurusBank::Base(unsigned index)
 
 unsigned CentaurusBank::BaseEnd() const
 {
-    return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->first;
+    return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->first + 1;
 }
 
 uint64_t CentaurusBank::BankId() const

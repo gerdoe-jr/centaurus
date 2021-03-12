@@ -20,6 +20,10 @@ public:
 
     inline cronos_rel GetPosition() const { return m_Pos; }
     inline void SetPosition(cronos_rel pos) { m_Pos = pos; }
+    inline cronos_size Remaining() const
+    {
+        return IsOverflowed() ? 0 : m_Buffer.GetSize() - GetPosition();
+    }
 private:
     CroBuffer& m_Buffer;
     cronos_rel m_Pos;

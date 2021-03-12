@@ -35,6 +35,7 @@ if(MSVC)
     add_compile_options(/wd26812 /wd6258 /wd28251)
 endif()
 
+add_subdirectory(json)
 add_subdirectory(win32ctrl)
 add_subdirectory(blowfish)
 add_subdirectory(cronos)
