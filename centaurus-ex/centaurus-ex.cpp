@@ -18,6 +18,9 @@ int main(int argc, char** argv)
     std::wstring bankPath = argc >= 2
         ? AnsiToWchar(argv[1]) : defaultBank;
 
+    std::wstring exportPath = L"K:\\Cronos\\Export";
+    centaurus->SetExportPath(exportPath);
+
     ICentaurusBank* bank = centaurus->ConnectBank(bankPath);
     centaurus->WaitBank();
 
@@ -30,8 +33,7 @@ int main(int argc, char** argv)
     try {
         centaurus->LogBankFiles(bank);
 
-        ICentaurusTask* exportTask = CentaurusTask_Export(
-            bank, bankPath + L"\\export");
+        ICentaurusTask* exportTask = CentaurusTask_Export(bank);
         centaurus->StartTask(exportTask);
 
         centaurus->Idle();

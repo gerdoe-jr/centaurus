@@ -55,12 +55,12 @@ struct ExportOutput {
 };
 
 #include <map>
+#include <boost/property_tree/ptree.hpp>
 
 class CentaurusExport : public CentaurusTask, public ICentaurusExport
 {
 public:
-    CentaurusExport(ICentaurusBank* bank, const std::wstring& path,
-        ExportFormat fmt = ExportCSV);
+    CentaurusExport(ICentaurusBank* bank, ExportFormat fmt = ExportCSV);
     virtual ~CentaurusExport();
 
     std::wstring GetFileName(CroFile* file);
@@ -86,11 +86,14 @@ public:
     ExportFormat GetExportFormat() const override;
     void SetExportFormat(ExportFormat fmt) override;
     void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) override;
+    void SyncBankJson() override;
 private:
     ICentaurusBank* m_pBank;
     std::wstring m_ExportPath;
     ExportFormat m_ExportFormat;
     std::map<cronos_idx, ExportOutput> m_Export;
+
+    boost::property_tree::ptree m_BankJson;
 };
 #endif
 

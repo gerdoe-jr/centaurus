@@ -19,6 +19,9 @@
 #endif
 
 #include <algorithm>
+#include <boost/filesystem.hpp>
+
+namespace fs = boost::filesystem;
 
 /* Centaurus Bank Loader*/
 
@@ -26,7 +29,7 @@ class CentaurusBankLoader : public CentaurusExport
 {
 public:
     CentaurusBankLoader(ICentaurusBank* bank, const std::wstring& path)
-        : CentaurusExport(bank, L""),
+        : CentaurusExport(bank),
         m_BankPath(path)
     {
     }
@@ -83,6 +86,17 @@ void CentaurusAPI::Exit()
 void CentaurusAPI::SetTableSizeLimit(centaurus_size limit)
 {
     m_TableSizeLimit = limit;
+}
+
+void CentaurusAPI::SetExportPath(const std::wstring& path)
+{
+    m_ExportPath = path;
+    fs::create_directories(m_ExportPath);
+}
+
+const std::wstring& CentaurusAPI::GetExportPath() const
+{
+    return m_ExportPath;
 }
 
 ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)

@@ -42,8 +42,7 @@ CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run)
     return new CentaurusTask(run);
 }
 
-CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank,
-    const std::wstring& path)
+CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank)
 {
-    return new CentaurusExport(bank, path);
+    return new CentaurusExport(bank);
 }

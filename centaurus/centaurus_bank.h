@@ -33,6 +33,9 @@ public:
     bool IsValidBase(unsigned index) const override;
     CroBase& Base(unsigned index) override;
     unsigned BaseEnd() const override;
+
+    uint64_t BankId() const override;
+    const std::wstring& BankName() const override;
 private:
     std::wstring m_Path;
     unsigned m_uCodePage;
@@ -40,6 +43,10 @@ private:
 
     std::vector<CroAttr> m_Attrs;
     std::map<cronos_idx, CroBase> m_Bases;
+
+    uint64_t m_BankId;
+    std::wstring m_BankName;
+
 };
 #endif
 

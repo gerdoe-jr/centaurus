@@ -84,9 +84,8 @@ void ExportBuffer::Flush(FILE* fCsv)
 
 /* CentaurusExport*/
 
-CentaurusExport::CentaurusExport(ICentaurusBank* bank,
-    const std::wstring& path, ExportFormat fmt)
-    : m_pBank(bank), m_ExportPath(path), m_ExportFormat(fmt)
+CentaurusExport::CentaurusExport(ICentaurusBank* bank, ExportFormat fmt)
+    : m_pBank(bank), m_ExportFormat(fmt)
 {
 }
 
@@ -106,12 +105,8 @@ std::wstring CentaurusExport::GetFileName(CroFile* file)
 
 void CentaurusExport::PrepareDirs()
 {
-    fs::create_directories(m_ExportPath);
-
-    if (m_ExportFormat == ExportCSV)
-        fs::create_directories(m_ExportPath + L"\\csv");
-    else if (m_ExportFormat == ExportJSON)
-        fs::create_directories(m_ExportPath + L"\\json");
+    m_ExportPath = centaurus->GetExportPath() + L"\\" + m_pBank->BankName();
+    fs::create_directory(m_ExportPath);
 }
 
 void CentaurusExport::OpenExport()
@@ -197,58 +192,61 @@ void CentaurusExport::Run()
     AcquireBank(m_pBank);
     PrepareDirs();
 
-    ExportStructure();
+    m_BankJson.put<uint64_t>("bankId", m_pBank->BankId());
+    m_BankJson.put("bankName", WcharToText(m_pBank->BankName()));
+    auto& bankAttrs = m_BankJson.put_child("bankAttributes", {});
+    auto& bankBases = m_BankJson.put_child("bankBases", {});
+    SyncBankJson();
 
-    //ExportCroFile(m_pBank->File(CroStru));
-    ExportCroFile(m_pBank->File(CroBank));
-    //ExportCroFile(m_pBank->File(CroIndex));
-}
+    try {
+        // bankAttributes
+        for (unsigned i = 0; i < m_pBank->AttrCount(); i++)
+        {
+            auto& attr = m_pBank->Attr(i);
+            auto& data = attr.GetAttr();
 
-void CentaurusExport::ExportStructure()
-{
-    ptree bank;
-    ptree bases;
-
-    for (unsigned i = 0; i < m_pBank->AttrCount(); i++)
-    {
-        auto& attr = m_pBank->Attr(i);
-        std::string name = attr.GetName();
+            bankAttrs.put(attr.GetName(), m_pBank->String(
+                (const char*)data.GetData(), data.GetSize()));
+        }
         
-        if (!name.starts_with("Base"))
+        // bankBases
+        for (unsigned i = 0; i != m_pBank->BaseEnd(); i++)
         {
-            auto& _attr = attr.GetAttr();
-            bank.put(name, m_pBank->String((const char*)
-                _attr.GetData(), _attr.GetSize()));
+            if (!m_pBank->IsValidBase(i)) continue;
+            auto& base = m_pBank->Base(i);
+            auto& bankBase = bankBases.put_child("", {});
+
+            ptree baseFields = bankBase.put_child("baseFields", {});
+            for (unsigned j = 0; j < base.FieldCount(); j++)
+            {
+                auto& field = base.Field(j);
+
+                ptree baseField;
+                baseField.put("fieldName", field.GetName());
+                baseField.put<unsigned>("fieldType", field.GetType());
+                baseField.put<unsigned>("fieldFlags", field.GetFlags());
+
+                baseField.push_back(std::make_pair("", baseField));
+            }
+
+            // Export CSV Path
+            std::wstring exportPath = m_ExportPath + L"\\base"
+                + std::to_wstring(i) + L".csv";
+            m_Export[i] = ExportOutput {
+                .m_fExport = _wfopen(exportPath.c_str(), L"wb"),
+                .m_Buffer = ExportBuffer(ExportCSV, base.FieldCount())
+            };
+            bankBase.put("baseExport", WcharToText(exportPath));
+
+            // Do export
+
         }
+
+        SyncBankJson();
+    } catch (const std::exception& e) {
+        m_BankJson.put("bankError", e.what());
+        SyncBankJson();
     }
-
-    for (unsigned i = 0; i != m_pBank->BaseEnd(); i++)
-    {
-        auto& _base = m_pBank->Base(i);
-
-        ptree base;
-        ptree fields;
-        base.put("BaseName", _base.GetName());
-
-        for (unsigned i = 0; i < _base.FieldCount(); i++)
-        {
-            ptree field;
-
-            auto& _field = _base.Field(i);
-            field.put("FieldName", _field.GetName());
-            field.put("FieldType", _field.GetType());
-            fields.push_back(std::make_pair("", field));
-        }
-        base.add_child("Fields", fields);
-
-        bases.push_back(std::make_pair("", base));
-    }
-
-    bank.add_child("Bases", bases);
-
-    std::ofstream json = std::ofstream(m_ExportPath + L"\\bank.json");
-    pt::write_json(json, bank);
-    json.close();
 }
 
 void CentaurusExport::ExportCroFile(CroFile* file)
@@ -398,4 +396,15 @@ void CentaurusExport::ReadRecord(CroFile* file, uint32_t id, CroBuffer& out)
 
     ExportRecord record = ReadExportRecord(file, entry);
     out = ReadFileRecord(file, record);
+}
+
+void CentaurusExport::SyncBankJson()
+{
+    std::ofstream json = std::ofstream(m_ExportPath + L"\\bank.json");
+    if (json.is_open())
+    {
+        pt::write_json(json, m_BankJson);
+        json.close();
+    }
+    else throw std::runtime_error("failed to open bank.json");
 }

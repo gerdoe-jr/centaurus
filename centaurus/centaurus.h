@@ -53,6 +53,9 @@ public:
     virtual bool IsValidBase(unsigned index) const = 0;
     virtual CroBase& Base(unsigned index) = 0;
     virtual unsigned BaseEnd() const = 0;
+
+    virtual uint64_t BankId() const = 0;
+    virtual const std::wstring& BankName() const = 0;
 };
 
 /* CentaurusTask */
@@ -94,6 +97,7 @@ public:
     virtual ExportFormat GetExportFormat() const = 0;
     virtual void SetExportFormat(ExportFormat fmt) = 0;
     virtual void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) = 0;
+    virtual void SyncBankJson() = 0;
 };
 
 /* CentaurusAPI */
@@ -107,6 +111,8 @@ public:
     virtual void Exit() = 0;
 
     virtual void SetTableSizeLimit(centaurus_size limit) = 0;
+    virtual void SetExportPath(const std::wstring& path) = 0;
+    virtual const std::wstring& GetExportPath() const = 0;
 
     virtual ICentaurusBank* ConnectBank(const std::wstring& dir) = 0;
     virtual void DisconnectBank(ICentaurusBank* bank) = 0;
@@ -140,7 +146,6 @@ CENTAURUS_API bool Centaurus_Init();
 CENTAURUS_API void Centaurus_Exit();
 
 CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run);
-CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank,
-    const std::wstring& path);
+CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank);
 
 #endif
