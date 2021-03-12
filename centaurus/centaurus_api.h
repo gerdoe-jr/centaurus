@@ -20,10 +20,11 @@ public:
     void SetTableSizeLimit(centaurus_size limit) override;
     
     void PrepareDataPath(const std::wstring& path) override;
-    const std::wstring& GetExportPath() const override;
-    const std::wstring& GetTaskPath() const override;
-    const std::wstring& GetBankPath() const override;
+    std::wstring GetExportPath() const override;
+    std::wstring GetTaskPath() const override;
+    std::wstring GetBankPath() const override;
 
+    std::wstring BankFile(ICentaurusBank* bank) override;
     ICentaurusBank* ConnectBank(const std::wstring& path) override;
     void DisconnectBank(ICentaurusBank* bank) override;
     void WaitBank() override;

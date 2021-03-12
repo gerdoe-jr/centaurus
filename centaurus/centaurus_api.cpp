@@ -7,6 +7,7 @@
 #include "cronos_abi.h"
 #include "croexception.h"
 #include "win32util.h"
+#include "json_file.h"
 #include <functional>
 #include <stdexcept>
 #include <exception>
@@ -45,13 +46,20 @@ public:
             bank->LoadBases(this);
             AcquireBank(bank);
 
-            printf("CentaurusBankLoader: bank \"%s\" loaded\n",
-                bank->Attr("BankName").GetString().c_str());
+            Sync();
         } catch (const std::exception& e) {
             fprintf(stderr, "CentaurusBankLoader: %s\n", e.what());
             
             centaurus->DisconnectBank(bank);
         }
+    }
+
+    void Sync()
+    {
+        ICentaurusBank* bank = TargetBank();
+        WriteJSONFile(centaurus->BankFile(bank), {
+            {"bankName", WcharToText(bank->BankName())}
+        });
     }
 private:
     std::wstring m_BankPath;
@@ -99,19 +107,33 @@ void CentaurusAPI::PrepareDataPath(const std::wstring& path)
     fs::create_directory(GetBankPath());
 }
 
-const std::wstring& CentaurusAPI::GetExportPath() const
+std::wstring CentaurusAPI::GetExportPath() const
 {
     return m_DataPath + L"\\export";
 }
 
-const std::wstring& CentaurusAPI::GetTaskPath() const
+std::wstring CentaurusAPI::GetTaskPath() const
 {
     return m_DataPath + L"\\task";
 }
 
-const std::wstring& CentaurusAPI::GetBankPath() const
+std::wstring CentaurusAPI::GetBankPath() const
 {
     return m_DataPath + L"\\bank";
+}
+
+std::wstring CentaurusAPI::BankFile(ICentaurusBank* bank)
+{
+    for (const auto& _bank : m_Banks)
+    {
+        if (_bank.get() == bank)
+        {
+            return GetBankPath() + L"\\" + std::to_wstring(
+                bank->BankId()) + L".json";
+        }
+    }
+
+    return L"";
 }
 
 ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)
@@ -129,6 +151,8 @@ ICentaurusBank* CentaurusAPI::ConnectBank(const std::wstring& path)
 void CentaurusAPI::DisconnectBank(ICentaurusBank* bank)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_BankLock);
+    fs::remove(BankFile(bank));
+
     for (auto it = m_Banks.begin(); it != m_Banks.end(); it++)
     {
         auto* theBank = it->get();

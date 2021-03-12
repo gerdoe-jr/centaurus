@@ -19,8 +19,7 @@ int main(int argc, char** argv)
     std::wstring bankPath = argc >= 2
         ? AnsiToWchar(argv[1], 1251) : defaultBank;
 
-    std::wstring exportPath = L"K:\\Cronos\\Export";
-    centaurus->SetExportPath(exportPath);
+    centaurus->PrepareDataPath(L"K:\\Centaurus");
 
     ICentaurusBank* bank = centaurus->ConnectBank(bankPath);
     centaurus->WaitBank();
