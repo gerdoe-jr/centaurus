@@ -34,6 +34,7 @@ public:
     void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) override;
     void LogTable(const CroTable& table) override;
 
+    std::wstring TaskFile(ICentaurusTask* task) override;
     void StartTask(ICentaurusTask* task) override;
     void EndTask(ICentaurusTask* task) override;
 

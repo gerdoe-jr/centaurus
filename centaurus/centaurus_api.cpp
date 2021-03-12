@@ -38,27 +38,26 @@ public:
     void Run() override
     {
         CentaurusBank* bank = (CentaurusBank*)TargetBank();
-        try {
-            if (!bank->LoadPath(m_BankPath))
-                throw std::runtime_error("failed to open bank");
-            
-            bank->LoadStructure(this);
-            bank->LoadBases(this);
-            AcquireBank(bank);
+        if (!bank->LoadPath(m_BankPath))
+            throw std::runtime_error("failed to open bank");
 
-            Sync();
-        } catch (const std::exception& e) {
-            fprintf(stderr, "CentaurusBankLoader: %s\n", e.what());
-            
-            centaurus->DisconnectBank(bank);
-        }
+        bank->LoadStructure(this);
+        bank->LoadBases(this);
+        AcquireBank(bank);
+
+        Sync();
     }
 
     void Sync()
     {
         ICentaurusBank* bank = TargetBank();
         WriteJSONFile(centaurus->BankFile(bank), {
-            {"bankName", WcharToText(bank->BankName())}
+            {"bankName", WcharToText(bank->BankName())},
+            {"bankFiles", {
+                {"CroStru", WcharToText(bank->File(CroStru)->GetPath())},
+                {"CroBank", WcharToText(bank->File(CroBank)->GetPath())},
+                {"CroIndex", WcharToText(bank->File(CroIndex)->GetPath())}
+            }}
         });
     }
 private:
@@ -433,11 +432,34 @@ void CentaurusAPI::LogTable(const CroTable& table)
     );*/
 }
 
+#include <boost/lexical_cast.hpp>
+
+std::wstring CentaurusAPI::TaskFile(ICentaurusTask* task)
+{
+    for (auto& _task : m_Tasks)
+    {
+        auto pTask = std::get<0>(_task).get();
+        if (pTask == task)
+        {
+            return GetTaskPath() + L"\\thread-" + boost::lexical_cast
+                <std::wstring>(std::get<1>(_task).get_id())
+                + L".json";
+        }
+    }
+
+    return L"";
+}
+
 void CentaurusAPI::StartTask(ICentaurusTask* task)
 {
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
     m_Tasks.emplace_back(task, boost::thread(
         &ICentaurusTask::StartTask, task));
+
+    WriteJSONFile(TaskFile(task), {
+        {"taskProgress", task->GetTaskProgress()},
+        {"taskMemoryUsage", task->GetMemoryUsage()}
+    });
 }
 
 void CentaurusAPI::EndTask(ICentaurusTask* task)
@@ -448,6 +470,12 @@ void CentaurusAPI::EndTask(ICentaurusTask* task)
         auto pTask = std::get<0>(*it).get();
         if (pTask == task)
         {
+            auto jsonFile = TaskFile(task);
+            auto data = ReadJSONFile(jsonFile);
+            if (data.find("error") == data.end())
+                fs::remove(jsonFile);
+            else fwprintf(stderr, L"failed task: %s\n", jsonFile.c_str());
+            
             m_Tasks.erase(it);
             if (m_Tasks.empty())
                 m_TaskCond.notify_all();
@@ -482,6 +510,15 @@ void CentaurusAPI::TaskNotify(ICentaurusTask* task)
     m_Notifier = task;
     m_fNotifierProgress = task->GetTaskProgress();
     m_TaskCond.notify_all();
+
+    try {
+        auto _task = ReadJSONFile(TaskFile(task));
+        _task["taskProgress"] = task->GetTaskProgress();
+        _task["taskMemoryUsage"] = task->GetMemoryUsage();
+        WriteJSONFile(TaskFile(task), _task);
+    } catch (const std::exception& e) {
+        // nothing
+    }
 }
 
 void CentaurusAPI::Idle(ICentaurusTask* task)
@@ -503,9 +540,6 @@ void CentaurusAPI::Idle(ICentaurusTask* task)
 
         ICentaurusTask* notifier = m_Notifier;
         float progress = m_fNotifierProgress;
-
-        //fprintf(m_fOutput, "task %p progress %f notify\n", notifier,
-        //    progress);
 
         if (task && notifier == task)
             if (progress >= 100) break;

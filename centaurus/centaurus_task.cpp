@@ -1,5 +1,8 @@
 ﻿#include "centaurus_task.h"
+#include <json_file.h>
+#include <win32util.h>
 #include <croexception.h>
+#include <crofile.h>
 
 CentaurusTask::CentaurusTask()
     : m_fTaskProgress(0)
@@ -21,15 +24,23 @@ void CentaurusTask::StartTask()
 
     try {
         Run();
-    }
-    catch (const boost::thread_interrupted& ti) {
+    } catch (const boost::thread_interrupted& ti) {
         Interrupt();
-    }
-    catch (CroException& cro) {
-        fprintf(stderr, "CroFile(%p): %s\n", cro.File(), cro.what());
-    }
-    catch (const std::exception& e) {
-        fprintf(stderr, "CentaurusTask(%p): %s\n", this, e.what());
+    } catch (CroException& cro) {
+        auto _task = ReadJSONFile(centaurus->TaskFile(this));
+        _task["error"] = {
+            {"exception", "CroException"},
+            {"what", cro.what()},
+            {"file", WcharToText(cro.File()->GetPath())}
+        };
+        WriteJSONFile(centaurus->TaskFile(this), _task);
+    } catch (const std::exception& e) {
+        auto _task = ReadJSONFile(centaurus->TaskFile(this));
+        _task["error"] = {
+            {"exception", "std::exception"},
+            {"what", e.what()},
+        };
+        WriteJSONFile(centaurus->TaskFile(this), _task);
     }
 
     EndTask();

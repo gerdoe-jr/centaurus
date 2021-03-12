@@ -129,6 +129,7 @@ public:
     virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
     virtual void LogTable(const CroTable& table) = 0;
 
+    virtual std::wstring TaskFile(ICentaurusTask* task) = 0;
     virtual void StartTask(ICentaurusTask* task) = 0;
     virtual void EndTask(ICentaurusTask* task) = 0;
     virtual void TaskAwait() = 0;
