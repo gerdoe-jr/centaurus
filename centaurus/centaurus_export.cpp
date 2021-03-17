@@ -352,6 +352,8 @@ void CentaurusExport::Export()
                 file->Decrypt(record.GetData(), record.GetSize(), id);
             }
 
+            //centaurus->LogBuffer(record);
+
             // Export to CSV base file
             SaveExportRecord(record, id);
         }
