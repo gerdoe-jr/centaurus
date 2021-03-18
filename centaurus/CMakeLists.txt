@@ -19,6 +19,8 @@ set(SOURCES
 
 if(MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 0)
+else()
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 add_library(centaurus SHARED ${SOURCES} ${HEADERS})

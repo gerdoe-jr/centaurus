@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <errno.h>
 
-static char s_szError[256] = {0};
+#ifndef WIN32
+#define sprintf_s snprintf
+#endif
+
+static std::string s_Error;
 
 CroException::CroException(CroFile* file)
     : m_pFile(file)
@@ -35,10 +39,9 @@ CroException::CroException(CroFile* file, const std::string& func,
 
 const char* CroException::what() noexcept
 {
-    sprintf_s(s_szError, 256, "CroException - \"%s\"",
-        File() ? File()->GetError().c_str() : "CroException"
-    );
-    return s_szError;
+    s_Error = "CroException - \"" + (File()
+        ? File()->GetError() : "CroException") + "\"";
+    return s_Error.c_str();
 }
 
 CroStdError::CroStdError(CroFile* file)
@@ -48,9 +51,9 @@ CroStdError::CroStdError(CroFile* file)
 
 const char* CroStdError::what() noexcept
 {
-    sprintf_s(s_szError, 256, "CroStdError - \"%s\", errno = %d",
-            File()->GetError().c_str(), errno);
-    return s_szError;
+    s_Error = "CroStdError - \"" + File()->GetError()
+        + "\", errno = " + std::to_string(errno);
+    return s_Error.c_str();
 }
 
 CroABIError::CroABIError(const CronosABI* abi, unsigned value,
@@ -66,7 +69,8 @@ const char* CroABIError::what() noexcept
     cronos_abi_num ver = m_pABI->GetABIVersion();
     const auto* value = m_pABI->GetValue((cronos_value)m_Value);
 
-    sprintf_s(s_szError, 256,
+    char szError[256] = {0};
+    sprintf_s(szError, sizeof(szError),
         "Cronos %dX [%02d.%02d] Error\n"
         "%s\n"
         "\tcronos_off\t%" FCroOff "\n"
@@ -76,5 +80,7 @@ const char* CroABIError::what() noexcept
         m_ValueName.c_str(),
         value->m_Offset, value->m_Size
     );
-    return s_szError;
+
+    s_Error = szError;
+    return s_Error.c_str();
 }

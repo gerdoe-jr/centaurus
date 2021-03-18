@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(blowfish)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 set(SOURCES
 	blowfish.c
 )

@@ -19,6 +19,11 @@
 #undef min
 #endif
 
+#ifndef WIN32
+#define CP_UTF7 65000
+#define CP_UTF8 65001
+#endif
+
 #include <algorithm>
 #include <boost/filesystem.hpp>
 
@@ -318,7 +323,9 @@ void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
     const cronos_size line = 0x10;
 
     //code page
+#ifdef WIN32
     if (!codepage) codepage = GetConsoleOutputCP();
+#endif
 
     //start
     putc(ascii_lup, m_fOutput);
@@ -386,7 +393,9 @@ void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
 
         putc(ascii_v_sp, m_fOutput);
 
+#ifdef WIN32
         SetConsoleOutputCP(codepage);
+#endif
         for (cronos_rel i = 0; i < line; i++)
         {
             if (i < len)
@@ -396,7 +405,9 @@ void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
             }
             else putc(' ', m_fOutput);
         }
+#ifdef WIN32
         SetConsoleOutputCP(866);
+#endif
         putc(ascii_v_border, m_fOutput);
 
         putc('\n', m_fOutput);

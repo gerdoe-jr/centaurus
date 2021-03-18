@@ -5,8 +5,8 @@ set(SOURCES
     centaurus-ex.cpp
 )
 
-add_executable(centaurus-ex ${SOURCES})
+add_executable(centaurus-exe ${SOURCES})
 
-target_link_libraries(centaurus-ex
+target_link_libraries(centaurus-exe
     PRIVATE centaurus win32ctrl
 )

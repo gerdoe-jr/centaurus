@@ -5,10 +5,14 @@
 #include <string>
 #include <functional>
 
+#ifdef WIN32
 #ifdef CENTAURUS_INTERNAL
 #define CENTAURUS_API __declspec(dllexport)
 #else
 #define CENTAURUS_API __declspec(dllimport)
+#endif
+#else
+#define CENTAURUS_API
 #endif
 
 typedef uint64_t centaurus_size;

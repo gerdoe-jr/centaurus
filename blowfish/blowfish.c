@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
  
-inline uint32_t _bswap32(uint32_t val)
+uint32_t _bswap32(uint32_t val)
 {
     uint32_t res = val;
 #ifdef _MSC_VER
@@ -20,7 +20,7 @@ inline uint32_t _bswap32(uint32_t val)
 extern uint32_t _blowfish_P[18];
 extern uint32_t _blowfish_S[4][256];
 
-inline uint32_t F(blowfish_t* bf, uint32_t x)
+uint32_t F(blowfish_t* bf, uint32_t x)
 {
     uint32_t a,b,c,d;
     a = (x & 0xFF000000) >> 24;

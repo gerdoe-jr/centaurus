@@ -11,6 +11,22 @@
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
+#ifndef WIN32
+#include <win32util.h>
+
+static FILE* _wfopen(const wchar_t* path, const wchar_t* mode)
+{
+    return fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
+}
+
+static int _wfopen_s(FILE** fpFile, const wchar_t* path, const wchar_t* mode)
+{
+    *fpFile = fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
+    return !!(*fpFile);
+}
+
+#endif
+
 CentaurusBank::CentaurusBank()
 {
     m_uCodePage = 1251;

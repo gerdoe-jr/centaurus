@@ -15,7 +15,8 @@ int main(int argc, char** argv)
     //std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test1"
     //    L"\\11_Республика Коми РЕГ_Коми Прописка 2005";
     //std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test4\\testbank1";
-    std::wstring defaultBank = L"K:\\Cronos\\Banks\\МОС ГИБДД Права 2018";
+    //std::wstring defaultBank = L"K:\\Cronos\\Banks\\МОС ГИБДД Права 2018";
+    std::wstring defaultBank = L"K:\\Cronos\\Banks\\Блогеры";
     std::wstring bankPath = argc >= 2
         ? AnsiToWchar(argv[1], 1251) : defaultBank;
 

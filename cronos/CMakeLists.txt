@@ -3,6 +3,7 @@ project(cronos)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(SOURCES
     croexception.cpp
@@ -37,6 +38,6 @@ target_include_directories(cronos PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(cronos PRIVATE
-	blowfish
+	blowfish win32ctrl
 )
 

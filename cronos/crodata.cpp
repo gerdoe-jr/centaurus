@@ -1,6 +1,7 @@
 #include "crodata.h"
 #include "crofile.h"
 #include "croexception.h"
+#include <string.h>
 
 CroData::CroData() : CroBuffer()
 {
