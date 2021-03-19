@@ -113,8 +113,8 @@ void ExportBuffer::Flush(FILE* fCsv)
 
 /* CentaurusExport*/
 
-CentaurusExport::CentaurusExport(ICentaurusBank* bank, ExportFormat fmt)
-    : m_pBank(bank), m_ExportFormat(fmt)
+CentaurusExport::CentaurusExport()
+    : m_pBank(NULL), m_ExportFormat(ExportCSV)
 {
 }
 

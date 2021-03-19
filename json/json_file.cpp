@@ -38,7 +38,7 @@ void WriteJSONFile(const std::wstring& path, const json& value)
 {
     FILE* fJson = _wfopen(path.c_str(), L"w");
     if (!fJson)
-        throw std::runtime_error("!ReadJSONFile");
+        throw std::runtime_error("!WriteJSONFile");
 
     std::string dump = value.dump(4);
     fwrite(dump.c_str(), 1, dump.size(), fJson);

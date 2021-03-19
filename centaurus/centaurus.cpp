@@ -5,20 +5,22 @@
 
 CENTAURUS_API ICentaurusAPI* centaurus = NULL;
 
-CENTAURUS_API bool Centaurus_Init()
+CENTAURUS_API bool Centaurus_Init(const std::wstring& path)
 {
     ICentaurusAPI* api = new CentaurusAPI();
     if (!api) return false;
 
     try {
-        api->Init();
-    }
-    catch (const std::exception& e) {
+        centaurus = api;
+        api->Init(path);
+    } catch (const std::exception& e) {
         fprintf(stderr, "InitCentaurusAPI: %s\n", e.what());
+        api->Exit();
+        
+        centaurus = NULL;
         delete api;
     }
 
-    centaurus = api;
     return centaurus;
 }
 
@@ -37,6 +39,20 @@ CENTAURUS_API void Centaurus_Exit()
     centaurus = NULL;
 }
 
+#include <boost/thread.hpp>
+
+static boost::thread _centaurus_thread;
+
+CENTAURUS_API void Centaurus_RunThread()
+{
+    _centaurus_thread = boost::thread([]() { centaurus->Idle(); });
+}
+
+CENTAURUS_API void Centaurus_Idle()
+{
+    _centaurus_thread.join();
+}
+
 CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run)
 {
     return new CentaurusTask(run);
@@ -44,5 +60,8 @@ CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run)
 
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank)
 {
-    return new CentaurusExport(bank);
+    CentaurusExport* exp = new CentaurusExport();
+    exp->SetTargetBank(bank);
+
+    return exp;
 }

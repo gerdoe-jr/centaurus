@@ -6,6 +6,7 @@ set(HEADERS
     centaurus_api.h
     centaurus_bank.h
     centaurus_task.h
+    centaurus_worker.h
     centaurus_export.h
 )
 
@@ -14,6 +15,7 @@ set(SOURCES
     centaurus_api.cpp
     centaurus_bank.cpp
     centaurus_task.cpp
+    centaurus_worker.cpp
     centaurus_export.cpp
 )
 
@@ -33,7 +35,7 @@ target_include_directories(centaurus PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_directories(centaurus PRIVATE ${Boost_LIBRARY_DIRS})
 target_link_libraries(centaurus PRIVATE ${Boost_LIBRARIES})
 
-target_compile_definitions(centaurus PRIVATE -DCENTAURUS_INTERNAL)
+target_compile_definitions(centaurus PRIVATE CENTAURUS_INTERNAL)
 target_link_libraries(centaurus PRIVATE cronos win32ctrl json)
 
 target_include_directories(centaurus PUBLIC

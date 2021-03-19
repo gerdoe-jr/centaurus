@@ -64,7 +64,7 @@ struct ExportOutput {
 class CentaurusExport : public CentaurusTask, public ICentaurusExport
 {
 public:
-    CentaurusExport(ICentaurusBank* bank, ExportFormat fmt = ExportCSV);
+    CentaurusExport();
     virtual ~CentaurusExport();
 
     std::wstring GetFileName(CroFile* file);
@@ -87,12 +87,14 @@ public:
     void SetExportFormat(ExportFormat fmt) override;
     void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) override;
     void SyncBankJson() override;
-private:
+
+    inline void SetTargetBank(ICentaurusBank* bank) { m_pBank = bank; }
+protected:
     ICentaurusBank* m_pBank;
     std::wstring m_ExportPath;
     ExportFormat m_ExportFormat;
+private:
     std::map<cronos_idx, ExportOutput> m_Export;
-
     nlohmann::json m_BankJson;
 };
 #endif

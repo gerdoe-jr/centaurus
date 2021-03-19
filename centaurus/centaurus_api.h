@@ -3,6 +3,7 @@
 
 #ifdef CENTAURUS_INTERNAL
 #include "centaurus.h"
+#include "centaurus_worker.h"
 #include <utility>
 #include <vector>
 #include <tuple>
@@ -14,7 +15,7 @@ class CentaurusAPI : public ICentaurusAPI
 {
     using Task = std::tuple<std::unique_ptr<ICentaurusTask>, boost::thread>;
 public:
-    void Init() override;
+    void Init(const std::wstring& path) override;
     void Exit() override;
 
     void SetTableSizeLimit(centaurus_size limit) override;
@@ -25,9 +26,10 @@ public:
     std::wstring GetBankPath() const override;
 
     std::wstring BankFile(ICentaurusBank* bank) override;
-    ICentaurusBank* ConnectBank(const std::wstring& path) override;
+    void ConnectBank(const std::wstring& path) override;
     void DisconnectBank(ICentaurusBank* bank) override;
-    void WaitBank() override;
+    ICentaurusBank* FindBank(const std::wstring& path) override;
+    ICentaurusBank* WaitBank(const std::wstring& path) override;
     
     void ExportABIHeader(const CronosABI* abi, FILE* out) const override;
     void LogBankFiles(ICentaurusBank* bank) const override;
@@ -38,7 +40,9 @@ public:
     void StartTask(ICentaurusTask* task) override;
     void EndTask(ICentaurusTask* task) override;
 
+    void StartWorker(CentaurusWorker* worker);
     Task* GetTask(ICentaurusTask* task);
+    void TaskSync();
 
     void TaskAwait() override;
     void TaskNotify(ICentaurusTask* task) override;
@@ -64,6 +68,8 @@ private:
     boost::atomic<ICentaurusTask*> m_Notifier;
     boost::atomic<float> m_fNotifierProgress;
     std::vector<Task> m_Tasks;
+
+    CentaurusWorker* m_pLoader;
 };
 #endif
 

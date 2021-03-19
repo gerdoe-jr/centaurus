@@ -118,7 +118,7 @@ class ICentaurusAPI
 public:
     virtual ~ICentaurusAPI() {}
 
-    virtual void Init() = 0;
+    virtual void Init(const std::wstring& path) = 0;
     virtual void Exit() = 0;
 
     virtual void SetTableSizeLimit(centaurus_size limit) = 0;
@@ -129,9 +129,10 @@ public:
     virtual std::wstring GetBankPath() const = 0;
 
     virtual std::wstring BankFile(ICentaurusBank* bank) = 0;
-    virtual ICentaurusBank* ConnectBank(const std::wstring& dir) = 0;
+    virtual void ConnectBank(const std::wstring& dir) = 0;
     virtual void DisconnectBank(ICentaurusBank* bank) = 0;
-    virtual void WaitBank() = 0;
+    virtual ICentaurusBank* FindBank(const std::wstring& path) = 0;
+    virtual ICentaurusBank* WaitBank(const std::wstring& dir) = 0;
 
     virtual void ExportABIHeader(const CronosABI* abi,
         FILE* out = NULL) const = 0;
@@ -158,8 +159,11 @@ public:
 
 extern CENTAURUS_API ICentaurusAPI* centaurus;
 
-CENTAURUS_API bool Centaurus_Init();
+CENTAURUS_API bool Centaurus_Init(const std::wstring& path);
 CENTAURUS_API void Centaurus_Exit();
+
+CENTAURUS_API void Centaurus_RunThread();
+CENTAURUS_API void Centaurus_Idle();
 
 CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run);
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank);

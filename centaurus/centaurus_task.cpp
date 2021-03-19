@@ -27,20 +27,30 @@ void CentaurusTask::StartTask()
     } catch (const boost::thread_interrupted& ti) {
         Interrupt();
     } catch (CroException& cro) {
-        auto _task = ReadJSONFile(centaurus->TaskFile(this));
+        auto _task = json::object();
+        try { _task = ReadJSONFile(centaurus->TaskFile(this)); }
+        catch (const std::exception& e) {}
+
         _task["error"] = {
             {"exception", "CroException"},
             {"what", cro.what()},
             {"file", WcharToText(cro.File()->GetPath())}
         };
-        WriteJSONFile(centaurus->TaskFile(this), _task);
+        
+        try { WriteJSONFile(centaurus->TaskFile(this), _task); }
+        catch (const std::exception& e) {}
     } catch (const std::exception& e) {
-        auto _task = ReadJSONFile(centaurus->TaskFile(this));
+        auto _task = json::object();
+        try { _task = ReadJSONFile(centaurus->TaskFile(this)); }
+        catch (const std::exception& e) {}
+
         _task["error"] = {
             {"exception", "std::exception"},
             {"what", e.what()},
         };
-        WriteJSONFile(centaurus->TaskFile(this), _task);
+        
+        try { WriteJSONFile(centaurus->TaskFile(this), _task); }
+        catch (const std::exception& e) {}
     }
 
     EndTask();
@@ -56,7 +66,7 @@ void CentaurusTask::EndTask()
 
 void CentaurusTask::Interrupt()
 {
-    EndTask();
+    Release();
 }
 
 void CentaurusTask::Run()
