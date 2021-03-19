@@ -181,14 +181,14 @@ void CentaurusExport::Run()
     PrepareDirs();
 
     m_BankJson = {
-        {"bankId", m_pBank->BankId()},
-        {"bankName", WcharToText(m_pBank->BankName())},
-        {"bankAttributes", json::object()},
-        {"bankBases", json::array()}
+        {"id", m_pBank->BankId()},
+        {"name", WcharToText(m_pBank->BankName())},
+        {"attributes", json::object()},
+        {"bases", json::array()}
     };
 
-    auto& bankAttrs = m_BankJson["bankAttributes"];
-    auto& bankBases = m_BankJson["bankBases"];
+    auto& bankAttrs = m_BankJson["attributes"];
+    auto& bankBases = m_BankJson["bases"];
     SyncBankJson();
 
     try {
@@ -212,9 +212,9 @@ void CentaurusExport::Run()
             {
                 auto& field = base.Field(j);
                 baseFields.push_back({
-                    {"fieldName", field.GetName()},
-                    {"fieldType", field.GetType()},
-                    {"fieldFlags", field.GetFlags()}
+                    {"name", field.GetName()},
+                    {"type", field.GetType()},
+                    {"flags", field.GetFlags()}
                 });
             }
 
@@ -223,12 +223,13 @@ void CentaurusExport::Run()
             std::wstring exportPath = m_ExportPath + L"\\" + exportName;
 
             json bankBase = {
-                {"baseName", base.GetName()},
-                {"baseFields", baseFields},
-                {"baseExport", WcharToText(exportName)}
+                {"name", base.GetName()},
+                {"fields", baseFields},
+                //{"export", WcharToText(exportName)}
             };
 
             FILE* fExport;
+            json baseExport = json::object();
             if (!_wfopen_s(&fExport, exportPath.c_str(), L"wb"))
             {
                 m_Export[i] = ExportOutput{
@@ -238,46 +239,61 @@ void CentaurusExport::Run()
 
                 m_Export[i].m_Buffer.ReserveSize(m_pBank
                     ->File(CroBank)->GetDefaultBlockSize() * 4);
+                baseExport["file"] = WcharToText(exportName);
+                baseExport["format"] = (int)ExportCSV;
+                baseExport["status"] = true;
             }
-            else bankBase["baseError"] = "failed to open export file";
+            else
+            {
+                baseExport["status"] = false;
+                baseExport["error"] = "failed to open export file";
+            }
 
+            bankBase["export"] = baseExport;
             bankBases.push_back(bankBase);
         }
         SyncBankJson();
 
         // Do export
+        json bankExport = json::object();
         try {
             Export();
+
+            bankExport["status"] = true;
         } catch (CroException& ce) {
-            m_BankJson["exportError"] = {
+            bankExport["status"] = false;
+            bankExport["error"] = {
                 {"exception", "CroException" },
                 {"what", ce.what()},
                 {"file", WcharToText(ce.File()->GetPath())}
             };
         } catch (const std::exception& e) {
-            m_BankJson["exportError"] = {
+            bankExport["status"] = false;
+            bankExport["error"] = {
                 {"exception", "std::exception" },
                 {"what", e.what()}
             };
         }
 
         // Close export
+        m_BankJson["export"] = bankExport;
         for (auto& [_, _out] : m_Export)
             fclose(_out.m_fExport);
         m_Export.clear();
     } catch (CroException& ce) {
-        m_BankJson["bankError"] = {
+        m_BankJson["error"] = {
             {"exception", "CroException" },
             {"what", ce.what()},
             {"file", WcharToText(ce.File()->GetPath())}
         };
     } catch (const std::exception& e) {
-        m_BankJson["bankError"] = {
+        m_BankJson["error"] = {
             {"exception", "std::exception" },
             {"what", e.what()}
         };
     }
 
+    m_BankJson["status"] = !m_BankJson.contains("error");
     SyncBankJson();
 }
 

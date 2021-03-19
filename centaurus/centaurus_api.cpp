@@ -57,8 +57,8 @@ public:
     {
         ICentaurusBank* bank = TargetBank();
         WriteJSONFile(centaurus->BankFile(bank), {
-            {"bankName", WcharToText(bank->BankName())},
-            {"bankFiles", {
+            {"name", WcharToText(bank->BankName())},
+            {"files", {
                 {"CroStru", WcharToText(bank->File(CroStru)->GetPath())},
                 {"CroBank", WcharToText(bank->File(CroBank)->GetPath())},
                 {"CroIndex", WcharToText(bank->File(CroIndex)->GetPath())}
@@ -472,8 +472,8 @@ void CentaurusAPI::StartTask(ICentaurusTask* task)
         &ICentaurusTask::StartTask, task));
 
     WriteJSONFile(TaskFile(task), {
-        {"taskProgress", task->GetTaskProgress()},
-        {"taskMemoryUsage", task->GetMemoryUsage()}
+        {"progress", task->GetTaskProgress()},
+        {"memoryUsage", task->GetMemoryUsage()}
     });
 }
 
@@ -528,8 +528,8 @@ void CentaurusAPI::TaskNotify(ICentaurusTask* task)
 
     try {
         auto _task = ReadJSONFile(TaskFile(task));
-        _task["taskProgress"] = task->GetTaskProgress();
-        _task["taskMemoryUsage"] = task->GetMemoryUsage();
+        _task["progress"] = task->GetTaskProgress();
+        _task["memoryUsage"] = task->GetMemoryUsage();
         WriteJSONFile(TaskFile(task), _task);
     } catch (const std::exception& e) {
         // nothing
