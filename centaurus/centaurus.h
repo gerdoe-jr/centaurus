@@ -40,9 +40,14 @@ class ICentaurusBank
 public:
     virtual ~ICentaurusBank() {}
 
-    virtual bool LoadPath(const std::wstring& dir) = 0;
-    virtual CroFile* File(CroBankFile file) const = 0;
+    virtual bool Connect() = 0;
+    virtual void Disconnect() = 0;
+    
+    virtual void AssociatePath(const std::wstring& dir) = 0;
+    virtual std::wstring GetPath() const = 0;
     virtual void SetCodePage(unsigned codepage) = 0;
+
+    virtual CroFile* File(CroBankFile file) const = 0;
     virtual std::string String(const char* data, size_t len) = 0;
 
     virtual void ExportHeaders() const = 0;
@@ -81,6 +86,8 @@ public:
     virtual CroTable* AcquireTable(CroTable&& table) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
     virtual void ReleaseTable(CroTable* table) = 0;
+
+    virtual void Release() = 0;
 
     virtual centaurus_size GetMemoryUsage() = 0;
 };

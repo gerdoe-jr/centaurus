@@ -15,10 +15,14 @@ public:
     CentaurusBank();
     virtual ~CentaurusBank();
 
-    bool LoadPath(const std::wstring& path) override;
-    CroFile* File(CroBankFile type) const override;
+    bool Connect() override;
+    void Disconnect() override;
+
+    void AssociatePath(const std::wstring& path) override;
+    std::wstring GetPath() const override;
     void SetCodePage(unsigned codepage) override;
     
+    CroFile* File(CroBankFile type) const override;
     std::string String(const char* data, size_t len) override;
 
     void ExportHeaders() const override;

@@ -38,6 +38,9 @@ public:
 
     bool IsBankAcquired(ICentaurusBank* bank) override;
     void ReleaseTable(CroTable* table) override;
+
+    void Release() override;
+
     centaurus_size GetMemoryUsage() override;
 private:
     boost::atomic<float> m_fTaskProgress;

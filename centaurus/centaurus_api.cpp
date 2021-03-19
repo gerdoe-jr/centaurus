@@ -43,12 +43,12 @@ public:
     void Run() override
     {
         CentaurusBank* bank = (CentaurusBank*)TargetBank();
-        if (!bank->LoadPath(m_BankPath))
-            throw std::runtime_error("failed to open bank");
+        bank->AssociatePath(m_BankPath);
+        if (!AcquireBank(bank))
+            throw std::runtime_error("failed to connect bank");
 
         bank->LoadStructure(this);
         bank->LoadBases(this);
-        AcquireBank(bank);
 
         Sync();
     }
@@ -276,6 +276,8 @@ void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
 
 void CentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
 {
+    bank->Connect();
+
     for (unsigned i = 0; i < CroBankFile_Count; i++)
     {
         CroFile* file = bank->File((CroBankFile)i);
@@ -308,6 +310,8 @@ void CentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
             file->EntryCountFileSize()
         );
     }
+    
+    bank->Disconnect();
 }
 
 void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)

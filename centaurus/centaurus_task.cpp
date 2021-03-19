@@ -49,6 +49,8 @@ void CentaurusTask::StartTask()
 void CentaurusTask::EndTask()
 {
     UpdateProgress(100);
+    Release();
+
     centaurus->EndTask(this);
 }
 
@@ -80,7 +82,10 @@ bool CentaurusTask::AcquireBank(ICentaurusBank* bank)
         return false;
 
     auto lock = std::unique_lock<boost::mutex>(m_DataLock);
-    m_Banks.emplace_back(bank);
+    {
+        if (!bank->Connect()) return false;
+        m_Banks.emplace_back(bank);
+    }
 
     return true;
 }
@@ -117,6 +122,17 @@ void CentaurusTask::ReleaseTable(CroTable* table)
             return;
         }
     }
+}
+
+void CentaurusTask::Release()
+{
+    auto lock = std::unique_lock<boost::mutex>(m_DataLock);
+    
+    for (auto& bank : m_Banks)
+        bank->Disconnect();
+
+    m_Banks.clear();
+    m_Tables.clear();
 }
 
 centaurus_size CentaurusTask::GetMemoryUsage()

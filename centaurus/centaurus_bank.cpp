@@ -43,10 +43,8 @@ CentaurusBank::~CentaurusBank()
     if (index) index->Close();
 }
 
-bool CentaurusBank::LoadPath(const std::wstring& path)
+bool CentaurusBank::Connect()
 {
-    m_Path = path;
-
     m_Files[CroStru] = std::make_unique<CroFile>(m_Path + L"\\CroStru");
     m_Files[CroBank] = std::make_unique<CroFile>(m_Path + L"\\CroBank");
     m_Files[CroIndex] = std::make_unique<CroFile>(m_Path + L"\\CroIndex");
@@ -74,14 +72,37 @@ bool CentaurusBank::LoadPath(const std::wstring& path)
     return File(CroStru) || File(CroBank) || File(CroIndex);
 }
 
-CroFile* CentaurusBank::File(CroBankFile type) const
+void CentaurusBank::Disconnect()
 {
-    return !m_Files[type] ? NULL : m_Files[type].get();
+    for (unsigned i = 0; i < CroBankFile_Count; i++)
+    {
+        auto& file = m_Files[i];
+        if (file)
+        {
+            file->Close();
+            file = NULL;
+        }
+    }
+}
+
+void CentaurusBank::AssociatePath(const std::wstring& dir)
+{
+    m_Path = dir;
+}
+
+std::wstring CentaurusBank::GetPath() const
+{
+    return m_Path;
 }
 
 void CentaurusBank::SetCodePage(unsigned codepage)
 {
     m_uCodePage = codepage;
+}
+
+CroFile* CentaurusBank::File(CroBankFile type) const
+{
+    return !m_Files[type] ? NULL : m_Files[type].get();
 }
 
 std::string CentaurusBank::String(const char* data, size_t len)
