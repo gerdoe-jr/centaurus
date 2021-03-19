@@ -45,17 +45,12 @@ static boost::thread _centaurus_thread;
 
 CENTAURUS_API void Centaurus_RunThread()
 {
-    _centaurus_thread = boost::thread([]() { centaurus->Idle(); });
+    _centaurus_thread = boost::thread([]() { centaurus->Run(); });
 }
 
 CENTAURUS_API void Centaurus_Idle()
 {
     _centaurus_thread.join();
-}
-
-CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run)
-{
-    return new CentaurusTask(run);
 }
 
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank)

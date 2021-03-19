@@ -69,29 +69,62 @@ public:
 
 /* CentaurusTask */
 
+//class ICentaurusTask
+//{
+//public:
+//    virtual ~ICentaurusTask() {}
+//
+//    virtual void StartTask() = 0;
+//    virtual void EndTask() = 0;
+//    virtual void Interrupt() = 0;
+//
+//    virtual void Run() = 0;
+//
+//    virtual float GetTaskProgress() const = 0;
+//
+//    virtual bool AcquireBank(ICentaurusBank* bank) = 0;
+//    virtual CroTable* AcquireTable(CroTable&& table) = 0;
+//    virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
+//    virtual void ReleaseTable(CroTable* table) = 0;
+//
+//    virtual void Release() = 0;
+//
+//    virtual centaurus_size GetMemoryUsage() = 0;
+//};
+//using CentaurusRun = std::function<void(ICentaurusTask*)>;
+
 class ICentaurusTask
 {
 public:
-    virtual ~ICentaurusTask() {}
-
-    virtual void StartTask() = 0;
-    virtual void EndTask() = 0;
-    virtual void Interrupt() = 0;
-
-    virtual void Run() = 0;
-
-    virtual float GetTaskProgress() const = 0;
-
+    virtual void RunTask() = 0;
+    virtual void Release() = 0;
+    virtual centaurus_size GetMemoryUsage() = 0;
+    
     virtual bool AcquireBank(ICentaurusBank* bank) = 0;
     virtual CroTable* AcquireTable(CroTable&& table) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
     virtual void ReleaseTable(CroTable* table) = 0;
-
-    virtual void Release() = 0;
-
-    virtual centaurus_size GetMemoryUsage() = 0;
 };
-using CentaurusRun = std::function<void(ICentaurusTask*)>;
+
+/* CentaurusWorker */
+
+class ICentaurusWorker
+{
+public:
+    enum state : unsigned {
+        Waiting,
+        Running,
+        Terminated
+    };
+
+    virtual ~ICentaurusWorker() {}
+    virtual void Start() = 0;
+    virtual void Stop() = 0;
+    virtual void Wait() = 0;
+    virtual state State() const = 0;
+protected:
+    virtual void Execute() = 0;
+};
 
 /* CentaurusExport */
 
@@ -140,19 +173,18 @@ public:
     virtual void LogBankFiles(ICentaurusBank* bank) const = 0;
     virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
     virtual void LogTable(const CroTable& table) = 0;
-
-    virtual std::wstring TaskFile(ICentaurusTask* task) = 0;
-    virtual void StartTask(ICentaurusTask* task) = 0;
-    virtual void EndTask(ICentaurusTask* task) = 0;
-    virtual void TaskAwait() = 0;
-    virtual void TaskNotify(ICentaurusTask* task) = 0;
-    virtual void Idle(ICentaurusTask* task = NULL) = 0;
-
+    
     virtual bool IsBankLoaded(ICentaurusBank* bank) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
 
     virtual centaurus_size TotalMemoryUsage() = 0;
     virtual centaurus_size RequestTableLimit() = 0;
+
+    virtual std::wstring TaskFile(ICentaurusTask* task) = 0;
+    virtual void StartTask(ICentaurusTask* task) = 0;
+
+    virtual void Run() = 0;
+    virtual void Sync(ICentaurusWorker* worker) = 0;
 };
 
 /* Centaurus */
@@ -165,7 +197,7 @@ CENTAURUS_API void Centaurus_Exit();
 CENTAURUS_API void Centaurus_RunThread();
 CENTAURUS_API void Centaurus_Idle();
 
-CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run);
+//CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run);
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank);
 
 #endif

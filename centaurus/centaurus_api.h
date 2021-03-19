@@ -6,14 +6,44 @@
 #include "centaurus_worker.h"
 #include <utility>
 #include <vector>
+#include <queue>
 #include <tuple>
 
 #include <boost/atomic.hpp>
 #include <boost/thread.hpp>
 
+class CentaurusJob : public CentaurusWorker
+{
+public:
+    CentaurusJob(ICentaurusTask* task);
+    virtual ~CentaurusJob();
+
+    void Execute() override;
+    
+    ICentaurusTask* JobTask();
+protected:
+    std::unique_ptr<ICentaurusTask> m_pTask;
+};
+
+class CentaurusLoader : public CentaurusWorker
+{
+public:
+    void RequestBank(const std::wstring& path);
+    void RequestBanks(std::vector<std::wstring> dirs);
+protected:
+    void Execute() override;
+
+    bool LoadPath(const std::wstring& path);
+    void LogLoaderFail(const std::wstring& dir);
+private:
+    std::queue<std::wstring> m_Dirs;
+public:
+    std::wstring m_LoadedPath;
+    ICentaurusBank* m_pLoadedBank;
+};
+
 class CentaurusAPI : public ICentaurusAPI
 {
-    using Task = std::tuple<std::unique_ptr<ICentaurusTask>, boost::thread>;
 public:
     void Init(const std::wstring& path) override;
     void Exit() override;
@@ -36,23 +66,17 @@ public:
     void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) override;
     void LogTable(const CroTable& table) override;
 
-    std::wstring TaskFile(ICentaurusTask* task) override;
-    void StartTask(ICentaurusTask* task) override;
-    void EndTask(ICentaurusTask* task) override;
-
-    void StartWorker(CentaurusWorker* worker);
-    Task* GetTask(ICentaurusTask* task);
-    void TaskSync();
-
-    void TaskAwait() override;
-    void TaskNotify(ICentaurusTask* task) override;
-    void Idle(ICentaurusTask* task = NULL) override;
-
     bool IsBankLoaded(ICentaurusBank* bank) override;
     bool IsBankAcquired(ICentaurusBank* bank) override;
     
     centaurus_size TotalMemoryUsage() override;
     centaurus_size RequestTableLimit() override;
+
+    std::wstring TaskFile(ICentaurusTask* task) override;
+    void StartTask(ICentaurusTask* task) override;
+    
+    void Run() override;
+    void Sync(ICentaurusWorker* worker) override;
 private:
     FILE* m_fOutput;
     FILE* m_fError;
@@ -62,14 +86,13 @@ private:
 
     boost::mutex m_BankLock;
     std::vector<std::unique_ptr<ICentaurusBank>> m_Banks;
+    std::unique_ptr<CentaurusLoader> m_pLoader;
 
     boost::mutex m_TaskLock;
-    boost::condition_variable m_TaskCond;
-    boost::atomic<ICentaurusTask*> m_Notifier;
-    boost::atomic<float> m_fNotifierProgress;
-    std::vector<Task> m_Tasks;
+    std::vector<std::unique_ptr<CentaurusJob>> m_Tasks;
 
-    CentaurusWorker* m_pLoader;
+    boost::mutex m_SyncLock;
+    boost::condition_variable m_SyncCond;
 };
 #endif
 

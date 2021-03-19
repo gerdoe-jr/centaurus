@@ -72,7 +72,7 @@ public:
     void PrepareDirs();
     void SaveExportRecord(CroBuffer& record, uint32_t id);
 
-    void Run() override;
+    void RunTask() override;
 
     void Export();
     void ExportCroFile(CroFile* file);

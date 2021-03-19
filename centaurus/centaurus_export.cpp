@@ -175,7 +175,7 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
         out.Write("");
 }
 
-void CentaurusExport::Run()
+void CentaurusExport::RunTask()
 {
     AcquireBank(m_pBank);
     PrepareDirs();
