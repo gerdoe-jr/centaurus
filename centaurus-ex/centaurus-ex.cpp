@@ -2,6 +2,39 @@
 #include <centaurus.h>
 #include <win32util.h>
 
+void FixHeader(const std::wstring& datPath)
+{
+    /*FILE* fDat = _wfopen(datPath.c_str(), L"r+b");
+    if (fDat)
+    {
+        fseek(fDat, 0, SEEK_SET);
+        fwrite("CroFile", 7, 1, fDat);
+        fclose(fDat);
+    }*/
+}
+
+void FindBanks(const std::wstring& path)
+{
+    auto [files, dirs] = ListDirectory(path);
+    for (auto& file : files)
+    {
+        std::wstring fullPath = path + L"\\" + file;
+        if (file == L"CroBank.dat")
+        {
+            FixHeader(fullPath);
+            //banks.push_back(path);
+            centaurus->ConnectBank(path);
+        }
+        else if (file == L"CroStru.dat")
+            FixHeader(fullPath);
+        else if (file == L"CroIndex.dat")
+            FixHeader(fullPath);
+    }
+
+    for (auto& dir : dirs)
+        if (dir != L"Voc") FindBanks(path + L"\\" + dir);
+}
+
 int main(int argc, char** argv)
 {
     if (!Centaurus_Init(L"K:\\Centaurus"))
@@ -39,6 +72,8 @@ int main(int argc, char** argv)
     } catch (const std::exception& e) {
         fprintf(stderr, "centaurus bank exception: %s\n", e.what());
     }
+
+    FindBanks(L"K:\\Cronos\\TestBanks");
 
     Centaurus_Idle();
 

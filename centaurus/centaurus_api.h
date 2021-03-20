@@ -22,7 +22,7 @@ public:
     
     ICentaurusTask* JobTask();
 protected:
-    std::unique_ptr<ICentaurusTask> m_pTask;
+    ICentaurusTask* m_pTask;
 };
 
 class CentaurusLoader : public CentaurusWorker
@@ -41,6 +41,19 @@ public:
     std::wstring m_LoadedPath;
     ICentaurusBank* m_pLoadedBank;
 };
+
+class CentaurusScheduler : public CentaurusWorker
+{
+public:
+    void ScheduleTask(ICentaurusTask* task);
+    std::string TaskName(ICentaurusTask* task);
+protected:
+    void Execute() override;
+private:
+    std::vector<std::unique_ptr<CentaurusJob>> m_Jobs;
+};
+
+#include <json_file.h>
 
 class CentaurusAPI : public ICentaurusAPI
 {
@@ -62,7 +75,7 @@ public:
     ICentaurusBank* WaitBank(const std::wstring& path) override;
     
     void ExportABIHeader(const CronosABI* abi, FILE* out) const override;
-    void LogBankFiles(ICentaurusBank* bank) const override;
+    void LogBankFiles(ICentaurusBank* bank) override;
     void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) override;
     void LogTable(const CroTable& table) override;
 
@@ -73,11 +86,14 @@ public:
     centaurus_size RequestTableLimit() override;
 
     std::wstring TaskFile(ICentaurusTask* task) override;
+    void TaskSyncJSON(ICentaurusTask* task, json value);
     void StartTask(ICentaurusTask* task) override;
+    void ReleaseTask(ICentaurusTask* task);
     
     void Run() override;
     void Sync(ICentaurusWorker* worker) override;
 private:
+    boost::mutex m_LogLock;
     FILE* m_fOutput;
     FILE* m_fError;
 
@@ -89,10 +105,13 @@ private:
     std::unique_ptr<CentaurusLoader> m_pLoader;
 
     boost::mutex m_TaskLock;
-    std::vector<std::unique_ptr<CentaurusJob>> m_Tasks;
+    std::vector<std::unique_ptr<ICentaurusTask>> m_Tasks;
+    std::unique_ptr<CentaurusScheduler> m_pScheduler;
 
     boost::mutex m_SyncLock;
     boost::condition_variable m_SyncCond;
+
+    std::vector<uint64_t> m_KnownBanks;
 };
 #endif
 

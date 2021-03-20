@@ -69,30 +69,6 @@ public:
 
 /* CentaurusTask */
 
-//class ICentaurusTask
-//{
-//public:
-//    virtual ~ICentaurusTask() {}
-//
-//    virtual void StartTask() = 0;
-//    virtual void EndTask() = 0;
-//    virtual void Interrupt() = 0;
-//
-//    virtual void Run() = 0;
-//
-//    virtual float GetTaskProgress() const = 0;
-//
-//    virtual bool AcquireBank(ICentaurusBank* bank) = 0;
-//    virtual CroTable* AcquireTable(CroTable&& table) = 0;
-//    virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
-//    virtual void ReleaseTable(CroTable* table) = 0;
-//
-//    virtual void Release() = 0;
-//
-//    virtual centaurus_size GetMemoryUsage() = 0;
-//};
-//using CentaurusRun = std::function<void(ICentaurusTask*)>;
-
 class ICentaurusTask
 {
 public:
@@ -170,7 +146,7 @@ public:
     virtual void ExportABIHeader(const CronosABI* abi,
         FILE* out = NULL) const = 0;
 
-    virtual void LogBankFiles(ICentaurusBank* bank) const = 0;
+    virtual void LogBankFiles(ICentaurusBank* bank) = 0;
     virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
     virtual void LogTable(const CroTable& table) = 0;
     
@@ -182,6 +158,7 @@ public:
 
     virtual std::wstring TaskFile(ICentaurusTask* task) = 0;
     virtual void StartTask(ICentaurusTask* task) = 0;
+    virtual void ReleaseTask(ICentaurusTask* task) = 0;
 
     virtual void Run() = 0;
     virtual void Sync(ICentaurusWorker* worker) = 0;

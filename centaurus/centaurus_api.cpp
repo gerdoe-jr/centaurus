@@ -45,14 +45,31 @@ CentaurusJob::~CentaurusJob()
 
 void CentaurusJob::Execute()
 {
-    m_pTask->RunTask();
+    try {
+        m_pTask->RunTask();
+    } catch (CroException& ce) {
+        ((CentaurusAPI*)centaurus)->TaskSyncJSON(m_pTask, {
+            {"error", {
+                {"exception", "CroException"},
+                {"file", WcharToText(ce.File()->GetPath())},
+                {"what", ce.what()}
+            }}
+        });
+    } catch (const std::exception& ce) {
+        ((CentaurusAPI*)centaurus)->TaskSyncJSON(m_pTask, {
+            {"error", {
+                {"exception", "std::exception"},
+                {"what", ce.what()}
+            }}
+        });
+    }
 
     m_State = Terminated;
 }
 
 ICentaurusTask* CentaurusJob::JobTask()
 {
-    return m_pTask.get();
+    return m_pTask;
 }
 
 /* CentaurusLoader */
@@ -126,6 +143,66 @@ void CentaurusLoader::LogLoaderFail(const std::wstring& dir)
         WcharToAnsi(dir).c_str());
 }
 
+/* CentaurusScheduler */
+
+void CentaurusScheduler::ScheduleTask(ICentaurusTask* task)
+{
+    auto lock = boost::mutex::scoped_lock(m_Lock);
+    CentaurusJob* job = m_Jobs.emplace_back(
+        new CentaurusJob(task)).get();
+
+    job->Start();
+
+    printf("[Scheduler] ScheduleTask %p -> %s\n",
+        task, job->GetName().c_str());
+
+    m_Cond.notify_one();
+}
+
+std::string CentaurusScheduler::TaskName(ICentaurusTask* task)
+{
+    auto lock = boost::mutex::scoped_lock(m_Lock);
+
+    for (auto& job : m_Jobs)
+    {
+        if (job->JobTask() == task)
+            return job->GetName();
+    }
+
+    return GetName();
+}
+
+void CentaurusScheduler::Execute()
+{
+    if (m_Jobs.empty())
+    {
+        m_State = Waiting;
+        return;
+    }
+    
+
+    {
+        auto lock = boost::mutex::scoped_lock(m_Lock);
+        for (unsigned i = 0; i < m_Jobs.size();)
+        {
+            auto it = m_Jobs.begin() + i;
+            auto job = it->get();
+
+            if (job->State() == ICentaurusWorker::Terminated)
+            {
+                printf("[Scheduler] %s terminated.\n",
+                    job->GetName().c_str());
+                m_Jobs.erase(it);
+            }
+            else
+            {
+                //printf("[Scheduler] %s state %u\n",
+                //    job->GetName().c_str(), job->State());
+            }
+        }
+    }
+}
+
 /* CentaurusAPI */
 
 void CentaurusAPI::Init(const std::wstring& path)
@@ -137,21 +214,22 @@ void CentaurusAPI::Init(const std::wstring& path)
     SetTableSizeLimit(512 * 1024 * 1024); //512 MB
 
     m_pLoader = std::make_unique<CentaurusLoader>();
+    m_pScheduler = std::make_unique<CentaurusScheduler>();
 
     m_pLoader->Start();
+    m_pScheduler->Start();
 }
 
 void CentaurusAPI::Exit()
 {
     m_pLoader->Stop();
+    m_pScheduler->Stop();
 
     if (m_fOutput != stdout) fclose(m_fOutput);
     if (m_fError != stderr) fclose(m_fError);
 
-    for (auto& task : m_Tasks)
-        task->Stop();
+    
     m_Tasks.clear();
-
     m_Banks.clear();
 }
 
@@ -339,8 +417,11 @@ void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
     fprintf(out, "\n");
 }
 
-void CentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
+void CentaurusAPI::LogBankFiles(ICentaurusBank* bank)
 {
+    auto lock = boost::mutex::scoped_lock(m_LogLock);
+    static const char* _croName[] = { "CroStru", "CroBank", "CroIndex" };
+
     bank->Connect();
 
     for (unsigned i = 0; i < CroBankFile_Count; i++)
@@ -348,31 +429,15 @@ void CentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
         CroFile* file = bank->File((CroBankFile)i);
         if (!file) continue;
 
-        fprintf(m_fOutput, "CroFile(%s):\n",
-            WcharToAnsi(file->GetPath()).c_str()
-        );
-
+        
         const CronosABI* abi = file->ABI();
         cronos_abi_num abiVersion = abi->GetABIVersion();
 
         fprintf(m_fOutput,
-            "\tCronos %dx %s %s, ABI %02d.%02d\n",
-            abi->GetVersion(),
-            abi->IsLite() ? "Lite" : "Pro",
+            "\t[%s] Cronos %dx %s %s, ABI %02d.%02d\n", _croName[i],
+            abi->GetVersion(), abi->IsLite() ? "Lite" : "Pro",
             abi->GetModel() == cronos_model_big ? "big model" : "small model",
             abiVersion.first, abiVersion.second
-        );
-
-        fprintf(m_fOutput,
-            "\tTAD FileSize: %" FCroSize "\n"
-            "\tDAT FileSize: %" FCroSize "\n",
-            file->FileSize(CRONOS_TAD),
-            file->FileSize(CRONOS_DAT)
-        );
-
-        fprintf(m_fOutput,
-            "\tEntryCountFileSize: %" FCroIdx "\n",
-            file->EntryCountFileSize()
         );
     }
     
@@ -381,6 +446,8 @@ void CentaurusAPI::LogBankFiles(ICentaurusBank* bank) const
 
 void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
 {
+    auto lock = boost::mutex::scoped_lock(m_LogLock);
+
     const char ascii_lup = 201, ascii_rup = 187,
         ascii_lsp = 199, ascii_rsp = 182,
         ascii_lbt = 200, ascii_rbt = 188,
@@ -516,51 +583,107 @@ void CentaurusAPI::LogTable(const CroTable& table)
 
 std::wstring CentaurusAPI::TaskFile(ICentaurusTask* task)
 {
-    for (auto& _job : m_Tasks)
+    for (auto& _task : m_Tasks)
     {
-        if (_job->JobTask() == task)
+        if (_task.get() == task)
         {
-            return GetTaskPath() + L"\\"
-                + AnsiToWchar(_job->GetName()) + L".json";
+            return GetTaskPath() + L"\\" + AnsiToWchar(
+                m_pScheduler->TaskName(task)) + L".json";
         }
     }
 
     return L"";
 }
 
+void CentaurusAPI::TaskSyncJSON(ICentaurusTask* task, json value)
+{
+    json taskJson;
+    std::wstring jsonPath = TaskFile(task);
+
+    {
+        auto lock = boost::mutex::scoped_lock(m_LogLock);
+
+        std::wstring dump = TextToWchar(value.dump());
+        fprintf(m_fOutput, "[CentaurusAPI] TaskSyncJSON %s\n",
+            WcharToAnsi(dump, 866).c_str());
+    }
+
+    try { taskJson = ReadJSONFile(jsonPath); }
+    catch (const std::exception& e) { taskJson = json::object(); }
+
+    taskJson.insert(value.begin(), value.end());
+
+    try {
+        WriteJSONFile(jsonPath, taskJson);
+    } catch (const std::exception& e) { 
+        fprintf(m_fError, "[CentaurusAPI] Failed to write task json %s\n",
+            WcharToAnsi(jsonPath, 866).c_str());
+    }
+}
+
 void CentaurusAPI::StartTask(ICentaurusTask* task)
 {
-    /*auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
-    m_Tasks.emplace_back(task, boost::thread(
-        &ICentaurusTask::StartTask, task));
+    {
+        auto lock = boost::mutex::scoped_lock(m_LogLock);
+        fprintf(m_fOutput, "[CentaurusAPI] StartTask %p\n", task);
+    }
 
-    WriteJSONFile(TaskFile(task), {
-        {"progress", task->GetTaskProgress()},
+    TaskSyncJSON(task, {
+        {"progress", 0.0f},
         {"memoryUsage", task->GetMemoryUsage()}
-    });*/
-
+    });
 
     auto lock = boost::mutex::scoped_lock(m_TaskLock);
+    m_Tasks.emplace_back(task);
 
-    m_Tasks.emplace_back(new CentaurusJob(task))->Start();
+    m_pScheduler->ScheduleTask(task);
+}
+
+void CentaurusAPI::ReleaseTask(ICentaurusTask* task)
+{
+    auto lock = boost::mutex::scoped_lock(m_TaskLock);
+    for (auto it = m_Tasks.begin(); it != m_Tasks.end(); it++)
+    {
+        if (it->get() == task)
+        {
+            m_Tasks.erase(it);
+            break;
+        }
+    }
 }
 
 void CentaurusAPI::Run()
 {
-    do {
+    //m_pScheduler->Wait();
+    while (m_pScheduler->State() != ICentaurusWorker::Terminated)
+    {
+        auto syncLock = boost::mutex::scoped_lock(m_SyncLock);
+        if (m_Banks.empty())
         {
-            auto lock = boost::mutex::scoped_lock(m_TaskLock);
-            if (m_Tasks.empty()) m_SyncCond.wait(lock);
+            m_SyncCond.wait(syncLock);
+            continue;
         }
 
-        for (auto it = m_Tasks.begin(); it != m_Tasks.end();)
+        for (auto& bank : m_Banks)
         {
-            auto& job = *it;
+            if (std::find(m_KnownBanks.begin(), m_KnownBanks.end(),
+                bank->BankId()) != m_KnownBanks.end())
+            {
+                continue;
+            }
+
+            fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
+                "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
+                    bank->BankId());
+            m_KnownBanks.push_back(bank->BankId());
+
             
-            job->Wait();
-            m_Tasks.erase(it);
+            CentaurusExport* taskExport = new CentaurusExport;
+            taskExport->SetTargetBank(bank.get());
+            
+            StartTask(taskExport);
         }
-    } while (true);
+    }
 }
 
 void CentaurusAPI::Sync(ICentaurusWorker* worker)
@@ -577,12 +700,12 @@ void CentaurusAPI::Sync(ICentaurusWorker* worker)
 
         m_Banks.emplace_back(bank);
         fprintf(m_fOutput, "[CentaurusAPI] Loaded bank \"%s\"\n",
-            WcharToAnsi(dir).c_str());
+            WcharToAnsi(dir, 866).c_str());
     }
 
     m_SyncCond.notify_all();
-    fprintf(m_fOutput, "[CentaurusAPI] Sync %s\n",
-        _worker->GetName().c_str());
+    //fprintf(m_fOutput, "[CentaurusAPI] Sync %s\n",
+    //    _worker->GetName().c_str());
 }
 
 bool CentaurusAPI::IsBankLoaded(ICentaurusBank* bank)
@@ -598,7 +721,7 @@ bool CentaurusAPI::IsBankAcquired(ICentaurusBank* bank)
     auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
     for (auto& task : m_Tasks)
     {
-        if (task->JobTask()->IsBankAcquired(bank))
+        if (task->IsBankAcquired(bank))
             return true;
     }
 
@@ -611,7 +734,7 @@ centaurus_size CentaurusAPI::TotalMemoryUsage()
 
     centaurus_size total = 0;
     for (auto& task : m_Tasks)
-        total += task->JobTask()->GetMemoryUsage();
+        total += task->GetMemoryUsage();
     return total;
 }
 
