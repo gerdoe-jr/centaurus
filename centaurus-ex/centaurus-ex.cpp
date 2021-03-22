@@ -18,17 +18,11 @@ void FindBanks(const std::wstring& path)
     auto [files, dirs] = ListDirectory(path);
     for (auto& file : files)
     {
-        std::wstring fullPath = path + L"\\" + file;
         if (file == L"CroBank.dat")
         {
-            FixHeader(fullPath);
-            //banks.push_back(path);
             centaurus->ConnectBank(path);
+            break;
         }
-        else if (file == L"CroStru.dat")
-            FixHeader(fullPath);
-        else if (file == L"CroIndex.dat")
-            FixHeader(fullPath);
     }
 
     for (auto& dir : dirs)
@@ -42,8 +36,6 @@ int main(int argc, char** argv)
         fprintf(stderr, "Failed to init centaurus API!\n");
         return 1;
     }
-
-    Centaurus_RunThread();
 
     //std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test1"
     //    L"\\11_Республика Коми Нарьян-Мар\\Phones";
@@ -64,20 +56,23 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    try {
+    /*try {
         centaurus->LogBankFiles(bank);
 
         ICentaurusTask* exportTask = CentaurusTask_Export(bank);
         centaurus->StartTask(exportTask);
     } catch (const std::exception& e) {
         fprintf(stderr, "centaurus bank exception: %s\n", e.what());
-    }
+    }*/
 
     FindBanks(L"K:\\Cronos\\TestBanks");
 
+    getc(stdin);
+
+    Centaurus_RunThread();
     Centaurus_Idle();
 
-    centaurus->DisconnectBank(bank);
+    //centaurus->DisconnectBank(bank);
     Centaurus_Exit();
     return 0;
 }

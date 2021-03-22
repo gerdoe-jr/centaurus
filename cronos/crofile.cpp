@@ -61,11 +61,11 @@ crofile_status CroFile::Open()
     m_pABI = CronosABI::GenericABI();
     CroData hdr = Read(INVALID_CRONOS_ID, 1, cronos_hdr);
 
-    if (memcmp(hdr.Data(cronos_hdr_sig), CRONOS_HEADER, 7))
+    /*if (memcmp(hdr.Data(cronos_hdr_sig), CRONOS_HEADER, 7))
     {
         Close();
         return SetError(CROFILE_HEADER, "invalid header");
-    }
+    }*/
 
     char szMajor[4] = {0};
     char szMinor[4] = {0};

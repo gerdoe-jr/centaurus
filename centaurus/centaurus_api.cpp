@@ -147,7 +147,7 @@ void CentaurusLoader::LogLoaderFail(const std::wstring& dir)
 
 void CentaurusScheduler::ScheduleTask(ICentaurusTask* task)
 {
-    auto lock = boost::mutex::scoped_lock(m_Lock);
+    //auto lock = boost::mutex::scoped_lock(m_Lock);
     CentaurusJob* job = m_Jobs.emplace_back(
         new CentaurusJob(task)).get();
 
@@ -156,7 +156,7 @@ void CentaurusScheduler::ScheduleTask(ICentaurusTask* task)
     printf("[Scheduler] ScheduleTask %p -> %s\n",
         task, job->GetName().c_str());
 
-    m_Cond.notify_one();
+    //m_Cond.notify_one();
 }
 
 std::string CentaurusScheduler::TaskName(ICentaurusTask* task)
@@ -655,7 +655,7 @@ void CentaurusAPI::ReleaseTask(ICentaurusTask* task)
 void CentaurusAPI::Run()
 {
     //m_pScheduler->Wait();
-    while (m_pScheduler->State() != ICentaurusWorker::Terminated)
+    /*while (m_pScheduler->State() != ICentaurusWorker::Terminated)
     {
         auto syncLock = boost::mutex::scoped_lock(m_SyncLock);
         if (m_Banks.empty())
@@ -675,15 +675,34 @@ void CentaurusAPI::Run()
             fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
                 "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
                     bank->BankId());
-            m_KnownBanks.push_back(bank->BankId());
 
-            
             CentaurusExport* taskExport = new CentaurusExport;
             taskExport->SetTargetBank(bank.get());
             
             StartTask(taskExport);
+
+            m_KnownBanks.push_back(bank->BankId());
         }
+    }*/
+
+    //m_pScheduler->Wait();
+
+    for (auto& bank : m_Banks)
+    {
+        fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
+            "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
+                bank->BankId());
+
+        CentaurusExport* taskExport = new CentaurusExport;
+        taskExport->SetTargetBank(bank.get());
+
+        //StartTask(taskExport);
+        m_Tasks.emplace_back(taskExport);
+
+        m_pScheduler->ScheduleTask(taskExport);
     }
+
+    m_pScheduler->Wait();
 }
 
 void CentaurusAPI::Sync(ICentaurusWorker* worker)
