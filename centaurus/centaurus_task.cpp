@@ -4,6 +4,12 @@
 #include <croexception.h>
 #include <crofile.h>
 
+
+CentaurusTask::~CentaurusTask()
+{
+    Release();
+}
+
 void CentaurusTask::RunTask()
 {
 }

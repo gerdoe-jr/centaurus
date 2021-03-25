@@ -12,7 +12,6 @@ CentaurusJob::CentaurusJob(ICentaurusTask* task)
 
 CentaurusJob::~CentaurusJob()
 {
-    m_pTask->Release();
 }
 
 void CentaurusJob::Execute()
@@ -21,6 +20,7 @@ void CentaurusJob::Execute()
         m_pTask->RunTask();
     }
     catch (std::exception& e) {
+        centaurus->OnException(e);
         _centaurus->TaskSyncJSON(m_pTask, {
             {"error", {
                 {"exception", "std::exception"},

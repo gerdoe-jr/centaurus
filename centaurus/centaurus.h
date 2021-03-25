@@ -72,6 +72,8 @@ public:
 class ICentaurusTask
 {
 public:
+    virtual ~ICentaurusTask() {}
+
     virtual void RunTask() = 0;
     virtual void Release() = 0;
     virtual centaurus_size GetMemoryUsage() = 0;

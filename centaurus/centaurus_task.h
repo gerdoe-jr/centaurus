@@ -12,8 +12,11 @@
 class CentaurusTask : public ICentaurusTask
 {
 public:
-    void RunTask() override;
-    void Release() override;
+    virtual ~CentaurusTask();
+
+    virtual void RunTask();
+    virtual void Release();
+
     centaurus_size GetMemoryUsage() override;
     bool AcquireBank(ICentaurusBank* bank) override;
     CroTable* AcquireTable(CroTable&& table) override;

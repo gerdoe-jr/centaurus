@@ -104,7 +104,7 @@ void ExportBuffer::Write(const std::string& column)
 void ExportBuffer::Flush(FILE* fCsv)
 {
     fwrite(GetData(), m_TextOffset, 1, fCsv);
-    fflush(fCsv);
+    //fflush(fCsv);
 
     Free();
     m_uIndex = 0;
@@ -120,8 +120,6 @@ CentaurusExport::CentaurusExport()
 
 CentaurusExport::~CentaurusExport()
 {
-    for (auto& [_, out] : m_Export)
-        if (out.m_fExport) fclose(out.m_fExport);
 }
 
 std::wstring CentaurusExport::GetFileName(CroFile* file)
@@ -261,6 +259,7 @@ void CentaurusExport::RunTask()
 
             bankExport["status"] = true;
         } catch (CroException& ce) {
+            centaurus->OnException(ce);
             bankExport["status"] = false;
             bankExport["error"] = {
                 {"exception", "CroException" },
@@ -268,6 +267,7 @@ void CentaurusExport::RunTask()
                 {"file", WcharToText(ce.File()->GetPath())}
             };
         } catch (const std::exception& e) {
+            centaurus->OnException(e);
             bankExport["status"] = false;
             bankExport["error"] = {
                 {"exception", "std::exception" },
@@ -281,12 +281,14 @@ void CentaurusExport::RunTask()
             fclose(_out.m_fExport);
         m_Export.clear();
     } catch (CroException& ce) {
+        centaurus->OnException(ce);
         m_BankJson["error"] = {
             {"exception", "CroException" },
             {"what", ce.what()},
             {"file", WcharToText(ce.File()->GetPath())}
         };
     } catch (const std::exception& e) {
+        centaurus->OnException(e);
         m_BankJson["error"] = {
             {"exception", "std::exception" },
             {"what", e.what()}
@@ -295,6 +297,17 @@ void CentaurusExport::RunTask()
 
     m_BankJson["status"] = !m_BankJson.contains("error");
     SyncBankJson();
+}
+
+void CentaurusExport::Release()
+{
+    CentaurusTask::Release();
+
+    for (auto& [_, _export] : m_Export)
+    {
+        _export.m_Buffer.Flush(_export.m_fExport);
+        fclose(_export.m_fExport);
+    }
 }
 
 void CentaurusExport::Export()
@@ -399,14 +412,16 @@ void CentaurusExport::Export()
     }
 }
 
-ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
-    CroEntry& entry)
+ExportRecord CentaurusExport::ReadExportRecord(CroFile* file, CroEntry& entry)
 {
-    if (!entry.HasBlock())
-        throw std::runtime_error("ReadExportRecord: !entry.HasBlock()");
-
     const CronosABI* abi = file->ABI();
     ExportRecord record = ExportRecord(entry);
+
+    if (!entry.HasBlock())
+    {
+        record.AddBlock(entry.EntryOffset(), entry.EntrySize());
+        return record;
+    }
 
     CroBlock block = CroBlock(true);
     block.InitData(file, entry.Id(), CRONOS_DAT, entry.EntryOffset(),

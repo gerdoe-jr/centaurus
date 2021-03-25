@@ -35,7 +35,6 @@ void CentaurusScheduler::Execute()
         return;
     }
 
-
     {
         auto lock = scoped_lock(m_Lock);
         for (unsigned i = 0; i < m_Jobs.size();)
@@ -45,8 +44,10 @@ void CentaurusScheduler::Execute()
 
             if (job->State() == ICentaurusWorker::Terminated)
             {
-                printf("[Scheduler] %s terminated.\n",
-                    job->GetName().c_str());
+                printf("[Scheduler] %s terminated.\n",job->GetName().c_str());
+                ICentaurusTask* task = job->JobTask();
+
+                centaurus->ReleaseTask(task);
                 m_Jobs.erase(it);
             }
             else

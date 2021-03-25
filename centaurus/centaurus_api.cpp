@@ -567,7 +567,7 @@ void CentaurusAPI::OnException(const std::exception& exc)
     auto lock = scoped_lock(m_LogLock);
     fprintf(m_fError, "[CentaurusAPI] %s\n", exc.what());
 #ifdef CENTAURUS_DEBUG
-    throw exc;
+    //throw exc;
 #endif
 }
 
@@ -580,6 +580,6 @@ void CentaurusAPI::OnWorkerException(ICentaurusWorker* worker,
     fprintf(m_fError, "CentaurusWorker(%s) %s\n",
         _worker->GetName().c_str(), exc.what());
 #ifdef CENTAURUS_DEBUG
-    throw exc;
+    //throw exc;
 #endif
 }
