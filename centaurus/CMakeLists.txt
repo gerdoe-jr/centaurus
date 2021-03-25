@@ -8,6 +8,9 @@ set(HEADERS
     centaurus_task.h
     centaurus_worker.h
     centaurus_export.h
+    centaurus_loader.h
+    centaurus_job.h
+    centaurus_scheduler.h
 )
 
 set(SOURCES
@@ -17,6 +20,9 @@ set(SOURCES
     centaurus_task.cpp
     centaurus_worker.cpp
     centaurus_export.cpp
+    centaurus_loader.cpp
+    centaurus_job.cpp
+    centaurus_scheduler.cpp
 )
 
 if(MSVC)

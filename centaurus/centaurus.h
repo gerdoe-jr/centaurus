@@ -162,6 +162,9 @@ public:
 
     virtual void Run() = 0;
     virtual void Sync(ICentaurusWorker* worker) = 0;
+    virtual void OnException(const std::exception& exc) = 0;
+    virtual void OnWorkerException(ICentaurusWorker* worker,
+        const std::exception& exc) = 0;
 };
 
 /* Centaurus */

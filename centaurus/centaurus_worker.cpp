@@ -59,8 +59,8 @@ void CentaurusWorker::Run()
             }
         } catch (const boost::thread_interrupted& ti) {
             m_State = Terminated;
-        } catch (const std::exception& e) {
-            fprintf(stderr, "[CentaurusWorker] %s\n", e.what());
+        } catch (std::exception& e) {
+            centaurus->OnWorkerException(this, e);
         }
     }
 }

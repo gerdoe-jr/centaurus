@@ -7,18 +7,16 @@ CENTAURUS_API ICentaurusAPI* centaurus = NULL;
 
 CENTAURUS_API bool Centaurus_Init(const std::wstring& path)
 {
-    ICentaurusAPI* api = new CentaurusAPI();
-    if (!api) return false;
-
+    _centaurus = new CentaurusAPI();
     try {
-        centaurus = api;
-        api->Init(path);
+        centaurus = _centaurus;
+        _centaurus->Init(path);
     } catch (const std::exception& e) {
         fprintf(stderr, "InitCentaurusAPI: %s\n", e.what());
-        api->Exit();
+        _centaurus->Exit();
         
+        delete _centaurus;
         centaurus = NULL;
-        delete api;
     }
 
     return centaurus;
@@ -35,7 +33,7 @@ CENTAURUS_API void Centaurus_Exit()
         fprintf(stderr, "ExitCentaurusAPI: %s\n", e.what());
     }
 
-    delete centaurus;
+    delete _centaurus;
     centaurus = NULL;
 }
 

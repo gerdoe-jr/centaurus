@@ -31,177 +31,7 @@
 
 namespace fs = boost::filesystem;
 
-/* CentaurusJob */
-
-CentaurusJob::CentaurusJob(ICentaurusTask* task)
-    : m_pTask(task)
-{
-}
-
-CentaurusJob::~CentaurusJob()
-{
-    m_pTask->Release();
-}
-
-void CentaurusJob::Execute()
-{
-    try {
-        m_pTask->RunTask();
-    } catch (CroException& ce) {
-        ((CentaurusAPI*)centaurus)->TaskSyncJSON(m_pTask, {
-            {"error", {
-                {"exception", "CroException"},
-                {"file", WcharToText(ce.File()->GetPath())},
-                {"what", ce.what()}
-            }}
-        });
-    } catch (const std::exception& ce) {
-        ((CentaurusAPI*)centaurus)->TaskSyncJSON(m_pTask, {
-            {"error", {
-                {"exception", "std::exception"},
-                {"what", ce.what()}
-            }}
-        });
-    }
-
-    m_State = Terminated;
-}
-
-ICentaurusTask* CentaurusJob::JobTask()
-{
-    return m_pTask;
-}
-
-/* CentaurusLoader */
-
-void CentaurusLoader::RequestBank(const std::wstring& path)
-{
-    {
-        auto lock = boost::mutex::scoped_lock(m_Lock);
-        m_Dirs.push(path);
-    }
-    m_Cond.notify_one();
-}
-
-void CentaurusLoader::RequestBanks(std::vector<std::wstring> dirs)
-{
-    {
-        auto lock = boost::mutex::scoped_lock(m_Lock);
-        for (const auto& dir : dirs) m_Dirs.push(dir);
-    }
-    m_Cond.notify_one();
-}
-
-void CentaurusLoader::Execute()
-{
-    if (m_Dirs.empty())
-    {
-        m_State = Waiting;
-        return;
-    }
-
-    std::wstring dir;
-    {
-        auto lock = boost::mutex::scoped_lock(m_Lock);
-        dir = m_Dirs.front();
-        m_Dirs.pop();
-    }
-
-    if (LoadPath(dir))
-    {
-        m_LoadedPath = dir;
-        centaurus->Sync(this);
-    }
-    else LogLoaderFail(dir);
-}
-
-bool CentaurusLoader::LoadPath(const std::wstring& path)
-{
-    auto exp = std::make_unique<CentaurusExport>();
-    CentaurusBank* bank = new CentaurusBank();
-    m_pLoadedBank = NULL;
-
-    bank->AssociatePath(path);
-    if (!exp->AcquireBank(bank))
-    {
-        delete bank;
-        return false;
-    }
-
-    exp->SetTargetBank(bank);
-    m_pLoadedBank = bank;
-    
-    bank->LoadStructure(exp.get());
-    bank->LoadBases(exp.get());
-
-    return true;
-}
-
-void CentaurusLoader::LogLoaderFail(const std::wstring& dir)
-{
-    fprintf(stderr, "[CentaurusLoader] failed to load %s\n",
-        WcharToAnsi(dir).c_str());
-}
-
-/* CentaurusScheduler */
-
-void CentaurusScheduler::ScheduleTask(ICentaurusTask* task)
-{
-    //auto lock = boost::mutex::scoped_lock(m_Lock);
-    CentaurusJob* job = m_Jobs.emplace_back(
-        new CentaurusJob(task)).get();
-
-    job->Start();
-
-    printf("[Scheduler] ScheduleTask %p -> %s\n",
-        task, job->GetName().c_str());
-
-    //m_Cond.notify_one();
-}
-
-std::string CentaurusScheduler::TaskName(ICentaurusTask* task)
-{
-    auto lock = boost::mutex::scoped_lock(m_Lock);
-
-    for (auto& job : m_Jobs)
-    {
-        if (job->JobTask() == task)
-            return job->GetName();
-    }
-
-    return GetName();
-}
-
-void CentaurusScheduler::Execute()
-{
-    if (m_Jobs.empty())
-    {
-        m_State = Waiting;
-        return;
-    }
-    
-
-    {
-        auto lock = boost::mutex::scoped_lock(m_Lock);
-        for (unsigned i = 0; i < m_Jobs.size();)
-        {
-            auto it = m_Jobs.begin() + i;
-            auto job = it->get();
-
-            if (job->State() == ICentaurusWorker::Terminated)
-            {
-                printf("[Scheduler] %s terminated.\n",
-                    job->GetName().c_str());
-                m_Jobs.erase(it);
-            }
-            else
-            {
-                //printf("[Scheduler] %s state %u\n",
-                //    job->GetName().c_str(), job->State());
-            }
-        }
-    }
-}
+CentaurusAPI* _centaurus = NULL;
 
 /* CentaurusAPI */
 
@@ -419,7 +249,7 @@ void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
 
 void CentaurusAPI::LogBankFiles(ICentaurusBank* bank)
 {
-    auto lock = boost::mutex::scoped_lock(m_LogLock);
+    auto lock = scoped_lock(m_LogLock);
     static const char* _croName[] = { "CroStru", "CroBank", "CroIndex" };
 
     bank->Connect();
@@ -446,7 +276,7 @@ void CentaurusAPI::LogBankFiles(ICentaurusBank* bank)
 
 void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
 {
-    auto lock = boost::mutex::scoped_lock(m_LogLock);
+    auto lock = scoped_lock(m_LogLock);
 
     const char ascii_lup = 201, ascii_rup = 187,
         ascii_lsp = 199, ascii_rsp = 182,
@@ -601,7 +431,7 @@ void CentaurusAPI::TaskSyncJSON(ICentaurusTask* task, json value)
     std::wstring jsonPath = TaskFile(task);
 
     {
-        auto lock = boost::mutex::scoped_lock(m_LogLock);
+        auto lock = scoped_lock(m_LogLock);
 
         std::wstring dump = TextToWchar(value.dump());
         fprintf(m_fOutput, "[CentaurusAPI] TaskSyncJSON %s\n",
@@ -616,15 +446,14 @@ void CentaurusAPI::TaskSyncJSON(ICentaurusTask* task, json value)
     try {
         WriteJSONFile(jsonPath, taskJson);
     } catch (const std::exception& e) { 
-        fprintf(m_fError, "[CentaurusAPI] Failed to write task json %s\n",
-            WcharToAnsi(jsonPath, 866).c_str());
+        OnException(e);
     }
 }
 
 void CentaurusAPI::StartTask(ICentaurusTask* task)
 {
     {
-        auto lock = boost::mutex::scoped_lock(m_LogLock);
+        auto lock = scoped_lock(m_LogLock);
         fprintf(m_fOutput, "[CentaurusAPI] StartTask %p\n", task);
     }
 
@@ -633,7 +462,7 @@ void CentaurusAPI::StartTask(ICentaurusTask* task)
         {"memoryUsage", task->GetMemoryUsage()}
     });
 
-    auto lock = boost::mutex::scoped_lock(m_TaskLock);
+    auto lock = scoped_lock(m_TaskLock);
     m_Tasks.emplace_back(task);
 
     m_pScheduler->ScheduleTask(task);
@@ -641,7 +470,7 @@ void CentaurusAPI::StartTask(ICentaurusTask* task)
 
 void CentaurusAPI::ReleaseTask(ICentaurusTask* task)
 {
-    auto lock = boost::mutex::scoped_lock(m_TaskLock);
+    auto lock = scoped_lock(m_TaskLock);
     for (auto it = m_Tasks.begin(); it != m_Tasks.end(); it++)
     {
         if (it->get() == task)
@@ -650,81 +479,6 @@ void CentaurusAPI::ReleaseTask(ICentaurusTask* task)
             break;
         }
     }
-}
-
-void CentaurusAPI::Run()
-{
-    //m_pScheduler->Wait();
-    /*while (m_pScheduler->State() != ICentaurusWorker::Terminated)
-    {
-        auto syncLock = boost::mutex::scoped_lock(m_SyncLock);
-        if (m_Banks.empty())
-        {
-            m_SyncCond.wait(syncLock);
-            continue;
-        }
-
-        for (auto& bank : m_Banks)
-        {
-            if (std::find(m_KnownBanks.begin(), m_KnownBanks.end(),
-                bank->BankId()) != m_KnownBanks.end())
-            {
-                continue;
-            }
-
-            fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
-                "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
-                    bank->BankId());
-
-            CentaurusExport* taskExport = new CentaurusExport;
-            taskExport->SetTargetBank(bank.get());
-            
-            StartTask(taskExport);
-
-            m_KnownBanks.push_back(bank->BankId());
-        }
-    }*/
-
-    //m_pScheduler->Wait();
-
-    for (auto& bank : m_Banks)
-    {
-        fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
-            "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
-                bank->BankId());
-
-        CentaurusExport* taskExport = new CentaurusExport;
-        taskExport->SetTargetBank(bank.get());
-
-        //StartTask(taskExport);
-        m_Tasks.emplace_back(taskExport);
-
-        m_pScheduler->ScheduleTask(taskExport);
-    }
-
-    m_pScheduler->Wait();
-}
-
-void CentaurusAPI::Sync(ICentaurusWorker* worker)
-{
-    auto lock = boost::mutex::scoped_lock(m_SyncLock);
-    auto* _worker = dynamic_cast<CentaurusWorker*>(worker);
-    
-    if (worker == m_pLoader.get())
-    {
-        auto bankLock = boost::mutex::scoped_lock(m_BankLock);
-        
-        std::wstring dir = m_pLoader->m_LoadedPath;
-        ICentaurusBank* bank = m_pLoader->m_pLoadedBank;
-
-        m_Banks.emplace_back(bank);
-        fprintf(m_fOutput, "[CentaurusAPI] Loaded bank \"%s\"\n",
-            WcharToAnsi(dir, 866).c_str());
-    }
-
-    m_SyncCond.notify_all();
-    //fprintf(m_fOutput, "[CentaurusAPI] Sync %s\n",
-    //    _worker->GetName().c_str());
 }
 
 bool CentaurusAPI::IsBankLoaded(ICentaurusBank* bank)
@@ -764,4 +518,68 @@ centaurus_size CentaurusAPI::RequestTableLimit()
         throw std::runtime_error("ramUsage > m_TableSizeLimit");
     cronos_size available = m_TableSizeLimit - ramUsage;
     return std::min(available / 4, available);
+}
+
+void CentaurusAPI::Run()
+{
+    for (auto& bank : m_Banks)
+    {
+        fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
+            "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
+                bank->BankId());
+
+        CentaurusExport* taskExport = new CentaurusExport;
+        taskExport->SetTargetBank(bank.get());
+
+        //StartTask(taskExport);
+        m_Tasks.emplace_back(taskExport);
+
+        m_pScheduler->ScheduleTask(taskExport);
+    }
+
+    m_pScheduler->Wait();
+}
+
+void CentaurusAPI::Sync(ICentaurusWorker* worker)
+{
+    auto lock = scoped_lock(m_SyncLock);
+    auto* _worker = dynamic_cast<CentaurusWorker*>(worker);
+    
+    if (worker == m_pLoader.get())
+    {
+        auto bankLock = scoped_lock(m_BankLock);
+        
+        std::wstring dir = m_pLoader->m_LoadedPath;
+        ICentaurusBank* bank = m_pLoader->m_pLoadedBank;
+
+        m_Banks.emplace_back(bank);
+        fprintf(m_fOutput, "[CentaurusAPI] Loaded bank \"%s\"\n",
+            WcharToAnsi(dir, 866).c_str());
+    }
+
+    m_SyncCond.notify_all();
+    //fprintf(m_fOutput, "[CentaurusAPI] Sync %s\n",
+    //    _worker->GetName().c_str());
+}
+
+void CentaurusAPI::OnException(const std::exception& exc)
+{
+    auto lock = scoped_lock(m_LogLock);
+    fprintf(m_fError, "[CentaurusAPI] %s\n", exc.what());
+#ifdef CENTAURUS_DEBUG
+    throw exc;
+#endif
+}
+
+void CentaurusAPI::OnWorkerException(ICentaurusWorker* worker,
+    const std::exception& exc)
+{
+    auto lock = scoped_lock(m_LogLock);
+    auto* _worker = dynamic_cast<CentaurusWorker*>(worker);
+
+    fprintf(m_fError, "CentaurusWorker(%s) %s\n",
+        _worker->GetName().c_str(), exc.what());
+#ifdef CENTAURUS_DEBUG
+    throw exc;
+#endif
 }

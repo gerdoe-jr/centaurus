@@ -1,9 +1,9 @@
 ﻿#ifndef __CENTAURUS_API_H
 #define __CENTAURUS_API_H
 
-#ifdef CENTAURUS_INTERNAL
 #include "centaurus.h"
-#include "centaurus_worker.h"
+#include "centaurus_loader.h"
+#include "centaurus_scheduler.h"
 #include <utility>
 #include <vector>
 #include <queue>
@@ -11,47 +11,6 @@
 
 #include <boost/atomic.hpp>
 #include <boost/thread.hpp>
-
-class CentaurusJob : public CentaurusWorker
-{
-public:
-    CentaurusJob(ICentaurusTask* task);
-    virtual ~CentaurusJob();
-
-    void Execute() override;
-    
-    ICentaurusTask* JobTask();
-protected:
-    ICentaurusTask* m_pTask;
-};
-
-class CentaurusLoader : public CentaurusWorker
-{
-public:
-    void RequestBank(const std::wstring& path);
-    void RequestBanks(std::vector<std::wstring> dirs);
-protected:
-    void Execute() override;
-
-    bool LoadPath(const std::wstring& path);
-    void LogLoaderFail(const std::wstring& dir);
-private:
-    std::queue<std::wstring> m_Dirs;
-public:
-    std::wstring m_LoadedPath;
-    ICentaurusBank* m_pLoadedBank;
-};
-
-class CentaurusScheduler : public CentaurusWorker
-{
-public:
-    void ScheduleTask(ICentaurusTask* task);
-    std::string TaskName(ICentaurusTask* task);
-protected:
-    void Execute() override;
-private:
-    std::vector<std::unique_ptr<CentaurusJob>> m_Jobs;
-};
 
 #include <json_file.h>
 
@@ -92,6 +51,9 @@ public:
     
     void Run() override;
     void Sync(ICentaurusWorker* worker) override;
+    void OnException(const std::exception& exc) override;
+    void OnWorkerException(ICentaurusWorker* worker,
+        const std::exception& exc) override;
 private:
     boost::mutex m_LogLock;
     FILE* m_fOutput;
@@ -113,6 +75,7 @@ private:
 
     std::vector<uint64_t> m_KnownBanks;
 };
-#endif
+
+extern CentaurusAPI* _centaurus;
 
 #endif

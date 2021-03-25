@@ -1,7 +1,6 @@
 ﻿#ifndef __CENTAURUS_BANK_H
 #define __CENTAURUS_BANK_H
 
-#ifdef CENTAURUS_INTERNAL
 #include "centaurus.h"
 #include <crofile.h>
 #include <croattr.h>
@@ -52,6 +51,5 @@ private:
     std::wstring m_BankName;
 
 };
-#endif
 
 #endif

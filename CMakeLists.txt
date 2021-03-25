@@ -1,29 +1,42 @@
 cmake_minimum_required(VERSION 3.18)
 project(centaurus)
 
+set(CENTAURUS centaurus CACHE STRING "Centaurus API")
+set(CENTAURUS_EXE centaurus-exe CACHE STRING "Centaurus UI/CLI")
+
+set(CENTAURUS_LIBS json win32ctrl blowfish cronos)
+set(CENTAURUS_TARGETS ${CENTAURUS} ${CENTAURUS_EXE})
+set(CENTAURUS_ALL ${CENTAURUS_LIBS} ${CENTAURUS_TARGETS})
+
+set(CENTAURUS_DEBUG FALSE)
+set(CENTAURUS_RELEASE FALSE)
+
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-if(WIN32)
-    set(BOOST_INCLUDEDIR "C:\\Boost\\include\\boost-1_75")
-    set(BOOST_LIBRARYDIR "C:\\Boost\\lib")
-    set(BOOST_ROOT "C:\\Boost\\include\\boost-1_75\\boost")
-endif()
-
-add_definitions( -DBOOST_ALL_NO_LIB )
+add_definitions(-DBOOST_ALL_NO_LIB)
 set(CMAKE_MODULE_PATH CMAKE_MODULE_PATH BOOST_ROOT)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+if(NOT DEFINED CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CENTAURUS_DEBUG TRUE)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CENTAURUS_RELEASE TRUE)
+endif()
 
-if(CMAKE_BUILD_TYPE EQUAL "Release")
+if(MSVC)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    add_compile_options(/utf-8)
+    add_compile_options(/wd26812 /wd6258 /wd28251)
+endif()
+
+if(${CENTAURUS_RELEASE})
     if(MSVC)
         add_compile_options(/O2)
         add_link_options(/O2)
@@ -33,24 +46,21 @@ if(CMAKE_BUILD_TYPE EQUAL "Release")
     endif()
 endif()
 
-if(MSVC)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
-    add_compile_options(/utf-8)
-    add_compile_options(/wd26812 /wd6258 /wd28251)
-endif()
+foreach(target ${CENTAURUS_ALL})
+    add_subdirectory(${target})
+    if(${CENTAURUS_DEBUG})
+        target_compile_definitions(${target} PRIVATE CENTAURUS_DEBUG)
+    elseif(${CENTAURUS_RELEASE})
+        target_compile_definitions(${target} PRIVATE CENTAURUS_RELEASE)
+    endif()
+    set_target_properties(${target} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}
 
-add_subdirectory(json)
-add_subdirectory(win32ctrl)
-add_subdirectory(blowfish)
-add_subdirectory(cronos)
+        LIBRARY_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}
+    )
+endforeach()
 
-add_subdirectory(centaurus)
-add_subdirectory(centaurus-ex)
-
-set_target_properties(win32ctrl centaurus centaurus-exe PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}
-
-    LIBRARY_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}
-    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}
-)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
