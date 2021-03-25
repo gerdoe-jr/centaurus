@@ -16,13 +16,14 @@ set(CMAKE_MODULE_PATH CMAKE_MODULE_PATH BOOST_ROOT)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
-
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-if(CMAKE_BUILD_TYPE EQUAL Release)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+
+if(CMAKE_BUILD_TYPE EQUAL "Release")
     if(MSVC)
         add_compile_options(/O2)
         add_link_options(/O2)
@@ -34,7 +35,6 @@ endif()
 
 if(MSVC)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
-    set(CMAKE_SYSTEM_VERSION 10.0.18362.0)
     add_compile_options(/utf-8)
     add_compile_options(/wd26812 /wd6258 /wd28251)
 endif()
@@ -47,8 +47,10 @@ add_subdirectory(cronos)
 add_subdirectory(centaurus)
 add_subdirectory(centaurus-ex)
 
-#add_subdirectory(centaurus-rpc)
+set_target_properties(win32ctrl centaurus centaurus-exe PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}
 
-#install(TARGETS worker win32ctrl autoreader
-#    RUNTIME DESTINATION ${CMAKE_BUILD_DIRECTORY}
-#)
+    LIBRARY_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}
+)
