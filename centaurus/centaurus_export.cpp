@@ -402,6 +402,9 @@ void CentaurusExport::Export()
 ExportRecord CentaurusExport::ReadExportRecord(CroFile* file,
     CroEntry& entry)
 {
+    if (!entry.HasBlock())
+        throw std::runtime_error("ReadExportRecord: !entry.HasBlock()");
+
     const CronosABI* abi = file->ABI();
     ExportRecord record = ExportRecord(entry);
 

@@ -17,7 +17,7 @@ public:
     CroException(CroFile* file, const std::string& func, cronos_off off);
 
     inline CroFile* File() const { return m_pFile; }
-    virtual const char* what() noexcept;
+    virtual const char* what() const throw();
 private:
     CroFile* m_pFile;
 };
@@ -27,7 +27,7 @@ class CroStdError : public CroException
 public:
     CroStdError(CroFile* file);
 
-    const char* what() noexcept override;
+    const char* what() const throw() override;
 };
 
 class CroABIError : public CroException
@@ -36,7 +36,7 @@ public:
     CroABIError(const CronosABI* abi, unsigned value,
         const std::string& valueName);
 
-    const char* what() noexcept override;
+    const char* what() const throw() override;
 private:
     const CronosABI* m_pABI;
     unsigned m_Value;

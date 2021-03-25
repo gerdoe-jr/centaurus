@@ -37,7 +37,7 @@ CroException::CroException(CroFile* file, const std::string& func,
         + std::to_string(id) + ")");
 }
 
-const char* CroException::what() noexcept
+const char* CroException::what() const throw()
 {
     s_Error = "CroException - \"" + (File()
         ? File()->GetError() : "CroException") + "\"";
@@ -49,7 +49,7 @@ CroStdError::CroStdError(CroFile* file)
 {
 }
 
-const char* CroStdError::what() noexcept
+const char* CroStdError::what() const throw()
 {
     s_Error = "CroStdError - \"" + File()->GetError()
         + "\", errno = " + std::to_string(errno);
@@ -64,7 +64,7 @@ CroABIError::CroABIError(const CronosABI* abi, unsigned value,
 {
 }
 
-const char* CroABIError::what() noexcept
+const char* CroABIError::what() const throw()
 {
     cronos_abi_num ver = m_pABI->GetABIVersion();
     const auto* value = m_pABI->GetValue((cronos_value)m_Value);

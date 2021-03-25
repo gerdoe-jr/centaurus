@@ -155,11 +155,21 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
     if (stream.Read<uint8_t>() != CROATTR_PREFIX)
         throw std::runtime_error("not an attr prefix");
 
-    while (!stream.IsOverflowed())
-    {
-        CroAttr attr;
-        attr.Parse(this, stream);
-        m_Attrs.push_back(attr);
+    CroAttr attr;
+    try {
+        while (!stream.IsOverflowed())
+        {
+            attr = CroAttr();
+            attr.Parse(this, stream);
+            m_Attrs.push_back(attr);
+        }
+    }
+    catch (const std::exception& e) {
+        fprintf(stderr, "[CentaurusBank] CroAttr(%s) exception\n",
+            attr.GetName().c_str());
+        CroBuffer& _attr = attr.GetAttr();
+        if (!_attr.IsEmpty()) centaurus->LogBuffer(_attr);
+        centaurus->OnException(e);
     }
 
     m_BankId = atoi(Attr("BankId").String());
@@ -174,19 +184,32 @@ void CentaurusBank::LoadBases(ICentaurusExport* exp)
         if (!attrName.starts_with("Base") || attrName.size() != 7)
             continue;
 
-        CroBuffer rec;
-        if (attr.IsEntryId())
-        {
-            uint32_t id = *(uint32_t*)attr.GetAttr().GetData();
-            exp->ReadRecord(File(CroStru), id, rec);
+        try {
+            CroBuffer rec;
+            if (attr.IsEntryId())
+            {
+                uint32_t id = *(uint32_t*)attr.GetAttr().GetData();
+                exp->ReadRecord(File(CroStru), id, rec);
+            }
+            else rec = CroBuffer(attr.GetAttr());
+
+            CroStream stream = CroStream(rec);
+            CroBase base;
+
+            cronos_idx index = base.Parse(this, stream, attr.IsEntryId());
+            m_Bases.insert(std::make_pair(index, base));
         }
-        else rec = CroBuffer(attr.GetAttr());
-
-        CroStream stream = CroStream(rec);
-        CroBase base;
-
-        cronos_idx index = base.Parse(this, stream, attr.IsEntryId());
-        m_Bases.insert(std::make_pair(index, base));
+        catch (const std::exception& e) {
+            fprintf(stderr, "[CentaurusBank] CroBase(%s) exception\n",
+                attr.GetName().c_str());
+            if (attr.IsEntryId())
+            {
+                fprintf(stderr, "\tEntryId %" FCroId "\n",
+                    *(uint32_t*)attr.GetAttr().GetData());
+            }
+            else centaurus->LogBuffer(attr.GetAttr());
+            centaurus->OnException(e);
+        }
     }
 }
 
