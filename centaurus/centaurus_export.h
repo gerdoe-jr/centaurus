@@ -36,14 +36,18 @@ class ExportBuffer : public CroBuffer
 public:
     ExportBuffer();
     ExportBuffer(ExportFormat fmt, unsigned columns);
+    ~ExportBuffer();
 
+    void SetExportFilePath(const std::wstring& path);
     void ReserveSize(cronos_size size);
+    inline const std::wstring& ExportFilePath() { return m_ExportFile; }
 
     void WriteCSV(const std::string& column);
     void WriteJSON(const std::string& column);
 
     void Write(const std::string& column);
-    void Flush(FILE* fCsv);
+    void Flush();
+    inline unsigned RecordCount() const { return m_uRecordCount; }
 private:
     ExportFormat m_Format;
     unsigned m_uIndex;
@@ -51,11 +55,9 @@ private:
 
     cronos_size m_Reserve;
     cronos_off m_TextOffset;
-};
 
-struct ExportOutput {
-    FILE* m_fExport;
-    ExportBuffer m_Buffer;
+    unsigned m_uRecordCount;
+    std::wstring m_ExportFile;
 };
 
 #include <map>
@@ -77,6 +79,9 @@ public:
 
     void Export();
     void ExportCroFile(CroFile* file);
+    
+    void OnExportRecord(CroBuffer& record, uint32_t id);
+    void FlushBuffers();
 
     ExportRecord ReadExportRecord(CroFile* file, CroEntry& entry);
     CroBuffer ReadFileRecord(CroFile* file, ExportRecord& record);
@@ -95,8 +100,14 @@ protected:
     std::wstring m_ExportPath;
     ExportFormat m_ExportFormat;
 private:
-    std::map<cronos_idx, ExportOutput> m_Export;
+    std::map<cronos_idx, std::unique_ptr<ExportBuffer>> m_Export;
     nlohmann::json m_BankJson;
+
+    cronos_size m_RecordBlockSize;
+    centaurus_size m_TableLimit;
+    centaurus_size m_BaseLimit;
+
+    CroEntryTable* m_pTAD;
 };
 #endif
 

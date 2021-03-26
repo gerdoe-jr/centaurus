@@ -583,3 +583,18 @@ void CentaurusAPI::OnWorkerException(ICentaurusWorker* worker,
     //throw exc;
 #endif
 }
+
+std::string CentaurusAPI::SizeToString(centaurus_size size) const
+{
+    const std::string suffix[] = { "B", "KB", "MB", "GB" };
+    unsigned i = 0;
+
+    double bytes = (double)size;
+    while (bytes >= 1024.0)
+    {
+        bytes /= 1024.0;
+        i++;
+    }
+
+    return std::to_string((unsigned)bytes) + " " + suffix[i];
+}

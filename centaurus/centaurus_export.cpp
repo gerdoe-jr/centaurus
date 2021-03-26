@@ -1,4 +1,5 @@
 ﻿#include "centaurus_export.h"
+#include "centaurus_api.h"
 #include "win32util.h"
 #include "croexception.h"
 #include "crofile.h"
@@ -40,6 +41,7 @@ ExportBuffer::ExportBuffer()
     m_uColumns = 0;
     m_TextOffset = 0;
     m_Reserve = 0;
+    m_uRecordCount = 0;
 }
 
 ExportBuffer::ExportBuffer(ExportFormat fmt, unsigned columns)
@@ -49,6 +51,17 @@ ExportBuffer::ExportBuffer(ExportFormat fmt, unsigned columns)
     m_uColumns = columns;
     m_TextOffset = 0;
     m_Reserve = 0;
+    m_uRecordCount = 0;
+}
+
+ExportBuffer::~ExportBuffer()
+{
+    Flush();
+}
+
+void ExportBuffer::SetExportFilePath(const std::wstring& path)
+{
+    m_ExportFile = path;
 }
 
 void ExportBuffer::ReserveSize(cronos_size size)
@@ -83,6 +96,7 @@ void ExportBuffer::WriteCSV(const std::string& column)
     if (++m_uIndex == m_uColumns)
     {
         m_uIndex = 0;
+        m_uRecordCount++;
         *pCursor++ = '\r';
         *pCursor++ = '\n';
     }
@@ -101,14 +115,26 @@ void ExportBuffer::Write(const std::string& column)
     else WriteJSON(column);
 }
 
-void ExportBuffer::Flush(FILE* fCsv)
+void ExportBuffer::Flush()
 {
-    fwrite(GetData(), m_TextOffset, 1, fCsv);
-    //fflush(fCsv);
+    if (IsEmpty()) return;
+
+    unsigned count = m_uRecordCount;
+    cronos_size size = GetSize();
+
+    FILE* fOut = _wfopen(m_ExportFile.c_str(), L"ab");
+    if (!fOut) throw std::runtime_error("ExportBuffer flush failed");
+    fwrite(GetData(), m_TextOffset, 1, fOut);
+    fclose(fOut);
 
     Free();
     m_uIndex = 0;
     m_TextOffset = 0;
+    m_uRecordCount = 0;
+
+    printf("[ExportBuffer] %s of %u records -> %s\n", _centaurus
+        ->SizeToString(size).c_str(), count, WcharToAnsi(
+            m_ExportFile, 866).c_str());
 }
 
 /* CentaurusExport*/
@@ -116,6 +142,8 @@ void ExportBuffer::Flush(FILE* fCsv)
 CentaurusExport::CentaurusExport()
     : m_pBank(NULL), m_ExportFormat(ExportCSV)
 {
+    m_TableLimit = 512 * 1024 * 1024;
+    m_pTAD = NULL;
 }
 
 CentaurusExport::~CentaurusExport()
@@ -148,20 +176,20 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
 
     auto& base = m_pBank->Base(baseIndex);
     //auto& out = m_Export[baseIndex];
-    auto& [_, out] = m_Export[baseIndex];
+    auto& out = m_Export[baseIndex];
 
     char* data = (char*)record.GetData() + 1;
     char* cursor = data;
 
     unsigned i, field = 0;
-    out.Write(std::to_string(id));
+    out->Write(std::to_string(id));
     for (i = 1; i < record.GetSize(); i++)
     {
         if (data[i] == record_sep || i == record.GetSize() - 1)
         {
             size_t length = (ptrdiff_t)&data[i] - (ptrdiff_t)cursor;
             std::string value = m_pBank->String(cursor, length);
-            out.Write(value);
+            out->Write(value);
             
             cursor = &data[i+1];
             if (++field == base.FieldCount() - 1)
@@ -170,7 +198,7 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
     }
 
     for (; field < base.FieldCount() - 1; field++)
-        out.Write("");
+        out->Write("");
 }
 
 void CentaurusExport::RunTask()
@@ -226,23 +254,26 @@ void CentaurusExport::RunTask()
                 //{"export", WcharToText(exportName)}
             };
 
-            FILE* fExport;
             json baseExport = json::object();
-            if (!_wfopen_s(&fExport, exportPath.c_str(), L"wb"))
-            {
-                m_Export[i] = ExportOutput{
-                    .m_fExport = fExport,
-                    .m_Buffer = ExportBuffer(ExportCSV, base.FieldCount())
-                };
+            
+            m_Export[i] = std::make_unique<ExportBuffer>
+                (ExportCSV, base.FieldCount());
+            auto& _export = m_Export[i];
 
-                m_Export[i].m_Buffer.ReserveSize(m_pBank
-                    ->File(CroBank)->GetDefaultBlockSize() * 4);
+            try {
+                auto croBank = m_pBank->File(CroBank);
+                m_RecordBlockSize = croBank->GetDefaultBlockSize();
+
+                _export->SetExportFilePath(exportPath);
+                _export->ReserveSize(m_RecordBlockSize * 4);
+                _export->Flush();
+
                 baseExport["file"] = WcharToText(exportName);
                 baseExport["format"] = (int)ExportCSV;
                 baseExport["status"] = true;
             }
-            else
-            {
+            catch (const std::exception& e) {
+                centaurus->OnException(e);
                 baseExport["status"] = false;
                 baseExport["error"] = "failed to open export file";
             }
@@ -277,8 +308,6 @@ void CentaurusExport::RunTask()
 
         // Close export
         m_BankJson["export"] = bankExport;
-        for (auto& [_, _out] : m_Export)
-            fclose(_out.m_fExport);
         m_Export.clear();
     } catch (CroException& ce) {
         centaurus->OnException(ce);
@@ -303,37 +332,39 @@ void CentaurusExport::Release()
 {
     CentaurusTask::Release();
 
-    for (auto& [_, _export] : m_Export)
-    {
-        _export.m_Buffer.Flush(_export.m_fExport);
-        fclose(_export.m_fExport);
-    }
+    m_Export.clear();
 }
 
 void CentaurusExport::Export()
 {
-    centaurus_size tableLimit = centaurus->RequestTableLimit();
+    unsigned exportCount = m_Export.size();
+    m_TableLimit = centaurus->RequestTableLimit();
+    
+    cronos_size perBase = m_TableLimit / exportCount;
+    m_BaseLimit = (perBase/m_RecordBlockSize)*m_RecordBlockSize
+        + (perBase % m_RecordBlockSize ? m_RecordBlockSize : 0);
+
     CroFile* file = m_pBank->File(CroBank);
     auto* abi = file->ABI();
 
     file->Reset();
-    file->SetTableLimits(tableLimit);
+    file->SetTableLimits(m_TableLimit);
 
     cronos_id tad_cur = 1;
     while (!file->IsEndOfEntries() && tad_cur <= file->IdEntryEnd())
     {
         cronos_idx tad_optimal = file->OptimalEntryCount();
-        CroEntryTable* tad = AcquireTable<CroEntryTable>(
+        m_pTAD = AcquireTable<CroEntryTable>(
             file->LoadEntryTable(tad_cur, tad_optimal));
-        if (tad->IsEmpty())
+        if (m_pTAD->IsEmpty())
         {
-            ReleaseTable(tad);
+            ReleaseTable(m_pTAD);
             break;
         }
 
-        for (cronos_id id = tad->IdStart(); id != tad->IdEnd(); id++)
+        for (cronos_id id = m_pTAD->IdStart(); id != m_pTAD->IdEnd(); id++)
         {
-            CroEntry entry = tad->GetEntry(id);
+            CroEntry entry = m_pTAD->GetEntry(id);
             if (!entry.IsActive()) continue;
 
             // Read record
@@ -401,15 +432,34 @@ void CentaurusExport::Export()
 
             // Export to CSV base file
             SaveExportRecord(record, id);
+
+            OnExportRecord(record, id);
         }
 
-        tad_cur = tad->IdEnd();
-        ReleaseTable(tad);
-
-        //Flush
-        for (auto& [_, _out] : m_Export)
-            _out.m_Buffer.Flush(_out.m_fExport);
+        tad_cur = m_pTAD->IdEnd();
+        ReleaseTable(m_pTAD);
     }
+
+    FlushBuffers();
+}
+
+#include "centaurus_api.h"
+
+void CentaurusExport::OnExportRecord(CroBuffer& record, uint32_t id)
+{
+    for (auto& [idx, _export] : m_Export)
+    {
+        if (_export->GetSize() >= m_BaseLimit)
+        {
+            _export->Flush();
+        }
+    }
+}
+
+void CentaurusExport::FlushBuffers()
+{
+    for (auto& [_, _export] : m_Export)
+        _export->Flush();
 }
 
 ExportRecord CentaurusExport::ReadExportRecord(CroFile* file, CroEntry& entry)

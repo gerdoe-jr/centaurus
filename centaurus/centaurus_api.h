@@ -54,6 +54,8 @@ public:
     void OnException(const std::exception& exc) override;
     void OnWorkerException(ICentaurusWorker* worker,
         const std::exception& exc) override;
+
+    std::string SizeToString(centaurus_size size) const;
 private:
     boost::mutex m_LogLock;
     FILE* m_fOutput;
