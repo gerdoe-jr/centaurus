@@ -64,6 +64,7 @@ void CentaurusWorker::Run()
             m_State = Terminated;
         } catch (std::exception& e) {
             centaurus->OnWorkerException(this, e);
+            m_State = Terminated;
         }
     }
 }
