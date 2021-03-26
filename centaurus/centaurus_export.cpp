@@ -236,12 +236,17 @@ void CentaurusExport::RunTask()
             json baseFields = json::array();
             for (unsigned j = 0; j < base.FieldCount(); j++)
             {
-                auto& field = base.Field(j);
-                baseFields.push_back({
-                    {"name", field.GetName()},
-                    {"type", field.GetType()},
-                    {"flags", field.GetFlags()}
-                });
+                try {
+                    auto& field = base.Field(j);
+                    baseFields.push_back({
+                        {"name", field.GetName()},
+                        {"type", field.GetType()},
+                        {"flags", field.GetFlags()}
+                        });
+                }
+                catch (const std::exception& e) {
+                    _CrtDbgBreak();
+                }
             }
 
             // Open export
@@ -442,8 +447,6 @@ void CentaurusExport::Export()
 
     FlushBuffers();
 }
-
-#include "centaurus_api.h"
 
 void CentaurusExport::OnExportRecord(CroBuffer& record, uint32_t id)
 {

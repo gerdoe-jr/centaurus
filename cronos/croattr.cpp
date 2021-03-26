@@ -73,7 +73,7 @@ unsigned CroField::Parse(ICroParser* parser, CroStream& stream)
     cronos_rel pos = stream.GetPosition();
 
     m_Type = (CroFieldType)stream.Read<uint16_t>();
-    unsigned index = stream.Read<uint32_t>();
+    m_uDataIndex = stream.Read<uint32_t>();
 
     uint8_t nameLen = stream.Read<uint8_t>();
     m_Name = parser->String((const char*)stream.Read(nameLen), nameLen);
@@ -86,7 +86,7 @@ unsigned CroField::Parse(ICroParser* parser, CroStream& stream)
     }
 
     stream.SetPosition(pos + size);
-    return index;
+    return m_uDataIndex;
 }
 
 /* CroBase */
@@ -146,8 +146,8 @@ cronos_idx CroBase::Parse(ICroParser* parser, CroStream& stream, bool hasPrefix)
     for (unsigned i = 0; i < fieldNum; i++)
     {
         CroField field;
-        cronos_idx fieldIndex = field.Parse(parser, stream);
-        m_Fields.insert(std::make_pair(fieldIndex, field));
+        field.Parse(parser, stream);
+        m_Fields.insert(std::make_pair(i, field));
     }
 
     return baseIndex;

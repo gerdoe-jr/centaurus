@@ -66,6 +66,7 @@ public:
     unsigned Parse(ICroParser* parser, CroStream& stream);
 private:
     CroFieldType m_Type;
+    unsigned m_uDataIndex;
     
     std::string m_Name;
     cronos_flags m_Flags;
