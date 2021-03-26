@@ -16,8 +16,8 @@ public:
 
     virtual void RunTask();
     virtual void Release();
-
-    centaurus_size GetMemoryUsage() override;
+    virtual centaurus_size GetMemoryUsage();
+    
     bool AcquireBank(ICentaurusBank* bank) override;
     CroTable* AcquireTable(CroTable&& table) override;
     bool IsBankAcquired(ICentaurusBank* bank) override;

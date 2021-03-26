@@ -342,6 +342,9 @@ void CentaurusExport::Release()
 
 void CentaurusExport::Export()
 {
+    if (m_Export.empty())
+        throw std::runtime_error("CentaurusExport bank is not loaded");
+
     unsigned exportCount = m_Export.size();
     m_TableLimit = centaurus->RequestTableLimit();
     
@@ -446,6 +449,16 @@ void CentaurusExport::Export()
     }
 
     FlushBuffers();
+    centaurus->UpdateBankExportIndex(m_pBank->BankId(), m_ExportPath);
+}
+
+centaurus_size CentaurusExport::GetMemoryUsage()
+{
+    centaurus_size totalBuffers = 0;
+    for (const auto& [_, _export] : m_Export)
+        totalBuffers += _export->GetSize();
+
+    return CentaurusTask::GetMemoryUsage() + totalBuffers;
 }
 
 void CentaurusExport::OnExportRecord(CroBuffer& record, uint32_t id)

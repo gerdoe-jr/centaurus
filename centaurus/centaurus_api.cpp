@@ -41,10 +41,14 @@ void CentaurusAPI::Init(const std::wstring& path)
     m_fError = stderr;
 
     PrepareDataPath(path);
-    SetTableSizeLimit(512 * 1024 * 1024); //512 MB
+    m_TableSizeLimit = 512 * 1024 * 1024; //512 MB
+    m_uWorkerLimit = 4; //4 threads
 
     m_pLoader = std::make_unique<CentaurusLoader>();
     m_pScheduler = std::make_unique<CentaurusScheduler>();
+
+    m_pScheduler->SetPoolSize(m_uWorkerLimit);
+    m_ExportIndex = json::object();
 
     m_pLoader->Start();
     m_pScheduler->Start();
@@ -66,6 +70,12 @@ void CentaurusAPI::Exit()
 void CentaurusAPI::SetTableSizeLimit(centaurus_size limit)
 {
     m_TableSizeLimit = limit;
+}
+
+void CentaurusAPI::SetWorkerLimit(unsigned count)
+{
+    m_uWorkerLimit = count;
+    m_pScheduler->SetPoolSize(m_uWorkerLimit);
 }
 
 void CentaurusAPI::PrepareDataPath(const std::wstring& path)
@@ -143,7 +153,12 @@ ICentaurusBank* CentaurusAPI::WaitBank(const std::wstring& path)
     boost::unique_lock<boost::mutex> lock(m_SyncLock);
 
     while (!(bank = FindBank(path)))
+    {
+        auto it = std::find(m_FailedBanks.begin(), m_FailedBanks.end(), path);
+        if (it != m_FailedBanks.end()) return NULL;
+
         m_SyncCond.wait(lock);
+    }
 
     return bank;
 }
@@ -462,8 +477,10 @@ void CentaurusAPI::StartTask(ICentaurusTask* task)
         {"memoryUsage", task->GetMemoryUsage()}
     });
 
-    auto lock = scoped_lock(m_TaskLock);
-    m_Tasks.emplace_back(task);
+    {
+        auto lock = scoped_lock(m_TaskLock);
+        m_Tasks.emplace_back(task);
+    }
 
     m_pScheduler->ScheduleTask(task);
 }
@@ -503,7 +520,7 @@ bool CentaurusAPI::IsBankAcquired(ICentaurusBank* bank)
 
 centaurus_size CentaurusAPI::TotalMemoryUsage()
 {
-    auto lock = boost::unique_lock<boost::mutex>(m_TaskLock);
+    auto lock = scoped_lock(m_TaskLock);
 
     centaurus_size total = 0;
     for (auto& task : m_Tasks)
@@ -514,10 +531,10 @@ centaurus_size CentaurusAPI::TotalMemoryUsage()
 centaurus_size CentaurusAPI::RequestTableLimit()
 {
     centaurus_size ramUsage = TotalMemoryUsage();
-    if (ramUsage > m_TableSizeLimit)
-        throw std::runtime_error("ramUsage > m_TableSizeLimit");
+    if (ramUsage > m_TableSizeLimit) return m_TableSizeLimit;
+
     cronos_size available = m_TableSizeLimit - ramUsage;
-    return std::min(available / 4, available);
+    return std::min(m_TableSizeLimit, available / 2);
 }
 
 void CentaurusAPI::Run()
@@ -552,9 +569,20 @@ void CentaurusAPI::Sync(ICentaurusWorker* worker)
         std::wstring dir = m_pLoader->m_LoadedPath;
         ICentaurusBank* bank = m_pLoader->m_pLoadedBank;
 
-        m_Banks.emplace_back(bank);
-        fprintf(m_fOutput, "[CentaurusAPI] Loaded bank \"%s\"\n",
-            WcharToAnsi(dir, 866).c_str());
+        if (bank)
+        {
+            m_Banks.emplace_back(bank);
+            fprintf(m_fOutput, "[CentaurusAPI] Loaded bank \"%s\"\n",
+                WcharToAnsi(dir, 866).c_str());
+        }
+        else
+        {
+            m_FailedBanks.push_back(dir);
+            fprintf(m_fError,
+                "[CentaurusAPI] Failed to load bank at \"%s\"\n",
+                WcharToAnsi(dir, 866).c_str()
+            );
+        }
     }
 
     m_SyncCond.notify_all();
@@ -597,4 +625,39 @@ std::string CentaurusAPI::SizeToString(centaurus_size size) const
     }
 
     return std::to_string((unsigned)bytes) + " " + suffix[i];
+}
+
+bool CentaurusAPI::IsBankExported(uint64_t bankId)
+{
+    auto lock = scoped_lock(m_ExportLock);
+    std::wstring indexPath = GetExportPath() + L"\\index.json";
+    try {
+        if (fs::exists(indexPath)) m_ExportIndex = ReadJSONFile(indexPath);
+        else m_ExportIndex = json::object();
+    }
+    catch (const std::exception& e) {
+        OnException(e);
+    }
+
+    return m_ExportIndex.find(std::to_string(bankId)) != m_ExportIndex.end();
+}
+
+void CentaurusAPI::UpdateBankExportIndex(uint64_t bankId,
+    const std::wstring& path)
+{
+    auto lock = scoped_lock(m_ExportLock);
+    std::wstring indexPath = GetExportPath() + L"\\index.json";
+    try {
+        if (fs::exists(indexPath))
+        {
+            if (m_ExportIndex.empty())
+                m_ExportIndex = ReadJSONFile(indexPath);
+        }
+        
+        m_ExportIndex[std::to_string(bankId)] = WcharToText(path);
+        WriteJSONFile(indexPath, m_ExportIndex);
+    }
+    catch (const std::exception& e) {
+        OnException(e);
+    }
 }

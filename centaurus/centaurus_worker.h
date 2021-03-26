@@ -24,10 +24,13 @@ public:
 protected:
     virtual void Execute() = 0;
 
-    boost::mutex m_Lock;
-    boost::condition_variable m_Cond;
+    boost::mutex m_DataLock;
+    boost::condition_variable m_DataCond;
+
+    boost::mutex m_SyncLock;
+    boost::condition_variable m_SyncCond;
+
     boost::atomic_uint32_t m_State;
-private:
     boost::thread m_Thread;
 };
 

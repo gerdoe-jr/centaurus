@@ -19,13 +19,13 @@ void CentaurusWorker::Start()
     m_Thread = boost::thread(&CentaurusWorker::Run, this);
 
     m_State = Running;
-    m_Cond.notify_all();
+    m_SyncCond.notify_all();
 }
 
 void CentaurusWorker::Stop()
 {
     m_State = Terminated;
-    m_Cond.notify_all();
+    m_SyncCond.notify_all();
 
     m_Thread.interrupt();
 }
@@ -47,8 +47,8 @@ void CentaurusWorker::Run()
         try {
             if (m_State == Waiting)
             {
-                boost::unique_lock<boost::mutex> lock(m_Lock);
-                m_Cond.wait(lock);
+                auto lock = scoped_lock(m_SyncLock);
+                m_SyncCond.wait(lock);
 
                 m_State = Running;
                 continue;
@@ -56,6 +56,9 @@ void CentaurusWorker::Run()
             else if (m_State == Running)
             {
                 Execute();
+                
+                m_SyncCond.notify_all();
+                centaurus->Sync(this);
             }
         } catch (const boost::thread_interrupted& ti) {
             m_State = Terminated;

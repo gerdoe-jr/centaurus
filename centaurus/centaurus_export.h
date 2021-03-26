@@ -80,6 +80,7 @@ public:
     void Export();
     void ExportCroFile(CroFile* file);
     
+    centaurus_size GetMemoryUsage() override;
     void OnExportRecord(CroBuffer& record, uint32_t id);
     void FlushBuffers();
 

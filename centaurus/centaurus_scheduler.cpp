@@ -1,22 +1,39 @@
 #include "centaurus_scheduler.h"
 
+CentaurusScheduler::CentaurusScheduler(unsigned poolSize)
+{
+    m_uPoolSize = poolSize;
+}
+
+void CentaurusScheduler::SetPoolSize(unsigned poolSize)
+{
+    auto lock = scoped_lock(m_DataLock);
+    m_uPoolSize = poolSize;
+}
+
 void CentaurusScheduler::ScheduleTask(ICentaurusTask* task)
 {
-    auto lock = scoped_lock(m_Lock);
-    CentaurusJob* job = m_Jobs.emplace_back(
-        new CentaurusJob(task)).get();
+    auto dataLock = scoped_lock(m_DataLock);
+    while (m_Jobs.size() >= m_uPoolSize)
+        m_DataCond.wait(dataLock);
 
-    job->Start();
+    {
+        //auto lock = scoped_lock(m_DataLock);
+        CentaurusJob* job = m_Jobs.emplace_back(
+            new CentaurusJob(task)).get();
 
-    printf("[Scheduler] ScheduleTask %p -> %s\n",
-        task, job->GetName().c_str());
+        job->Start();
 
-    m_Cond.notify_one();
+        printf("[Scheduler] ScheduleTask %p -> %s\n",
+            task, job->GetName().c_str());
+    }
+
+    m_SyncCond.notify_one();
 }
 
 std::string CentaurusScheduler::TaskName(ICentaurusTask* task)
 {
-    auto lock = scoped_lock(m_Lock);
+    auto lock = scoped_lock(m_DataLock);
 
     for (auto& job : m_Jobs)
     {
@@ -36,7 +53,7 @@ void CentaurusScheduler::Execute()
     }
 
     {
-        auto lock = scoped_lock(m_Lock);
+        auto lock = scoped_lock(m_DataLock);
         for (unsigned i = 0; i < m_Jobs.size();)
         {
             auto it = m_Jobs.begin() + i;
@@ -44,17 +61,15 @@ void CentaurusScheduler::Execute()
 
             if (job->State() == ICentaurusWorker::Terminated)
             {
-                printf("[Scheduler] %s terminated.\n",job->GetName().c_str());
+                printf("[Scheduler] %s terminated.\n", job->GetName().c_str());
                 ICentaurusTask* task = job->JobTask();
 
                 centaurus->ReleaseTask(task);
+                
                 m_Jobs.erase(it);
+                m_DataCond.notify_all();
             }
-            else
-            {
-                //printf("[Scheduler] %s state %u\n",
-                //    job->GetName().c_str(), job->State());
-            }
+            else i++;
         }
     }
 }

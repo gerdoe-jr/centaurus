@@ -29,6 +29,7 @@ static int _wfopen_s(FILE** fpFile, const wchar_t* path, const wchar_t* mode)
 
 CentaurusBank::CentaurusBank()
 {
+    m_BankId = 0;
     m_uCodePage = 1251;
 }
 
@@ -61,8 +62,12 @@ bool CentaurusBank::Connect()
                 throw std::runtime_error("CroFile status "
                     + std::to_string(st));
             }
+
+            cronos_size limit = centaurus->RequestTableLimit();
+            file->SetTableLimits(limit);
         }
         catch (const std::exception& e) {
+            centaurus->OnException(e);
             fwprintf(stderr, L"CroFile(%s): %S\n",
                 file->GetPath().c_str(), e.what());
             m_Files[(CroBankFile)i] = NULL;

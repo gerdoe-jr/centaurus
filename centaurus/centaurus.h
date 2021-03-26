@@ -133,6 +133,7 @@ public:
     virtual void Exit() = 0;
 
     virtual void SetTableSizeLimit(centaurus_size limit) = 0;
+    virtual void SetWorkerLimit(unsigned count) = 0;
 
     virtual void PrepareDataPath(const std::wstring& path) = 0;
     virtual std::wstring GetExportPath() const = 0;
@@ -167,6 +168,10 @@ public:
     virtual void OnException(const std::exception& exc) = 0;
     virtual void OnWorkerException(ICentaurusWorker* worker,
         const std::exception& exc) = 0;
+
+    virtual bool IsBankExported(uint64_t bankId) = 0;
+    virtual void UpdateBankExportIndex(uint64_t bankId,
+        const std::wstring& path) = 0;
 };
 
 /* Centaurus */

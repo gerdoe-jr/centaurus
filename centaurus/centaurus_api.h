@@ -21,6 +21,7 @@ public:
     void Exit() override;
 
     void SetTableSizeLimit(centaurus_size limit) override;
+    void SetWorkerLimit(unsigned count) override;
     
     void PrepareDataPath(const std::wstring& path) override;
     std::wstring GetExportPath() const override;
@@ -56,12 +57,17 @@ public:
         const std::exception& exc) override;
 
     std::string SizeToString(centaurus_size size) const;
+
+    bool IsBankExported(uint64_t bankId) override;
+    void UpdateBankExportIndex(uint64_t bankId,
+        const std::wstring& path) override;
 private:
     boost::mutex m_LogLock;
     FILE* m_fOutput;
     FILE* m_fError;
 
     centaurus_size m_TableSizeLimit;
+    unsigned m_uWorkerLimit;
     std::wstring m_DataPath;
 
     boost::mutex m_BankLock;
@@ -76,6 +82,10 @@ private:
     boost::condition_variable m_SyncCond;
 
     std::vector<uint64_t> m_KnownBanks;
+    std::vector<std::wstring> m_FailedBanks;
+
+    boost::mutex m_ExportLock;
+    json m_ExportIndex;
 };
 
 extern CentaurusAPI* _centaurus;
