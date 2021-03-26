@@ -59,8 +59,9 @@ bool CentaurusBank::Connect()
             crofile_status st = file->Open();
             if (st != CROFILE_OK)
             {
-                throw std::runtime_error("CroFile status "
-                    + std::to_string(st));
+                fprintf(stderr, "CroFile status %u\n", st);
+                m_Files[(CroBankFile)i] = NULL;
+                continue;
             }
 
             cronos_size limit = centaurus->RequestTableLimit();
@@ -68,13 +69,13 @@ bool CentaurusBank::Connect()
         }
         catch (const std::exception& e) {
             centaurus->OnException(e);
-            fwprintf(stderr, L"CroFile(%s): %S\n",
-                file->GetPath().c_str(), e.what());
+            fprintf(stderr, "CroFile(%s) %s\n", WcharToAnsi(
+                file->GetPath()).c_str(), e.what());
             m_Files[(CroBankFile)i] = NULL;
         }
     }
 
-    return File(CroStru) || File(CroBank) || File(CroIndex);
+    return File(CroStru) && File(CroBank);
 }
 
 void CentaurusBank::Disconnect()
@@ -172,8 +173,10 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
     catch (const std::exception& e) {
         fprintf(stderr, "[CentaurusBank] CroAttr(%s) exception\n",
             attr.GetName().c_str());
+#ifdef CENTAURUS_DEBUG
         CroBuffer& _attr = attr.GetAttr();
         if (!_attr.IsEmpty()) centaurus->LogBuffer(_attr);
+#endif
         centaurus->OnException(e);
     }
 
@@ -207,12 +210,14 @@ void CentaurusBank::LoadBases(ICentaurusExport* exp)
         catch (const std::exception& e) {
             fprintf(stderr, "[CentaurusBank] CroBase(%s) exception\n",
                 attr.GetName().c_str());
+#ifdef CENTAURUS_DEBUG
             if (attr.IsEntryId())
             {
                 fprintf(stderr, "\tEntryId %" FCroId "\n",
                     *(uint32_t*)attr.GetAttr().GetData());
             }
             else centaurus->LogBuffer(attr.GetAttr());
+#endif
             centaurus->OnException(e);
         }
     }

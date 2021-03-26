@@ -34,13 +34,17 @@ centaurus_size CentaurusTask::GetMemoryUsage()
 
 bool CentaurusTask::AcquireBank(ICentaurusBank* bank)
 {
-    if (centaurus->IsBankAcquired(bank)) return false;
+    if (centaurus->IsBankAcquired(bank))
+        return false;
+    
+    bool connected = bank->Connect();
+    if (connected)
     {
         auto lock = boost::mutex::scoped_lock(m_DataLock);
         m_Banks.push_back(bank);
     }
 
-    return bank->Connect();
+    return connected;
 }
 
 void CentaurusTask::AcquireTable(CroTable* table)

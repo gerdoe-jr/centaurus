@@ -569,13 +569,16 @@ void CentaurusAPI::Sync(ICentaurusWorker* worker)
         std::wstring dir = m_pLoader->m_LoadedPath;
         ICentaurusBank* bank = m_pLoader->m_pLoadedBank;
 
+        m_pLoader->m_LoadedPath = L"";
+        m_pLoader->m_pLoadedBank = NULL;
+
         if (bank)
         {
             m_Banks.emplace_back(bank);
             fprintf(m_fOutput, "[CentaurusAPI] Loaded bank \"%s\"\n",
                 WcharToAnsi(dir, 866).c_str());
         }
-        else
+        else if (!dir.empty())
         {
             m_FailedBanks.push_back(dir);
             fprintf(m_fError,

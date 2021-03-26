@@ -21,6 +21,8 @@ void FixHeader(const std::wstring& datPath)
 
 void FindBanks(const std::wstring& path)
 {
+    printf("[FindBanks] %s\n", WcharToAnsi(path, 866).c_str());
+
     auto [files, dirs] = ListDirectory(path);
     for (auto& file : files)
     {
@@ -57,7 +59,10 @@ void FindBanks(const std::wstring& path)
     }
 
     for (auto& dir : dirs)
-        if (dir != L"Voc") FindBanks(path + L"\\" + dir);
+    {
+        if (dir != L"Voc")
+            FindBanks(path + L"\\" + dir);
+    }
 }
 
 int main(int argc, char** argv)
