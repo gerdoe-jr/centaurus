@@ -2,6 +2,10 @@
 #include <centaurus.h>
 #include <win32util.h>
 
+bool exportMode = true;
+std::wstring rootPath = L"K:\\Centaurus";
+std::wstring bankPath = L"K:\\Cronos\\TestBanks";
+
 void FixHeader(const std::wstring& datPath)
 {
     /*FILE* fDat = _wfopen(datPath.c_str(), L"r+b");
@@ -21,6 +25,22 @@ void FindBanks(const std::wstring& path)
         if (file == L"CroBank.dat")
         {
             centaurus->ConnectBank(path);
+            ICentaurusBank* bank = centaurus->WaitBank(path);
+            if (!centaurus->IsBankLoaded(bank))
+            {
+                fprintf(stderr, "[FindBanks] Failed to connect %s\n",
+                    WcharToAnsi(path, 866).c_str());
+                break;
+            }
+
+            printf("[FindBanks] \"%s\", ID %llu\n", WcharToAnsi(
+                bank->BankName(), 866).c_str(), bank->BankId());
+
+            if (exportMode)
+            {
+                ICentaurusTask* exportTask = CentaurusTask_Export(bank);
+                centaurus->StartTask(exportTask);
+            }
             break;
         }
     }
@@ -31,48 +51,27 @@ void FindBanks(const std::wstring& path)
 
 int main(int argc, char** argv)
 {
-    if (!Centaurus_Init(L"K:\\Centaurus"))
+    if (!Centaurus_Init(rootPath))
     {
         fprintf(stderr, "Failed to init centaurus API!\n");
         return 1;
     }
 
-    //std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test1"
-    //    L"\\11_Республика Коми Нарьян-Мар\\Phones";
-    //std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test1"
-    //    L"\\11_Республика Коми РЕГ_Коми Прописка 2005";
-    std::wstring defaultBank = L"K:\\Cronos\\TestBanks\\Test4\\testbank1";
-    //std::wstring defaultBank = L"K:\\Cronos\\Banks\\МОС ГИБДД Права 2018";
-    //std::wstring defaultBank = L"K:\\Cronos\\Banks\\Блогеры";
-    std::wstring bankPath = argc >= 2
-        ? AnsiToWchar(argv[1], 1251) : defaultBank;
-
-    centaurus->ConnectBank(bankPath);
-    ICentaurusBank* bank = centaurus->WaitBank(bankPath);
-
-    if (!centaurus->IsBankLoaded(bank))
+    for (int i = 1; i < argc; i++)
     {
-        fprintf(stderr, "Failed to open bank!\n");
-        return 1;
+        std::string option = argv[i];
+        if (option == "--export") exportMode = true;
+        else if (option == "--root")
+            rootPath = AnsiToWchar(argv[++i], 1251);
+        else if (option == "--bank")
+            bankPath = AnsiToWchar(argv[++i], 1251);
     }
 
-    /*try {
-        centaurus->LogBankFiles(bank);
-
-        ICentaurusTask* exportTask = CentaurusTask_Export(bank);
-        centaurus->StartTask(exportTask);
-    } catch (const std::exception& e) {
-        fprintf(stderr, "centaurus bank exception: %s\n", e.what());
-    }*/
-
-    FindBanks(L"K:\\Cronos\\TestBanks");
-
-    getc(stdin);
+    FindBanks(bankPath);
 
     Centaurus_RunThread();
     Centaurus_Idle();
 
-    //centaurus->DisconnectBank(bank);
     Centaurus_Exit();
     return 0;
 }

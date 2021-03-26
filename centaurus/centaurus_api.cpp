@@ -522,7 +522,7 @@ centaurus_size CentaurusAPI::RequestTableLimit()
 
 void CentaurusAPI::Run()
 {
-    for (auto& bank : m_Banks)
+    /*for (auto& bank : m_Banks)
     {
         fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
             "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
@@ -535,7 +535,7 @@ void CentaurusAPI::Run()
         m_Tasks.emplace_back(taskExport);
 
         m_pScheduler->ScheduleTask(taskExport);
-    }
+    }*/
 
     m_pScheduler->Wait();
 }
