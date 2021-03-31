@@ -29,7 +29,7 @@ static int _wfopen_s(FILE** fpFile, const wchar_t* path, const wchar_t* mode)
 
 CentaurusBank::CentaurusBank()
 {
-    m_BankId = 0;
+    m_iBankId = 0;
     m_uCodePage = 1251;
 }
 
@@ -180,7 +180,7 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
         centaurus->OnException(e);
     }
 
-    m_BankId = atoi(Attr("BankId").String());
+    m_iBankId = atoi(Attr("BankId").String());
     m_BankName = AnsiToWchar(Attr("BankName").GetString());
 }
 
@@ -262,9 +262,9 @@ unsigned CentaurusBank::BaseEnd() const
     return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->first + 1;
 }
 
-uint64_t CentaurusBank::BankId() const
+int CentaurusBank::BankId() const
 {
-    return m_BankId;
+    return m_iBankId;
 }
 
 const std::wstring& CentaurusBank::BankName() const

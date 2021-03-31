@@ -7,6 +7,7 @@
 
 #include <json_file.h>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/trim.hpp>
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
@@ -161,7 +162,16 @@ std::wstring CentaurusExport::GetFileName(CroFile* file)
 
 void CentaurusExport::PrepareDirs()
 {
-    m_ExportPath = centaurus->GetExportPath() + L"\\" + m_pBank->BankName();
+    std::wstring dirName = m_pBank->BankName();
+    std::transform(dirName.begin(), dirName.end(), dirName.begin(),
+        [](wchar_t sym) {
+            const std::wstring prohibit = L"\\/:?\"<>|";
+            return prohibit.find(sym) == std::wstring::npos ? sym : L'_';
+        }
+    );
+
+    boost::algorithm::trim(dirName);
+    m_ExportPath = centaurus->GetExportPath() + L"\\" + dirName;
     fs::create_directory(m_ExportPath);
 }
 

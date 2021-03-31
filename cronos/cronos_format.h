@@ -38,6 +38,7 @@
 #define TAD_V3_RZ_NOBLOCK   0x80000000
 #define TAD_V3_OFFSET(off)  (off&CRONOS3_MASK_OFFSET)
 #define TAD_V3_FSIZE(off)   (off&CRONOS3_MASK_FSIZE)
+#define TAD_V3_INVALID      (TAD_V3_DELETED & CRONOS3_MASK_FSIZE)
 
 /* Cronos 4x+ TAD format */
 
@@ -50,7 +51,9 @@
 #define TAD_V4_SIZE         0x10
 #define TAD_V4_RZ(off)      (off>>56)
 #define TAD_V4_RZ_DELETED   (1<<1)
+#define TAD_V4_DELETED      0xFFFFFFFFFFFFFFFF
 #define TAD_V4_OFFSET(off)  (off&CRONOS4_MASK_OFFSET)
 #define TAD_V4_FSIZE(off)   (off&CRONOS4_MASK_FSIZE)
+#define TAD_V4_INVALID      (TAD_V4_DELETED & CRONOS4_MASK_FSIZE)
 
 #endif

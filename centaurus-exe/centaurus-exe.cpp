@@ -38,7 +38,7 @@ void FindBanks(const std::wstring& path)
             }
 
             std::string name = WcharToAnsi(bank->BankName(), 866);
-            printf("[FindBanks] \"%s\", ID %llu\n",
+            printf("[FindBanks] \"%s\", ID %d\n",
                 name.c_str(), bank->BankId());
 
             if (exportMode)

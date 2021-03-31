@@ -472,15 +472,15 @@ void CentaurusAPI::StartTask(ICentaurusTask* task)
         fprintf(m_fOutput, "[CentaurusAPI] StartTask %p\n", task);
     }
 
-    TaskSyncJSON(task, {
-        {"progress", 0.0f},
-        {"memoryUsage", task->GetMemoryUsage()}
-    });
-
     {
         auto lock = scoped_lock(m_TaskLock);
         m_Tasks.emplace_back(task);
     }
+
+    TaskSyncJSON(task, {
+        {"progress", 0.0f},
+        {"memoryUsage", task->GetMemoryUsage()}
+    });
 
     m_pScheduler->ScheduleTask(task);
 }
@@ -630,7 +630,7 @@ std::string CentaurusAPI::SizeToString(centaurus_size size) const
     return std::to_string((unsigned)bytes) + " " + suffix[i];
 }
 
-bool CentaurusAPI::IsBankExported(uint64_t bankId)
+bool CentaurusAPI::IsBankExported(int bankId)
 {
     auto lock = scoped_lock(m_ExportLock);
     std::wstring indexPath = GetExportPath() + L"\\index.json";
@@ -645,8 +645,7 @@ bool CentaurusAPI::IsBankExported(uint64_t bankId)
     return m_ExportIndex.find(std::to_string(bankId)) != m_ExportIndex.end();
 }
 
-void CentaurusAPI::UpdateBankExportIndex(uint64_t bankId,
-    const std::wstring& path)
+void CentaurusAPI::UpdateBankExportIndex(int bankId, const std::wstring& path)
 {
     auto lock = scoped_lock(m_ExportLock);
     std::wstring indexPath = GetExportPath() + L"\\index.json";

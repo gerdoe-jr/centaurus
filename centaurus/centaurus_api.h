@@ -58,8 +58,8 @@ public:
 
     std::string SizeToString(centaurus_size size) const;
 
-    bool IsBankExported(uint64_t bankId) override;
-    void UpdateBankExportIndex(uint64_t bankId,
+    bool IsBankExported(int bankId) override;
+    void UpdateBankExportIndex(int bankId,
         const std::wstring& path) override;
 private:
     boost::mutex m_LogLock;

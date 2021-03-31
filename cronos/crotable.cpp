@@ -89,11 +89,13 @@ bool CroEntry::IsActive() const
 {
     if (Is3())
     {
-        if (!EntryFlags() || EntryFlags() == 0xFFFFFFFF)
+        if (EntrySize() == TAD_V3_INVALID) return false;
+        if (!EntryFlags() || EntryFlags() == TAD_V3_DELETED)
             return false;
     }
     else if (Is4A())
     {
+        if (EntrySize() == TAD_V4_INVALID) return false;
         if (Get<uint64_t>(cronos_tad_rz) & TAD_V4_RZ_DELETED)
             return false;
     }
