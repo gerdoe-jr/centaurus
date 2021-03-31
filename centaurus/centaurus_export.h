@@ -95,18 +95,23 @@ public:
     void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) override;
     void SyncBankJson() override;
 
-    inline void SetTargetBank(ICentaurusBank* bank) { m_pBank = bank; }
+    void SetTargetBank(ICentaurusBank* bank);
 protected:
+    void SetTargetFile(CroFile* file);
+    cronos_size PartSize() const;
+
     ICentaurusBank* m_pBank;
     std::wstring m_ExportPath;
     ExportFormat m_ExportFormat;
 private:
     std::map<cronos_idx, std::unique_ptr<ExportBuffer>> m_Export;
     nlohmann::json m_BankJson;
-
-    cronos_size m_RecordBlockSize;
     centaurus_size m_TableLimit;
     centaurus_size m_BaseLimit;
+
+    CroFile* m_pFile;
+    cronos_size m_RecordBlockSize;
+    cronos_size m_NextBlockSize;
 
     CroEntryTable* m_pTAD;
 };

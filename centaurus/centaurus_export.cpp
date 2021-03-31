@@ -143,7 +143,11 @@ void ExportBuffer::Flush()
 CentaurusExport::CentaurusExport()
     : m_pBank(NULL), m_ExportFormat(ExportCSV)
 {
+    m_pFile = NULL;
+    m_RecordBlockSize = 0;
+    m_NextBlockSize = 0;
     m_TableLimit = 512 * 1024 * 1024;
+    m_BaseLimit = m_TableLimit;
     m_pTAD = NULL;
 }
 
@@ -355,25 +359,28 @@ void CentaurusExport::Export()
     if (m_Export.empty())
         throw std::runtime_error("CentaurusExport bank is not loaded");
 
+    SetTargetFile(m_pBank->File(CroBank));
+    auto* abi = m_pFile->ABI();
+
+    cronos_size firstHeaderSize = abi->Size(cronos_first_block_hdr);
+    cronos_size headerSize = abi->Size(cronos_block_hdr);
+
     unsigned exportCount = m_Export.size();
     m_TableLimit = centaurus->RequestTableLimit();
-    
+
     cronos_size perBase = m_TableLimit / exportCount;
     m_BaseLimit = (perBase/m_RecordBlockSize)*m_RecordBlockSize
         + (perBase % m_RecordBlockSize ? m_RecordBlockSize : 0);
 
-    CroFile* file = m_pBank->File(CroBank);
-    auto* abi = file->ABI();
-
-    file->Reset();
-    file->SetTableLimits(m_TableLimit);
+    m_pFile->Reset();
+    m_pFile->SetTableLimits(m_TableLimit);
 
     cronos_id tad_cur = 1;
-    while (!file->IsEndOfEntries() && tad_cur <= file->IdEntryEnd())
+    while (!m_pFile->IsEndOfEntries() && tad_cur <= m_pFile->IdEntryEnd())
     {
-        cronos_idx tad_optimal = file->OptimalEntryCount();
+        cronos_idx tad_optimal = m_pFile->OptimalEntryCount();
         m_pTAD = AcquireTable<CroEntryTable>(
-            file->LoadEntryTable(tad_cur, tad_optimal));
+            m_pFile->LoadEntryTable(tad_cur, tad_optimal));
         if (m_pTAD->IsEmpty())
         {
             ReleaseTable(m_pTAD);
@@ -396,16 +403,16 @@ void CentaurusExport::Export()
             if (entry.HasBlock())
             {
                 block = CroBlock(true);
-                block.InitData(file, entry.Id(), CRONOS_DAT, entry.EntryOffset(),
-                    abi->Size(cronos_first_block_hdr));
-                file->Read(block, 1, block.GetSize());
+                block.InitData(m_pFile, entry.Id(), CRONOS_DAT,
+                    entry.EntryOffset(), firstHeaderSize);
+                m_pFile->Read(block, 1, firstHeaderSize);
 
                 nextOff = block.BlockNext();
                 recordSize = block.BlockSize();
 
-                dataOff = block.GetStartOffset() + block.GetSize();
+                dataOff = block.GetStartOffset() + firstHeaderSize;
                 dataSize = std::min(recordSize,
-                    entry.EntrySize() - block.GetSize());
+                    entry.EntrySize() - firstHeaderSize);
             }
             else
             {
@@ -416,8 +423,8 @@ void CentaurusExport::Export()
                 dataSize = recordSize;
             }
 
-            data.InitData(file, id, CRONOS_DAT, dataOff, dataSize);
-            file->Read(data, 1, dataSize);
+            data.InitData(m_pFile, id, CRONOS_DAT, dataOff, dataSize);
+            m_pFile->Read(data, 1, dataSize);
 
             record.Write(data.GetData(), dataSize);
             recordSize -= dataSize;
@@ -425,25 +432,24 @@ void CentaurusExport::Export()
             while (nextOff != 0 && recordSize > 0)
             {
                 block = CroBlock(false);
-                block.InitData(file, entry.Id(), CRONOS_DAT, nextOff,
-                    abi->Size(cronos_block_hdr));
-                file->Read(block, 1, block.GetSize());
+                block.InitData(m_pFile, entry.Id(), CRONOS_DAT,
+                    nextOff, headerSize);
+                m_pFile->Read(block, 1, headerSize);
 
                 nextOff = block.BlockNext();
-
-                dataOff = block.GetStartOffset() + block.GetSize();
-                dataSize = std::min(recordSize, file->GetDefaultBlockSize());
-                data.InitData(file, id, CRONOS_DAT, dataOff, dataSize);
-                file->Read(data, 1, dataSize);
+                dataOff = block.GetStartOffset() + headerSize;
+                dataSize = std::min(recordSize, PartSize());
+                data.InitData(m_pFile, id, CRONOS_DAT, dataOff, dataSize);
+                m_pFile->Read(data, 1, dataSize);
 
                 record.Write(data.GetData(), dataSize);
                 recordSize -= dataSize;
             }
 
             // Decrypt & parse record
-            if (file->IsEncrypted())
+            if (m_pFile->IsEncrypted())
             {
-                file->Decrypt(record.GetData(), record.GetSize(), id);
+                m_pFile->Decrypt(record.GetData(), record.GetSize(), id);
             }
 
             //centaurus->LogBuffer(record);
@@ -492,6 +498,10 @@ ExportRecord CentaurusExport::ReadExportRecord(CroFile* file, CroEntry& entry)
 {
     const CronosABI* abi = file->ABI();
     ExportRecord record = ExportRecord(entry);
+    SetTargetFile(file);
+    
+    cronos_size firstHeaderSize = abi->Size(cronos_first_block_hdr);
+    cronos_size headerSize = abi->Size(cronos_block_hdr);
 
     if (!entry.HasBlock())
     {
@@ -500,30 +510,28 @@ ExportRecord CentaurusExport::ReadExportRecord(CroFile* file, CroEntry& entry)
     }
 
     CroBlock block = CroBlock(true);
-    block.InitData(file, entry.Id(), CRONOS_DAT, entry.EntryOffset(),
-        abi->Size(cronos_first_block_hdr));
-    file->Read(block, 1, block.GetSize());
+    block.InitData(file, entry.Id(), CRONOS_DAT,
+        entry.EntryOffset(), firstHeaderSize);
+    file->Read(block, 1, firstHeaderSize);
 
     cronos_off nextOff = block.BlockNext();
     cronos_size recordSize = block.BlockSize();
 
-    cronos_off dataOff = block.GetStartOffset() + block.GetSize();
+    cronos_off dataOff = block.GetStartOffset() + firstHeaderSize;
     cronos_size dataSize = std::min(recordSize,
-        entry.EntrySize() - block.GetSize());
+        entry.EntrySize() - firstHeaderSize);
     record.AddBlock(dataOff, dataSize);
     recordSize -= dataSize;
 
     while (nextOff != 0 && recordSize > 0)
     {
         block = CroBlock(false);
-        block.InitData(file, entry.Id(), CRONOS_DAT, nextOff,
-            abi->Size(cronos_block_hdr));
-        file->Read(block, 1, block.GetSize());
+        block.InitData(file, entry.Id(), CRONOS_DAT, nextOff, headerSize);
+        file->Read(block, 1, headerSize);
 
         nextOff = block.BlockNext();
-
-        dataOff = block.GetStartOffset() + block.GetSize();
-        dataSize = std::min(recordSize, file->GetDefaultBlockSize());
+        dataOff = block.GetStartOffset() + headerSize;
+        dataSize = std::min(recordSize, PartSize());
         record.AddBlock(dataOff, dataSize);
         recordSize -= dataSize;
     }
@@ -586,4 +594,21 @@ void CentaurusExport::ReadRecord(CroFile* file, uint32_t id, CroBuffer& out)
 void CentaurusExport::SyncBankJson()
 {
     WriteJSONFile(m_ExportPath + L"\\bank.json", m_BankJson);
+}
+
+void CentaurusExport::SetTargetBank(ICentaurusBank* bank)
+{
+    m_pBank = bank;
+}
+
+void CentaurusExport::SetTargetFile(CroFile* file)
+{
+    m_pFile = file;
+    m_RecordBlockSize = file->GetDefaultBlockSize();
+    m_NextBlockSize = file->ABI()->Size(cronos_block_hdr);
+}
+
+centaurus_size CentaurusExport::PartSize() const
+{
+    return m_RecordBlockSize - m_NextBlockSize;
 }

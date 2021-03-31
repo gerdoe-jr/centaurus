@@ -141,7 +141,7 @@ cronos_idx CroBase::Parse(ICroParser* parser, CroStream& stream, bool hasPrefix)
     m_Mnemocode = parser->String((const char*)stream.Read(mcLen), mcLen);
     
     m_Flags = stream.Read<uint32_t>();
-    
+
     uint32_t fieldNum = stream.Read<uint32_t>();
     for (unsigned i = 0; i < fieldNum; i++)
     {
