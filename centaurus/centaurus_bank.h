@@ -23,9 +23,13 @@ public:
     
     CroFile* File(CroBankFile type) const override;
     std::string String(const char* data, size_t len) override;
+    CroFile* CroFileStru() override;
+    CroFile* CroFileBank() override;
+    CroFile* CroFileIndex() override;
 
     void ExportHeaders() const override;
 
+    CroAttr LoadAttribute(ICentaurusExport* exp);
     void LoadStructure(ICentaurusExport* exp) override;
     void LoadBases(ICentaurusExport* exp) override;
 
@@ -44,6 +48,8 @@ private:
     unsigned m_uCodePage;
     std::unique_ptr<CroFile> m_Files[CroBankFile_Count];
 
+    CroBuffer m_BankRecord;
+    CroStream m_AttrStream;
     std::vector<CroAttr> m_Attrs;
     std::map<cronos_idx, CroBase> m_Bases;
 

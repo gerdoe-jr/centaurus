@@ -1,12 +1,13 @@
 ﻿#include "croattr.h"
+#include "cronos02.h"
 #include <stdexcept>
 #include <algorithm>
 
 /* CroAttr */
 
 CroAttr::CroAttr()
-    : m_bIsEntryId(false)
 {
+    m_AttrValue = 0;
 }
 
 const std::string& CroAttr::GetName() const
@@ -28,28 +29,18 @@ void CroAttr::Parse(ICroParser* parser, CroStream& stream)
 {
     uint8_t nameLen = stream.Read<uint8_t>();
     m_AttrName = parser->String((const char*)stream.Read(nameLen), nameLen);
-
-    uint32_t attrValue = stream.Read<uint32_t>();
-
-    if (attrValue & 0x80000000)
-    {
-        // block
-        int32_t attrLen = (int32_t)(attrValue & 0x7FFFFFFF);
-        m_Attr.Copy(stream.Read(attrLen), attrLen);
-        m_bIsEntryId = false;
-    }
-    else
-    {
-        // ref block id
-        m_Attr.Write((uint8_t*)&attrValue, sizeof(attrValue));
-        m_bIsEntryId = true;
-    }
+    m_AttrValue = stream.Read<uint32_t>();
 }
 
 /* CroField */
 
 CroField::CroField()
 {
+    m_Type = Index;
+    m_Index = 0;
+    m_Flags = 0;
+    m_DataIndex = 0;
+    m_DataLength = 0;
 }
 
 const std::string& CroField::GetName() const
@@ -73,27 +64,31 @@ unsigned CroField::Parse(ICroParser* parser, CroStream& stream)
     cronos_rel pos = stream.GetPosition();
 
     m_Type = (CroFieldType)stream.Read<uint16_t>();
-    m_uDataIndex = stream.Read<uint32_t>();
+    m_Index = stream.Read<uint32_t>();
 
     uint8_t nameLen = stream.Read<uint8_t>();
     m_Name = parser->String((const char*)stream.Read(nameLen), nameLen);
+    
     m_Flags = stream.Read<uint32_t>();
-
     if (stream.Read<uint8_t>())
     {
-        stream.Read<uint32_t>(); // dataindex
-        stream.Read<uint32_t>(); // datalength
+        m_DataIndex = stream.Read<uint32_t>();
+        m_DataLength = stream.Read<uint32_t>();
     }
 
     stream.SetPosition(pos + size);
-    return m_uDataIndex;
+    return m_Index;
 }
 
 /* CroBase */
 
 CroBase::CroBase()
 {
-    m_BitcardId = INVALID_CRONOS_ID;
+    m_VocFlags = 0;
+    m_BaseVersion = 0;
+    m_BitcardId = 0;
+    m_LinkedId = 0;
+    m_BaseIndex = 0;
     m_Flags = 0;
 }
 
@@ -120,35 +115,58 @@ unsigned CroBase::FieldEnd() const
     return m_Fields.empty() ? 0 : std::prev(m_Fields.end())->first;
 }
 
-cronos_idx CroBase::Parse(ICroParser* parser, CroStream& stream, bool hasPrefix)
+cronos_idx CroBase::Parse(ICroParser* parser, CroAttr& attr)
 {
-    if (hasPrefix)
-    {
-        if (stream.Read<uint8_t>() != CROBASE_PREFIX)
-            throw std::runtime_error("not a base prefix");
-    }
-    stream.Read<uint16_t>(); // vocflags
-    stream.Read<uint16_t>(); // unk1
-    if (stream.Read<uint16_t>() == CROBASE_LINKED)
-        stream.Read<uint32_t>(); // linked data id
-    m_BitcardId = stream.Read<uint32_t>();
-    cronos_idx baseIndex = stream.Read<uint32_t>();
+    CroStream base = CroStream(attr.GetAttr());
 
-    uint8_t nameLen = stream.Read<uint8_t>();
-    m_Name = parser->String((const char*)stream.Read(nameLen), nameLen);
+    m_VocFlags = base.Read<uint16_t>(); // vocflags
+    base.Read<uint16_t>(); // unk1
+    m_BaseVersion = base.Read<uint16_t>();
+    m_BitcardId = base.Read<uint32_t>();
+    if (m_BaseVersion == CROBASE_LINKED)
+        m_LinkedId = base.Read<uint32_t>();
+    m_BaseIndex = base.Read<uint32_t>();
 
-    uint8_t mcLen = stream.Read<uint8_t>();
-    m_Mnemocode = parser->String((const char*)stream.Read(mcLen), mcLen);
+    uint8_t nameLen = base.Read<uint8_t>();
+    m_Name = parser->String((const char*)base.Read(nameLen), nameLen);
+
+    uint8_t mcLen = base.Read<uint8_t>();
+    m_Mnemocode = parser->String((const char*)base.Read(mcLen), mcLen);
     
-    m_Flags = stream.Read<uint32_t>();
-
-    uint32_t fieldNum = stream.Read<uint32_t>();
+    m_Flags = base.Read<uint32_t>();
+    uint32_t fieldNum = base.Read<uint32_t>();
     for (unsigned i = 0; i < fieldNum; i++)
     {
         CroField field;
-        field.Parse(parser, stream);
+        field.Parse(parser, base);
         m_Fields.insert(std::make_pair(i, field));
     }
 
-    return baseIndex;
+    return m_BaseIndex;
+}
+
+/* CroAttrNS */
+
+CroAttrNS::CroAttrNS()
+{
+    m_BankSerial = 0;
+    m_BankCustomProt = 0;
+    m_BankUnk = 0;
+}
+
+void CroAttrNS::Parse(ICroParser* parser, CroAttr& attr)
+{
+    CroFile* stru = parser->CroFileStru();
+    CroData crypt = CroData(stru, INVALID_CRONOS_ID,
+        cronos02_crypt_table.m_pMem, cronos02_crypt_table.m_Size);
+
+    CroBuffer nsBuf = attr.GetAttr();
+    CroBuffer nsHdrBuf;
+    nsHdrBuf.Copy(nsBuf.GetData(), 12);
+    stru->Decrypt(nsHdrBuf, 1, &crypt);
+
+    CroStream nsHdr(nsHdrBuf);
+    m_BankSerial = nsHdr.Read<uint32_t>();
+    m_BankCustomProt = nsHdr.Read<uint32_t>();;
+    m_BankUnk = nsHdr.Read<uint32_t>();
 }

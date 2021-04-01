@@ -116,6 +116,21 @@ std::string CentaurusBank::String(const char* data, size_t len)
     return WcharToText(AnsiToWchar(std::string(data, len), m_uCodePage));
 }
 
+CroFile* CentaurusBank::CroFileStru()
+{
+    return File(CroBankFile::CroStru);
+}
+
+CroFile* CentaurusBank::CroFileBank()
+{
+    return File(CroBankFile::CroBank);
+}
+
+CroFile* CentaurusBank::CroFileIndex()
+{
+    return File(CroBankFile::CroIndex);
+}
+
 void CentaurusBank::ExportHeaders() const
 {
     sc::error_code ec;
@@ -149,15 +164,45 @@ void CentaurusBank::ExportHeaders() const
     }
 }
 
+CroAttr CentaurusBank::LoadAttribute(ICentaurusExport* exp)
+{
+    CroAttr attr;
+    attr.Parse(this, m_AttrStream);
+
+    CroBuffer data;
+    CroStream stream(data);
+
+    if (attr.IsRef())
+    {
+        exp->ReadRecord(File(CroStru), attr.RefBlockId(), data);
+        
+        uint8_t prefix = stream.Read<uint8_t>();
+        if (prefix != CROATTR_REF_PREFIX)
+        {
+            throw std::runtime_error(
+                "ref attribute prefix != CROBASE_PREFIX");
+        }
+    }
+    else
+    {
+        cronos_size size = attr.AttrSize();
+        data.Write(m_AttrStream.Read(size), size);
+    }
+
+    cronos_size available = stream.Remaining();
+    attr.GetAttr().Copy(stream.Read(available), available);
+    return attr;
+}
+
 void CentaurusBank::LoadStructure(ICentaurusExport* exp)
 {
     CroFile* stru = File(CroStru);
     if (!stru) throw std::runtime_error("no structure");
 
-    CroBuffer bankStruct;
-    exp->ReadRecord(stru, 1, bankStruct);
+    exp->ReadRecord(stru, 1, m_BankRecord);
+    m_AttrStream = CroStream(m_BankRecord);
     
-    CroStream stream = CroStream(bankStruct);
+    auto& stream = m_AttrStream;
     if (stream.Read<uint8_t>() != CROATTR_PREFIX)
         throw std::runtime_error("not an attr prefix");
 
@@ -165,8 +210,8 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
     try {
         while (!stream.IsOverflowed())
         {
-            attr = CroAttr();
-            attr.Parse(this, stream);
+            CroAttr attr = LoadAttribute(exp);
+            
             m_Attrs.push_back(attr);
         }
     }
@@ -182,6 +227,13 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
 
     m_iBankId = atoi(Attr("BankId").String());
     m_BankName = AnsiToWchar(Attr("BankName").GetString());
+
+    CroAttrNS ns1;
+    ns1.Parse(this, Attr("NS1"));
+    
+    printf("NS1 BankSerial %u\n", ns1.BankSerial());
+    printf("NS1 BankCustomProt %u\n", ns1.BankCustomProt());
+    printf("NS1 BankUnk %u\n", ns1.BankUnk());
 }
 
 void CentaurusBank::LoadBases(ICentaurusExport* exp)
@@ -193,28 +245,18 @@ void CentaurusBank::LoadBases(ICentaurusExport* exp)
             continue;
 
         try {
-            CroBuffer rec;
-            if (attr.IsEntryId())
-            {
-                uint32_t id = *(uint32_t*)attr.GetAttr().GetData();
-                exp->ReadRecord(File(CroStru), id, rec);
-            }
-            else rec = CroBuffer(attr.GetAttr());
-
-            CroStream stream = CroStream(rec);
             CroBase base;
-
-            cronos_idx index = base.Parse(this, stream, attr.IsEntryId());
+            
+            cronos_idx index = base.Parse(this, attr);
             m_Bases.insert(std::make_pair(index, base));
         }
         catch (const std::exception& e) {
             fprintf(stderr, "[CentaurusBank] CroBase(%s) exception\n",
                 attr.GetName().c_str());
 #ifdef CENTAURUS_DEBUG
-            if (attr.IsEntryId())
+            if (attr.IsRef())
             {
-                fprintf(stderr, "\tEntryId %" FCroId "\n",
-                    *(uint32_t*)attr.GetAttr().GetData());
+                fprintf(stderr, "\tRefId %" FCroId "\n", attr.RefBlockId());
             }
             else centaurus->LogBuffer(attr.GetAttr());
 #endif

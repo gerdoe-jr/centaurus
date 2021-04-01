@@ -7,6 +7,7 @@
 class CroStream
 {
 public:
+    CroStream();
     CroStream(CroBuffer& buf);
 
     bool IsOverflowed() const;
@@ -22,10 +23,10 @@ public:
     inline void SetPosition(cronos_rel pos) { m_Pos = pos; }
     inline cronos_size Remaining() const
     {
-        return IsOverflowed() ? 0 : m_Buffer.GetSize() - GetPosition();
+        return IsOverflowed() ? 0 : m_pBuffer->GetSize() - GetPosition();
     }
 private:
-    CroBuffer& m_Buffer;
+    CroBuffer* m_pBuffer;
     cronos_rel m_Pos;
 };
 

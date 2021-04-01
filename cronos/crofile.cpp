@@ -194,20 +194,19 @@ void CroFile::SetSecret(uint32_t serial, uint32_t key)
     *(uint32_t*)m_Secret.Data(0x04) = key;
 }
 
-void CroFile::Decrypt(uint8_t* pBlock, unsigned size,
-        uint32_t offset)
+void CroFile::Decrypt(CroBuffer& block, uint32_t prefix, const CroData* crypt)
 {
+    if (!crypt) crypt = &m_Crypt;
     if (m_Crypt.IsEmpty())
     {
         SetError("Decrypt !m_Crypt");
         return;
     }
 
-    for (unsigned i = 0; i < size; i++)
-    {
-        pBlock[i] = m_Crypt.GetData()[0x100+pBlock[i]]
-            - (uint8_t)(i + offset);
-    }
+    uint8_t* pBlock = block.GetData();
+    const uint8_t* pTable = crypt->GetData();
+    for (unsigned i = 0; i < block.GetSize(); i++)
+        pBlock[i] = pTable[0x100 + pBlock[i]] - (uint8_t)(i + prefix);
 }
 
 bool CroFile::IsEndOfEntries() const

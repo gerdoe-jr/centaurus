@@ -3,6 +3,7 @@
 
 #include "crostream.h"
 #include "crobuffer.h"
+#include "crofile.h"
 #include <string>
 #include <map>
 
@@ -10,9 +11,16 @@ class ICroParser
 {
 public:
     virtual std::string String(const char* data, size_t len) = 0;
+    virtual CroFile* CroFileStru() = 0;
+    virtual CroFile* CroFileBank() = 0;
+    virtual CroFile* CroFileIndex() = 0;
 };
 
 #define CROATTR_PREFIX 0x03
+#define CROATTR_REF 0x80000000
+#define CROATTR_SIZE(value) (value&0x7FFFFFFF)
+
+#define CROATTR_REF_PREFIX 0x04
 
 class CroAttr
 {
@@ -27,15 +35,17 @@ public:
         return (const char*)m_Attr.GetData();
     }
 
+    inline bool IsRef() const { return !(m_AttrValue & CROATTR_REF); }
+    inline cronos_size AttrSize() const { return CROATTR_SIZE(m_AttrValue); }
+    inline cronos_idx RefBlockId() const { return m_AttrValue; }
+
     void Parse(ICroParser* parser, CroStream& stream);
-    inline bool IsEntryId() const { return m_bIsEntryId; }
 private:
     std::string m_AttrName;
+    uint32_t m_AttrValue;
     CroBuffer m_Attr;
-    bool m_bIsEntryId;
 };
 
-#define CROBASE_PREFIX 0x04
 #define CROBASE_LINKED 0x109
 
 enum CroFieldType : uint16_t {
@@ -66,10 +76,13 @@ public:
     unsigned Parse(ICroParser* parser, CroStream& stream);
 private:
     CroFieldType m_Type;
-    unsigned m_uDataIndex;
+    uint32_t m_Index;
     
     std::string m_Name;
-    cronos_flags m_Flags;
+    uint32_t m_Flags;
+
+    uint32_t m_DataIndex;
+    uint32_t m_DataLength;
 };
 
 class CroBase
@@ -82,16 +95,35 @@ public:
     unsigned FieldCount() const;
     unsigned FieldEnd() const;
     
-    unsigned Parse(ICroParser* parser, CroStream& stream,
-        bool hasPrefix = true);
+    unsigned Parse(ICroParser* parser, CroAttr& attr);
 private:
-    cronos_id m_BitcardId;
-    cronos_flags m_Flags;
+    uint16_t m_VocFlags;
+    uint16_t m_BaseVersion;
+    uint32_t m_BitcardId;
+    uint32_t m_LinkedId;
+    uint32_t m_BaseIndex;
     
     std::string m_Name;
     std::string m_Mnemocode;
 
+    uint32_t m_Flags;
     std::map<unsigned, CroField> m_Fields;
+};
+
+class CroAttrNS
+{
+public:
+    CroAttrNS();
+
+    inline uint32_t BankSerial() const { return m_BankSerial; }
+    inline uint32_t BankCustomProt() const { return m_BankCustomProt; }
+    inline uint32_t BankUnk() const { return m_BankUnk; }
+
+    void Parse(ICroParser* parser, CroAttr& attr);
+private:
+    uint32_t m_BankSerial;
+    uint32_t m_BankCustomProt;
+    uint32_t m_BankUnk;
 };
 
 #endif

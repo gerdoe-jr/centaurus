@@ -189,7 +189,6 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
         return;
 
     auto& base = m_pBank->Base(baseIndex);
-    //auto& out = m_Export[baseIndex];
     auto& out = m_Export[baseIndex];
 
     char* data = (char*)record.GetData() + 1;
@@ -448,9 +447,7 @@ void CentaurusExport::Export()
 
             // Decrypt & parse record
             if (m_pFile->IsEncrypted())
-            {
-                m_pFile->Decrypt(record.GetData(), record.GetSize(), id);
-            }
+                m_pFile->Decrypt(record, id);
 
             //centaurus->LogBuffer(record);
 
@@ -552,9 +549,7 @@ CroBuffer CentaurusExport::ReadFileRecord(CroFile* file, ExportRecord& record)
     }
 
     if (file->IsEncrypted())
-    {
-        file->Decrypt(buf.GetData(), buf.GetSize(), record.m_RecordId);
-    }
+        file->Decrypt(buf, record.m_RecordId);
 
     return buf;
 }

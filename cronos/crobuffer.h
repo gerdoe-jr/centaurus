@@ -24,6 +24,15 @@ public:
         return *this;
     }
 
+    CroBuffer& operator=(const CroBuffer& other)
+    {
+        if (&other == this) return *this;
+        Free();
+
+        InitBuffer(other.m_pData, other.m_uSize, false);
+        return *this;
+    }
+
     void InitBuffer(uint8_t* data, cronos_size size, bool owner);
 
     cronos_size GetSize() const;

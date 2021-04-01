@@ -58,8 +58,7 @@ public:
     void SetSecret(uint32_t serial, uint32_t key);
 
     inline const CroData& GetCryptTable() const { return m_Crypt; }
-    void Decrypt(uint8_t* pBlock, unsigned size,
-            uint32_t offset = 0);
+    void Decrypt(CroBuffer& data, uint32_t prefix, const CroData* crypt = NULL);
 
     bool IsEndOfEntries() const;
 
