@@ -29,7 +29,7 @@ static int _wfopen_s(FILE** fpFile, const wchar_t* path, const wchar_t* mode)
 
 CentaurusBank::CentaurusBank()
 {
-    m_iBankId = 0;
+    m_BankId = 0;
     m_uCodePage = 1251;
 }
 
@@ -202,9 +202,23 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
     exp->ReadRecord(stru, 1, m_BankRecord);
     m_AttrStream = CroStream(m_BankRecord);
     
+    auto* abi = stru->ABI();
+    if (abi->IsLite())
+    {
+        CroData secret = stru->Read(0, 1, cronos_hdr_secret);
+        CroData lite = stru->Read(0, 1, cronos_hdrlite_secret);
+        centaurus->LogBuffer(secret);
+        centaurus->LogBuffer(lite);
+    }
+
     auto& stream = m_AttrStream;
-    if (stream.Read<uint8_t>() != CROATTR_PREFIX)
+    uint8_t prefix = stream.Read<uint8_t>();
+    if (prefix != CROATTR_PREFIX)
+    {
+        printf("prefix %u\n", prefix);
+        centaurus->LogBuffer(m_BankRecord);
         throw std::runtime_error("not an attr prefix");
+    }
 
     CroAttr attr;
     try {
@@ -225,15 +239,17 @@ void CentaurusBank::LoadStructure(ICentaurusExport* exp)
         centaurus->OnException(e);
     }
 
-    m_iBankId = atoi(Attr("BankId").String());
+    m_BankId = (uint32_t)atoi(Attr("BankId").String());
     m_BankName = AnsiToWchar(Attr("BankName").GetString());
 
     CroAttrNS ns1;
-    ns1.Parse(this, Attr("NS1"));
+    CroAttr& ns1Attr = Attr("NS1");
+    ns1.Parse(this, ns1Attr);
     
     printf("NS1 BankSerial %u\n", ns1.BankSerial());
     printf("NS1 BankCustomProt %u\n", ns1.BankCustomProt());
     printf("NS1 BankUnk %u\n", ns1.BankUnk());
+    centaurus->LogBuffer(ns1Attr.GetAttr());
 }
 
 void CentaurusBank::LoadBases(ICentaurusExport* exp)
@@ -304,9 +320,9 @@ unsigned CentaurusBank::BaseEnd() const
     return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->first + 1;
 }
 
-int CentaurusBank::BankId() const
+uint32_t CentaurusBank::BankId() const
 {
-    return m_iBankId;
+    return m_BankId;
 }
 
 const std::wstring& CentaurusBank::BankName() const

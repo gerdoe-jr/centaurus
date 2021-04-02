@@ -160,13 +160,18 @@ void CroAttrNS::Parse(ICroParser* parser, CroAttr& attr)
     CroData crypt = CroData(stru, INVALID_CRONOS_ID,
         cronos02_crypt_table.m_pMem, cronos02_crypt_table.m_Size);
 
-    CroBuffer nsBuf = attr.GetAttr();
-    CroBuffer nsHdrBuf;
-    nsHdrBuf.Copy(nsBuf.GetData(), 12);
-    stru->Decrypt(nsHdrBuf, 1, &crypt);
+    CroBuffer in = attr.GetAttr();
+    CroBuffer out;
 
-    CroStream nsHdr(nsHdrBuf);
-    m_BankSerial = nsHdr.Read<uint32_t>();
-    m_BankCustomProt = nsHdr.Read<uint32_t>();;
-    m_BankUnk = nsHdr.Read<uint32_t>();
+    CroStream ns(in);
+    ns.Read<uint8_t>();
+    uint8_t prefix = ns.Read<uint8_t>();
+
+    out.Write(ns.Read(12), 12);
+    stru->Decrypt(out, prefix, &crypt);
+    CroStream hdr(out);
+
+    m_BankSerial = hdr.Read<uint32_t>();
+    m_BankCustomProt = hdr.Read<uint32_t>();
+    m_BankUnk = hdr.Read<uint32_t>();
 }

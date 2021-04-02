@@ -63,7 +63,7 @@ public:
     virtual CroBase& Base(unsigned index) = 0;
     virtual unsigned BaseEnd() const = 0;
 
-    virtual int BankId() const = 0;
+    virtual uint32_t BankId() const = 0;
     virtual const std::wstring& BankName() const = 0;
 };
 
@@ -169,8 +169,8 @@ public:
     virtual void OnWorkerException(ICentaurusWorker* worker,
         const std::exception& exc) = 0;
 
-    virtual bool IsBankExported(int bankId) = 0;
-    virtual void UpdateBankExportIndex(int bankId,
+    virtual bool IsBankExported(uint32_t bankId) = 0;
+    virtual void UpdateBankExportIndex(uint32_t bankId,
         const std::wstring& path) = 0;
 };
 

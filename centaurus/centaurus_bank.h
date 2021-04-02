@@ -41,7 +41,7 @@ public:
     CroBase& Base(unsigned index) override;
     unsigned BaseEnd() const override;
 
-    int BankId() const override;
+    uint32_t BankId() const override;
     const std::wstring& BankName() const override;
 private:
     std::wstring m_Path;
@@ -53,7 +53,7 @@ private:
     std::vector<CroAttr> m_Attrs;
     std::map<cronos_idx, CroBase> m_Bases;
 
-    int m_iBankId;
+    uint32_t m_BankId;
     std::wstring m_BankName;
 
 };

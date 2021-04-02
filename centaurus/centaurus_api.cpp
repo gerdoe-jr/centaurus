@@ -630,7 +630,7 @@ std::string CentaurusAPI::SizeToString(centaurus_size size) const
     return std::to_string((unsigned)bytes) + " " + suffix[i];
 }
 
-bool CentaurusAPI::IsBankExported(int bankId)
+bool CentaurusAPI::IsBankExported(uint32_t bankId)
 {
     auto lock = scoped_lock(m_ExportLock);
     std::wstring indexPath = GetExportPath() + L"\\index.json";
@@ -645,7 +645,7 @@ bool CentaurusAPI::IsBankExported(int bankId)
     return m_ExportIndex.find(std::to_string(bankId)) != m_ExportIndex.end();
 }
 
-void CentaurusAPI::UpdateBankExportIndex(int bankId, const std::wstring& path)
+void CentaurusAPI::UpdateBankExportIndex(uint32_t bankId, const std::wstring& path)
 {
     auto lock = scoped_lock(m_ExportLock);
     std::wstring indexPath = GetExportPath() + L"\\index.json";

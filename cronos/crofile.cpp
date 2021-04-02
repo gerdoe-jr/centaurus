@@ -1,4 +1,4 @@
-#include "crofile.h"
+﻿#include "crofile.h"
 #include "cronos_abi.h"
 #include "cronos_format.h"
 #include "croexception.h"
@@ -50,11 +50,10 @@ crofile_status CroFile::Open()
 
     m_fDat = fDat;
     m_fTad = fTad;
-
+    
     m_DatSize = FileSize(CRONOS_DAT);
     m_TadSize = FileSize(CRONOS_TAD);
 
-    m_uSerial = 1;
     Reset();
 
     //Generic ABI
@@ -85,26 +84,23 @@ crofile_status CroFile::Open()
     m_uDefLength = hdr.Get<uint16_t>(cronos_hdr_deflength);
     m_uTadRecordSize = ABI()->Size(cronos_tad_entry);
 
+    // 32-bit secret higher part + 32-bit serial lower part
     if (IsEncrypted())
     {
         if (m_Secret.IsEmpty())
         {
-            m_Secret = hdr.CopyValue(cronos_hdr_secret);
-
+            CroData secret = hdr.CopyValue(cronos_hdr_secret);
+            
             if (ABI()->IsLite())
             {
                 CroData lite = hdr.CopyValue(cronos_hdrlite_secret);
 
                 auto bf = std::make_unique<blowfish_t>();
-                blowfish_init(bf.get(), m_Secret.GetData(), 4);
-                blowfish_decrypt_buffer(bf.get(),
-                    lite.GetData(), lite.GetSize());
-
-                m_Secret.Copy(lite.GetData(), lite.GetSize());
             }
             
-            memmove(m_Secret.GetData() + 4, m_Secret.GetData(), 4);
-            memcpy(m_Secret.GetData(), &m_uSerial, 4);
+            //memmove(m_Secret.GetData() + 4, m_Secret.GetData(), 4);
+            //memcpy(m_Secret.GetData(), &m_uSerial, 4);
+            m_Secret = CipherKey(secret.Get<uint32_t>(4), 1);
         }
 
         m_Crypt = hdr.CopyValue(cronos_hdr_crypt);
@@ -192,6 +188,14 @@ void CroFile::SetSecret(uint32_t serial, uint32_t key)
 
     *(uint32_t*)m_Secret.Data(0x00) = serial;
     *(uint32_t*)m_Secret.Data(0x04) = key;
+}
+
+CroData CroFile::CipherKey(uint32_t secretHigh, uint32_t serial) const
+{
+    CroData key;
+    key.Write((uint8_t*)&serial, sizeof(uint32_t));
+    key.Write((uint8_t*)&secretHigh, sizeof(uint32_t));
+    return key;
 }
 
 void CroFile::Decrypt(CroBuffer& block, uint32_t prefix, const CroData* crypt)
