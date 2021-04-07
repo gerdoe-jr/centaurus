@@ -1,4 +1,4 @@
-#include "centaurus_scheduler.h"
+#include "scheduler.h"
 
 CentaurusScheduler::CentaurusScheduler(unsigned poolSize)
 {

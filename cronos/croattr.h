@@ -19,6 +19,7 @@ public:
 #define CROATTR_PREFIX 0x03
 #define CROATTR_REF 0x80000000
 #define CROATTR_SIZE(value) (value&0x7FFFFFFF)
+#define CROATTR_MIN_SIZE 0x0F
 
 #define CROATTR_REF_PREFIX 0x04
 
@@ -45,6 +46,8 @@ private:
     uint32_t m_AttrValue;
     CroBuffer m_Attr;
 };
+
+#define CROBLOCK_PREFIX 0x04
 
 #define CROBASE_LINKED 0x109
 
@@ -73,8 +76,8 @@ public:
     CroFieldType GetType() const;
     cronos_flags GetFlags() const;
 
-    unsigned Parse(ICroParser* parser, CroStream& stream);
-private:
+    void Parse(ICroParser* parser, CroStream& stream);
+    
     CroFieldType m_Type;
     uint32_t m_Index;
     
@@ -95,8 +98,8 @@ public:
     unsigned FieldCount() const;
     unsigned FieldEnd() const;
     
-    unsigned Parse(ICroParser* parser, CroAttr& attr);
-private:
+    void Parse(ICroParser* parser, CroAttr& attr);
+    
     uint16_t m_VocFlags;
     uint16_t m_BaseVersion;
     uint32_t m_BitcardId;
@@ -107,6 +110,7 @@ private:
     std::string m_Mnemocode;
 
     uint32_t m_Flags;
+private:
     std::map<unsigned, CroField> m_Fields;
 };
 
@@ -117,13 +121,14 @@ public:
 
     inline uint32_t BankSerial() const { return m_BankSerial; }
     inline uint32_t BankCustomProt() const { return m_BankCustomProt; }
-    inline uint32_t BankUnk() const { return m_BankUnk; }
+    inline std::string BankSysPassword() const { return m_BankSysPass; }
+    inline bool IsPasswordSet() const { return !m_BankSysPass.empty(); }
 
     void Parse(ICroParser* parser, CroAttr& attr);
 private:
     uint32_t m_BankSerial;
     uint32_t m_BankCustomProt;
-    uint32_t m_BankUnk;
+    std::string m_BankSysPass;
 };
 
 #endif

@@ -2,8 +2,10 @@
 #define __CENTAURUS_H
 
 #include <stdint.h>
-#include <string>
 #include <functional>
+#include <string>
+#include <vector>
+#include <map>
 
 #ifdef WIN32
 #ifdef CENTAURUS_INTERNAL
@@ -29,6 +31,7 @@ enum CroBankFile {
 class CronosABI;
 class CroBuffer;
 class CroTable;
+class CroEntry;
 class CroFile;
 class CroAttr;
 class CroBase;
@@ -50,13 +53,10 @@ public:
     virtual CroFile* File(CroBankFile file) const = 0;
     virtual std::string String(const char* data, size_t len) = 0;
 
-    virtual void ExportHeaders() const = 0;
+    virtual void LoadBankInfo(ICentaurusExport* exp) = 0;
 
-    virtual void LoadStructure(ICentaurusExport* exp) = 0;
-    virtual void LoadBases(ICentaurusExport* exp) = 0;
-
-    virtual CroAttr& Attr(const std::string& name) = 0;
-    virtual CroAttr& Attr(unsigned index) = 0;
+    virtual CroBuffer& Attr(const std::string& name) = 0;
+    virtual CroBuffer& Attr(unsigned index) = 0;
     virtual unsigned AttrCount() const = 0;
 
     virtual bool IsValidBase(unsigned index) const = 0;
@@ -104,12 +104,27 @@ protected:
     virtual void Execute() = 0;
 };
 
+/* CentaurusLoader */
+
+class ICentaurusLoader
+{
+public:
+
+};
+
 /* CentaurusExport */
 
 enum ExportFormat {
     ExportCSV,
     ExportJSON
 };
+
+struct RecordPart {
+    uint64_t m_PartOff;
+    uint64_t m_PartSize;
+};
+using RecordPartList = std::vector<RecordPart>;
+using RecordMap = std::map<unsigned, CroBuffer>;
 
 class ICentaurusExport
 {
@@ -118,7 +133,10 @@ public:
     virtual const std::wstring& ExportPath() const = 0;
     virtual ExportFormat GetExportFormat() const = 0;
     virtual void SetExportFormat(ExportFormat fmt) = 0;
-    virtual void ReadRecord(CroFile* file, uint32_t id, CroBuffer& out) = 0;
+    virtual RecordPartList CollectRecordParts(CroFile* file, CroEntry& entry) = 0;
+    virtual void ReadRecord(CroFile* file, CroEntry& entry,
+        CroBuffer& out) = 0;
+    virtual RecordMap ReadRecordMap(CroFile* file) = 0;
     virtual void SyncBankJson() = 0;
 };
 

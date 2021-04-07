@@ -2,6 +2,7 @@
 #include <centaurus.h>
 #include <win32util.h>
 
+bool testMode = false;
 bool exportMode = true;
 std::wstring rootPath = L"K:\\Centaurus";
 std::wstring bankPath = L"K:\\Cronos\\TestBanks";
@@ -40,8 +41,12 @@ void FindBanks(const std::wstring& path)
             std::string name = WcharToAnsi(bank->BankName(), 866);
             printf("[FindBanks] \"%s\", ID %d\n",
                 name.c_str(), bank->BankId());
-
-            if (exportMode)
+            if (testMode)
+            {
+                printf("[FindBanks] TEST \"%s\"\n",
+                    WcharToAnsi(path, 866).c_str());
+            }
+            else if (exportMode)
             {
                 if (centaurus->IsBankExported(bank->BankId()))
                 {
@@ -70,7 +75,8 @@ int main(int argc, char** argv)
     for (int i = 1; i < argc; i++)
     {
         std::string option = argv[i];
-        if (option == "--export") exportMode = true;
+        if (option == "--test") testMode = true;
+        else if (option == "--export") exportMode = true;
         else if (option == "--root")
             rootPath = AnsiToWchar(argv[++i], 1251);
         else if (option == "--bank")

@@ -1,4 +1,4 @@
-#include "centaurus_worker.h"
+#include "worker.h"
 #include <stdexcept>
 
 #include <boost/lexical_cast.hpp>

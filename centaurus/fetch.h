@@ -1,11 +1,11 @@
-#ifndef __CENTAURUS_LOADER_H
-#define __CENTAURUS_LOADER_H
+#ifndef __CENTAURUS_FETCH_H
+#define __CENTAURUS_FETCH_H
 
-#include "centaurus_worker.h"
+#include "worker.h"
 #include <string>
 #include <queue>
 
-class CentaurusLoader : public CentaurusWorker
+class CentaurusFetch : public CentaurusWorker
 {
 public:
     void RequestBank(const std::wstring& path);

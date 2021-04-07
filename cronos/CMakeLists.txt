@@ -9,16 +9,20 @@ set(SOURCES
     croexception.cpp
     croentity.cpp
     crobuffer.cpp
-    crodata.cpp
-    crotable.cpp
     crofile.cpp
     cronos02.cpp
+    crodata.cpp
     cronos_abi.cpp
     crostream.cpp
+    crotable.cpp
+    croentry.cpp
+    croblock.cpp
+    crorecord.cpp
     croattr.cpp
 )
 
 set(HEADERS
+    cronos_format.h
     crotype.h
     croexception.h
     croentity.h
@@ -27,9 +31,13 @@ set(HEADERS
     crotable.h
     crofile.h
     cronos02.h
-    cronos_format.h
+    crodata.h
     cronos_abi.h
     crostream.h
+    crotable.h
+    croentry.h
+    croblock.h
+    crorecord.h
     croattr.h
 )
 

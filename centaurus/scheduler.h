@@ -1,8 +1,8 @@
 #ifndef __CENTAURUS_SCHEDULER_H
 #define __CENTAURUS_SCHEDULER_H
 
-#include "centaurus_worker.h"
-#include "centaurus_job.h"
+#include "worker.h"
+#include "job.h"
 
 class CentaurusScheduler : public CentaurusWorker
 {

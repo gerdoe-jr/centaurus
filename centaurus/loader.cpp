@@ -1,6 +1,6 @@
-#include "centaurus_loader.h"
-#include "centaurus_export.h"
-#include "centaurus_bank.h"
+#include "loader.h"
+#include "export.h"
+#include "bank.h"
 #include <win32util.h>
 
 void CentaurusLoader::RequestBank(const std::wstring& path)
@@ -60,8 +60,7 @@ bool CentaurusLoader::LoadPath(const std::wstring& path)
     exp->SetTargetBank(bank);
     m_pLoadedBank = bank;
 
-    bank->LoadStructure(exp.get());
-    bank->LoadBases(exp.get());
+    bank->LoadBankInfo(exp.get());
 
     return true;
 }

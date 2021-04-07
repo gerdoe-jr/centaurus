@@ -1,7 +1,7 @@
 #ifndef __CENTAURUS_JOB_H
 #define __CENTAURUS_JOB_H
 
-#include "centaurus_worker.h"
+#include "worker.h"
 
 class CentaurusJob : public CentaurusWorker
 {

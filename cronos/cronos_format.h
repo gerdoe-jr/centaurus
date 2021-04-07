@@ -6,9 +6,12 @@
 // 01.02    3x, small model
 // 01.03    3x, big model
 // 01.04    3x, lite
+
 // 01.11    4x
 // 01.13    4x, pro
 // 01.14    4x, lite
+
+// 01.19    7x
 
 /* Cronos file header */
 

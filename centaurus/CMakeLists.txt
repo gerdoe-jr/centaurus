@@ -3,26 +3,26 @@ project(centaurus)
 
 set(HEADERS
     centaurus.h
-    centaurus_api.h
-    centaurus_bank.h
-    centaurus_task.h
-    centaurus_worker.h
-    centaurus_export.h
-    centaurus_loader.h
-    centaurus_job.h
-    centaurus_scheduler.h
+    api.h
+    bank.h
+    task.h
+    worker.h
+    export.h
+    loader.h
+    job.h
+    scheduler.h
 )
 
 set(SOURCES
     centaurus.cpp
-    centaurus_api.cpp
-    centaurus_bank.cpp
-    centaurus_task.cpp
-    centaurus_worker.cpp
-    centaurus_export.cpp
-    centaurus_loader.cpp
-    centaurus_job.cpp
-    centaurus_scheduler.cpp
+    api.cpp
+    bank.cpp
+    task.cpp
+    worker.cpp
+    export.cpp
+    loader.cpp
+    job.cpp
+    scheduler.cpp
 )
 
 if(MSVC)

@@ -1,5 +1,5 @@
-#include "centaurus_job.h"
-#include "centaurus_api.h"
+#include "job.h"
+#include "api.h"
 #include <croexception.h>
 #include <crofile.h>
 #include <win32util.h>

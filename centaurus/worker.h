@@ -1,7 +1,7 @@
 #ifndef __CENTAURUS_WORKER_H
 #define __CENTAURUS_WORKER_H
 
-#include "centaurus_task.h"
+#include "task.h"
 
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>

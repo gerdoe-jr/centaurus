@@ -87,30 +87,9 @@ crofile_status CroFile::Open()
     // 32-bit secret higher part + 32-bit serial lower part
     if (IsEncrypted())
     {
-        if (m_Secret.IsEmpty())
-        {
-            CroData secret = hdr.CopyValue(cronos_hdr_secret);
-            
-            if (ABI()->IsLite())
-            {
-                CroData lite = hdr.CopyValue(cronos_hdrlite_secret);
-
-                auto bf = std::make_unique<blowfish_t>();
-            }
-            
-            //memmove(m_Secret.GetData() + 4, m_Secret.GetData(), 4);
-            //memcpy(m_Secret.GetData(), &m_uSerial, 4);
-            m_Secret = CipherKey(secret.Get<uint32_t>(4), 1);
-        }
-
-        m_Crypt = hdr.CopyValue(cronos_hdr_crypt);
-        if (ABI()->GetModel() != cronos_model_small)
-        {
-            auto bf = std::make_unique<blowfish_t>();
-            blowfish_init(bf.get(), m_Secret.GetData(), m_Secret.GetSize());
-            blowfish_decrypt_buffer(bf.get(), m_Crypt.GetData(),
-                m_Crypt.GetSize());
-        }
+        CroData secret = hdr.CopyValue(cronos_hdr_secret);
+        
+        SetCryptKey(secret.Get<uint32_t>((cronos_off)0x00), 1);
     }
 
     return SetError(CROFILE_OK);
@@ -181,21 +160,25 @@ bool CroFile::IsCompressed() const
     return m_uFlags & CRONOS_COMPRESSION;
 }
 
-void CroFile::SetSecret(uint32_t serial, uint32_t key)
-{
-    if (m_Secret.IsEmpty())
-        m_Secret.Alloc(8);
-
-    *(uint32_t*)m_Secret.Data(0x00) = serial;
-    *(uint32_t*)m_Secret.Data(0x04) = key;
-}
-
-CroData CroFile::CipherKey(uint32_t secretHigh, uint32_t serial) const
+void CroFile::SetCryptKey(uint32_t secret, uint32_t serial)
 {
     CroData key;
     key.Write((uint8_t*)&serial, sizeof(uint32_t));
-    key.Write((uint8_t*)&secretHigh, sizeof(uint32_t));
-    return key;
+    key.Write((uint8_t*)&secret, sizeof(uint32_t));
+    LoadCryptTable(key);
+}
+
+void CroFile::LoadCryptTable(CroData& key)
+{
+    m_Crypt = Read(INVALID_CRONOS_ID, 1, cronos_hdr_crypt);
+
+    if (ABI()->GetModel() != cronos_model_small)
+    {
+        auto bf = std::make_unique<blowfish_t>();
+        blowfish_init(bf.get(), key.GetData(), key.GetSize());
+        blowfish_decrypt_buffer(bf.get(), m_Crypt.GetData(),
+            m_Crypt.GetSize());
+    }
 }
 
 void CroFile::Decrypt(CroBuffer& block, uint32_t prefix, const CroData* crypt)
@@ -375,7 +358,7 @@ cronos_idx CroFile::OptimalRecordCount(CroEntryTable* tad, cronos_id start)
     return entry.Id() - start + 1;
 }
 
-cronos_size CroFile::RecordTableOffsets(CroEntryTable* tad, cronos_id id,
+cronos_size CroFile::BlockTableOffsets(CroEntryTable* tad, cronos_id id,
     cronos_idx count, cronos_off& start, cronos_off& end)
 {
     CroEntry entryStart, entryEnd;
@@ -390,12 +373,12 @@ cronos_size CroFile::RecordTableOffsets(CroEntryTable* tad, cronos_id id,
     return end - start;
 }
 
-CroRecordTable CroFile::LoadRecordTable(CroEntryTable* tad,
+CroBlockTable CroFile::LoadBlockTable(CroEntryTable* tad,
     cronos_id id, cronos_idx count)
 {
     cronos_off start, end;
-    cronos_size size = RecordTableOffsets(tad, id, count, start, end);
-    CroRecordTable table = CroRecordTable(*tad, id, count);
+    cronos_size size = BlockTableOffsets(tad, id, count, start, end);
+    CroBlockTable table = CroBlockTable(*tad, id, count);
 
     table.SetOffset(start);
     LoadTable(CRONOS_DAT, id, start, end, table);

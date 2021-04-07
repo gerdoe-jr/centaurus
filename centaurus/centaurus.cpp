@@ -1,7 +1,7 @@
 ﻿#include "centaurus.h"
-#include "centaurus_api.h"
-#include "centaurus_task.h"
-#include "centaurus_export.h"
+#include "api.h"
+#include "task.h"
+#include "export.h"
 
 CENTAURUS_API ICentaurusAPI* centaurus = NULL;
 

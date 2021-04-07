@@ -58,7 +58,7 @@ cronos_flags CroField::GetFlags() const
     return m_Flags;
 }
 
-unsigned CroField::Parse(ICroParser* parser, CroStream& stream)
+void CroField::Parse(ICroParser* parser, CroStream& stream)
 {
     uint16_t size = stream.Read<uint16_t>();
     cronos_rel pos = stream.GetPosition();
@@ -77,7 +77,6 @@ unsigned CroField::Parse(ICroParser* parser, CroStream& stream)
     }
 
     stream.SetPosition(pos + size);
-    return m_Index;
 }
 
 /* CroBase */
@@ -115,7 +114,7 @@ unsigned CroBase::FieldEnd() const
     return m_Fields.empty() ? 0 : std::prev(m_Fields.end())->first;
 }
 
-cronos_idx CroBase::Parse(ICroParser* parser, CroAttr& attr)
+void CroBase::Parse(ICroParser* parser, CroAttr& attr)
 {
     CroStream base = CroStream(attr.GetAttr());
 
@@ -141,8 +140,6 @@ cronos_idx CroBase::Parse(ICroParser* parser, CroAttr& attr)
         field.Parse(parser, base);
         m_Fields.insert(std::make_pair(i, field));
     }
-
-    return m_BaseIndex;
 }
 
 /* CroAttrNS */
@@ -151,7 +148,6 @@ CroAttrNS::CroAttrNS()
 {
     m_BankSerial = 0;
     m_BankCustomProt = 0;
-    m_BankUnk = 0;
 }
 
 void CroAttrNS::Parse(ICroParser* parser, CroAttr& attr)
@@ -173,5 +169,13 @@ void CroAttrNS::Parse(ICroParser* parser, CroAttr& attr)
 
     m_BankSerial = hdr.Read<uint32_t>();
     m_BankCustomProt = hdr.Read<uint32_t>();
-    m_BankUnk = hdr.Read<uint32_t>();
+    
+    uint32_t passLen = hdr.Read<uint32_t>();
+    if (passLen)
+    {
+        CroBuffer pass;
+        pass.Write(ns.Read(passLen), passLen);
+        stru->Decrypt(pass, prefix + 0x0C, &crypt);
+        m_BankSysPass = parser->String((const char*)pass.GetData(), passLen);
+    }
 }

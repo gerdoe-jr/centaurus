@@ -3,7 +3,9 @@
 
 #include "cronos_abi.h"
 #include "crodata.h"
-#include "crotable.h"
+#include "croentry.h"
+#include "croblock.h"
+#include "crorecord.h"
 #include <string>
 
 enum crofile_status {
@@ -54,10 +56,10 @@ public:
     bool IsEncrypted() const;
     bool IsCompressed() const;
 
-    void SetSecret(uint32_t serial, uint32_t key);
-    inline const CroData& GetSecret() const { return m_Secret; }
+    void SetDefaultCrypt();
+    void SetCryptKey(uint32_t secret, uint32_t serial = 1);
     inline const CroData& GetCryptTable() const { return m_Crypt; }
-    CroData CipherKey(uint32_t secretHigh, uint32_t serial = 1) const;
+    void LoadCryptTable(CroData& key);
     void Decrypt(CroBuffer& data, uint32_t prefix, const CroData* crypt = NULL);
 
     bool IsEndOfEntries() const;
@@ -117,11 +119,13 @@ public:
     CroEntryTable LoadEntryTable(cronos_id id, cronos_idx count);
 
     cronos_idx OptimalRecordCount(CroEntryTable* tad, cronos_id start);
-    cronos_size RecordTableOffsets(CroEntryTable* tad,
+    cronos_size BlockTableOffsets(CroEntryTable* tad,
         cronos_id id, cronos_idx count,
         cronos_off& start, cronos_off& end);
-    CroRecordTable LoadRecordTable(CroEntryTable* tad,
+    CroBlockTable LoadBlockTable(CroEntryTable* tad,
         cronos_id id, cronos_idx count);
+
+    CroRecordMap LoadRecordMap(cronos_id id, cronos_idx count);
 private:
     std::wstring m_Path;
 
@@ -146,7 +150,6 @@ private:
     uint32_t m_uDefLength;
     cronos_size m_uTadRecordSize;
 
-    CroData m_Secret;
     CroData m_Crypt;
 };
 
