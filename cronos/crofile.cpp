@@ -386,3 +386,17 @@ CroBlockTable CroFile::LoadBlockTable(CroEntryTable* tad,
 
     return table;
 }
+
+CroRecordMap CroFile::LoadRecordMap(cronos_id id, cronos_idx count)
+{
+    CroRecordMap map;
+    cronos_size entrySize = ABI()->Size(cronos_tad_entry);
+
+    map.SetOffset(ABI()->Offset(cronos_tad_entry)
+        + (cronos_size)(id - 1) * entrySize);
+    LoadTable(CRONOS_TAD, id, count * entrySize, map);
+
+    map.Load();
+    return map;
+}
+

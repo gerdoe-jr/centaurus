@@ -7,8 +7,9 @@ set(HEADERS
     bank.h
     task.h
     worker.h
-    export.h
     loader.h
+    fetch.h
+    export.h
     job.h
     scheduler.h
 )
@@ -19,8 +20,9 @@ set(SOURCES
     bank.cpp
     task.cpp
     worker.cpp
-    export.cpp
     loader.cpp
+    fetch.cpp
+    export.cpp
     job.cpp
     scheduler.cpp
 )

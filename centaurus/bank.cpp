@@ -215,72 +215,30 @@ void CentaurusBank::ExportHeaders() const
     centaurus->LogBuffer(ns1Attr.GetAttr());
 }*/
 
-void CentaurusBank::LoadBankInfo(ICentaurusExport* exp)
+void CentaurusBank::LoadBankInfo(ICentaurusLoader* cro)
 {
-    LoadStructure(exp);
+    LoadStructure(cro);
 }
 
-void CentaurusBank::LoadStructure(ICentaurusExport* exp)
+void CentaurusBank::LoadStructure(ICentaurusLoader* cro)
 {
-    CroFile* stru = File(CroStru);
-    if (!stru) throw std::runtime_error("no structure");
-    auto* abi = stru->ABI();
+    CroFile* file = cro->SetLoaderFile(CroStru);
+    if (!file) throw std::runtime_error("no structure");
 
-    CroEntryTable tad = stru->LoadEntryTable(1, stru->EntryCountFileSize());
-    RecordMap records = exp->ReadRecordMap(stru);
-    printf("[CentaurusBank] %zu structure record(s)\n", records.size());
-    return;
-    
-    std::map<cronos_id, std::string> refBlocks;
-    for (cronos_id id = tad.IdStart(); id != tad.IdEnd(); id++)
+    auto stru = cro->GetRecordMap(1, file->EntryCountFileSize());
+    for (cronos_id id = cro->Start(); id != cro->End(); id++)
     {
-        CroEntry entry = tad.GetEntry(id);
-        if (!entry.IsActive()) continue;
-        
-        CroBuffer record;
-        RecordPartList parts = exp->CollectRecordParts(stru, entry);
-        
-        exp->ReadRecord(stru, entry, record);
+        if (!stru->HasRecord(id)) continue;
+        printf("stru record %" FCroId "\n", id);
 
-        CroStream stream(record);
-        uint8_t prefix = stream.Read<uint8_t>();
-
-        if (prefix == CROATTR_PREFIX)
-        {
-            while (!stream.IsOverflowed())
-            {
-                CroAttr attr;
-                attr.Parse(this, stream);
-                std::string name = attr.GetName();
-
-                if (attr.IsRef())
-                {
-                    refBlocks[attr.RefBlockId()] = name;
-                }
-                else
-                {
-                    m_Attrs[name] = CroBuffer();
-                    auto& out = m_Attrs[name];
-
-                    cronos_size size = attr.AttrSize();
-                    out.Copy(stream.Read(size), size);
-                }
-            }
-        }
-        else if (prefix == CROBLOCK_PREFIX)
-        {
-            auto ref = refBlocks.find(id);
-            if (ref == refBlocks.end())
-                continue;
-
-            auto& out = m_Attrs[ref->second];
-            cronos_size size = stream.Remaining();
-            out.Copy(stream.Read(size), size);
-        }
+        CroBuffer rec = stru->LoadRecord(id);
+        centaurus->LogBuffer(rec, 866);
     }
+    
+    cro->ReleaseMap();
 }
 
-BankProps CentaurusBank::LoadProps(RecordMap& stru)
+BankProps CentaurusBank::LoadProps(CroRecordMap* stru)
 {
     return {};
 }

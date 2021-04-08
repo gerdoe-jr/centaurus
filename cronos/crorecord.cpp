@@ -21,6 +21,7 @@ void CroRecord::AddPart(cronos_off off, cronos_size size)
 CroBlock CroRecordMap::ReadBlock(cronos_off off, cronos_size size)
 {
     CroBlock block = CroBlock(size == ABI()->Size(cronos_first_block_hdr));
+    block.InitData(File(), INVALID_CRONOS_ID, CRONOS_DAT, off, size);
     File()->Read(block, 1, size);
     return block;
 }
@@ -41,13 +42,14 @@ CroRecord CroRecordMap::GetRecordMap(cronos_id id)
 
     if (hasBlock)
     {
-        CroBlock block = ReadBlock(entry.EntryOffset(), entry.EntrySize());
+        CroBlock block = ReadBlock(entry.EntryOffset(), blockSize);
         recordNext = block.BlockNext();
         recordSize = block.BlockSize();
     }
     
     cronos_off dataOff = entry.EntryOffset() + blockSize;
-    cronos_size dataSize = entry.EntrySize() - blockSize;
+    cronos_size dataSize = std::min(recordSize,
+        entry.EntrySize() - blockSize);
 
     record.AddPart(dataOff, dataSize);
     recordSize -= dataSize;
@@ -97,4 +99,11 @@ CroBuffer CroRecordMap::LoadRecord(cronos_id id)
         file->Decrypt(out, id);
 
     return out;
+}
+
+bool CroRecordMap::HasRecord(cronos_id id) const
+{
+    if (!GetEntry(id).IsActive())
+        return false;
+    return m_Record.find(id) != m_Record.end();
 }

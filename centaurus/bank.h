@@ -30,10 +30,10 @@ public:
 
     void ExportHeaders() const;
 
-    void LoadBankInfo(ICentaurusExport* exp) override;
-    void LoadStructure(ICentaurusExport* exp);
+    void LoadBankInfo(ICentaurusLoader* cro) override;
+    void LoadStructure(ICentaurusLoader* cro);
 
-    BankProps LoadProps(RecordMap& stru);
+    BankProps LoadProps(CroRecordMap* stru);
 
     CroBuffer& Attr(const std::string& name) override;
     CroBuffer& Attr(unsigned index) override;

@@ -30,6 +30,7 @@ public:
 
     void Load();
     CroBuffer LoadRecord(cronos_id id);
+    bool HasRecord(cronos_id id) const;
 private:
     std::map<cronos_id, CroRecord> m_Record;
 };

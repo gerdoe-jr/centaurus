@@ -54,7 +54,7 @@ CENTAURUS_API void Centaurus_Idle()
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank)
 {
     CentaurusExport* exp = new CentaurusExport();
-    exp->SetTargetBank(bank);
+    exp->LoadBank(bank);
 
     return exp;
 }

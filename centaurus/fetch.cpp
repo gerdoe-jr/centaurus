@@ -1,5 +1,5 @@
+#include "fetch.h"
 #include "loader.h"
-#include "export.h"
 #include "bank.h"
 #include <win32util.h>
 
@@ -46,22 +46,21 @@ void CentaurusFetch::Execute()
 
 bool CentaurusFetch::LoadPath(const std::wstring& path)
 {
-    auto exp = std::make_unique<CentaurusExport>();
+    auto cro = std::make_unique<CentaurusLoader>();
     CentaurusBank* bank = new CentaurusBank();
     m_pLoadedBank = NULL;
 
     bank->AssociatePath(path);
-    if (!exp->AcquireBank(bank))
+    if (!cro->AcquireBank(bank))
     {
         delete bank;
         return false;
     }
 
-    exp->SetTargetBank(bank);
+    cro->LoadBank(bank);
     m_pLoadedBank = bank;
 
-    bank->LoadBankInfo(exp.get());
-
+    bank->LoadBankInfo(cro.get());
     return true;
 }
 

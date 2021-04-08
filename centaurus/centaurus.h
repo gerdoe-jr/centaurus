@@ -35,8 +35,9 @@ class CroEntry;
 class CroFile;
 class CroAttr;
 class CroBase;
+class CroRecordMap;
 
-class ICentaurusExport;
+class ICentaurusLoader;
 
 class ICentaurusBank
 {
@@ -53,7 +54,7 @@ public:
     virtual CroFile* File(CroBankFile file) const = 0;
     virtual std::string String(const char* data, size_t len) = 0;
 
-    virtual void LoadBankInfo(ICentaurusExport* exp) = 0;
+    virtual void LoadBankInfo(ICentaurusLoader* cro) = 0;
 
     virtual CroBuffer& Attr(const std::string& name) = 0;
     virtual CroBuffer& Attr(unsigned index) = 0;
@@ -109,7 +110,15 @@ protected:
 class ICentaurusLoader
 {
 public:
+    virtual void LoadBank(ICentaurusBank* bank) = 0;
+    virtual CroFile* SetLoaderFile(CroBankFile ftype) = 0;
+    virtual ICentaurusBank* TargetBank() const = 0;
 
+    virtual CroRecordMap* GetRecordMap(unsigned id, unsigned count) = 0;
+    virtual CroBuffer GetRecord(unsigned id) = 0;
+    virtual unsigned Start() const = 0;
+    virtual unsigned End() const = 0;
+    virtual void ReleaseMap() = 0;
 };
 
 /* CentaurusExport */
@@ -119,24 +128,12 @@ enum ExportFormat {
     ExportJSON
 };
 
-struct RecordPart {
-    uint64_t m_PartOff;
-    uint64_t m_PartSize;
-};
-using RecordPartList = std::vector<RecordPart>;
-using RecordMap = std::map<unsigned, CroBuffer>;
-
 class ICentaurusExport
 {
 public:
-    virtual ICentaurusBank* TargetBank() = 0;
     virtual const std::wstring& ExportPath() const = 0;
     virtual ExportFormat GetExportFormat() const = 0;
     virtual void SetExportFormat(ExportFormat fmt) = 0;
-    virtual RecordPartList CollectRecordParts(CroFile* file, CroEntry& entry) = 0;
-    virtual void ReadRecord(CroFile* file, CroEntry& entry,
-        CroBuffer& out) = 0;
-    virtual RecordMap ReadRecordMap(CroFile* file) = 0;
     virtual void SyncBankJson() = 0;
 };
 

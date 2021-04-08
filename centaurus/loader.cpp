@@ -1,72 +1,69 @@
 #include "loader.h"
-#include "export.h"
-#include "bank.h"
-#include <win32util.h>
+#include <crofile.h>
 
-void CentaurusLoader::RequestBank(const std::wstring& path)
+CentaurusLoader::CentaurusLoader()
 {
-    {
-        auto lock = scoped_lock(m_DataLock);
-        m_Dirs.push(path);
-    }
-    m_SyncCond.notify_one();
+    m_pBank = NULL;
+    m_pFile = NULL;
+    m_pMap = NULL;
 }
 
-void CentaurusLoader::RequestBanks(std::vector<std::wstring> dirs)
+void CentaurusLoader::RunTask()
 {
-    {
-        auto lock = scoped_lock(m_DataLock);
-        for (const auto& dir : dirs) m_Dirs.push(dir);
-    }
-    m_SyncCond.notify_one();
 }
 
-void CentaurusLoader::Execute()
+void CentaurusLoader::Release()
 {
-    if (m_Dirs.empty())
-    {
-        m_State = Waiting;
-        return;
-    }
-
-    std::wstring dir;
-    {
-        auto lock = scoped_lock(m_DataLock);
-        dir = m_Dirs.front();
-        m_Dirs.pop();
-    }
-
-    m_LoadedPath = dir;
-    if (!LoadPath(dir))
-    {
-        m_pLoadedBank = NULL;
-        LogLoaderFail(dir);
-    }
+    ReleaseMap();
 }
 
-bool CentaurusLoader::LoadPath(const std::wstring& path)
+void CentaurusLoader::LoadBank(ICentaurusBank* bank)
 {
-    auto exp = std::make_unique<CentaurusExport>();
-    CentaurusBank* bank = new CentaurusBank();
-    m_pLoadedBank = NULL;
-
-    bank->AssociatePath(path);
-    if (!exp->AcquireBank(bank))
-    {
-        delete bank;
-        return false;
-    }
-
-    exp->SetTargetBank(bank);
-    m_pLoadedBank = bank;
-
-    bank->LoadBankInfo(exp.get());
-
-    return true;
+    m_pBank = bank;
+    SetLoaderFile(CroStru);
 }
 
-void CentaurusLoader::LogLoaderFail(const std::wstring& dir)
+CroFile* CentaurusLoader::SetLoaderFile(CroBankFile ftype)
 {
-    fprintf(stderr, "[CentaurusLoader] failed to load %s\n",
-        WcharToAnsi(dir).c_str());
+    m_pFile = m_pBank->File(ftype);
+    if (!m_pFile)
+        throw std::runtime_error("SetLoaderFile no file");
+    return m_pFile;
+}
+
+ICentaurusBank* CentaurusLoader::TargetBank() const
+{
+    return m_pBank;
+}
+
+CroRecordMap* CentaurusLoader::GetRecordMap(unsigned id, unsigned count)
+{
+    m_pMap = AcquireTable<CroRecordMap>(m_pFile->LoadRecordMap(id, count));
+    return m_pMap;
+}
+
+CroBuffer CentaurusLoader::GetRecord(unsigned id)
+{
+    if (!m_pMap->HasRecord(id))
+        throw std::runtime_error("loader no record");
+    return m_pMap->LoadRecord(id);
+}
+
+unsigned CentaurusLoader::Start() const
+{
+    return m_pMap->IsEmpty() ? INVALID_CRONOS_ID : m_pMap->IdStart();
+}
+
+unsigned CentaurusLoader::End() const
+{
+    return m_pMap->IsEmpty() ? INVALID_CRONOS_ID : m_pMap->IdEnd();
+}
+
+void CentaurusLoader::ReleaseMap()
+{
+    if (m_pMap)
+    {
+        ReleaseTable(m_pMap);
+        m_pMap = NULL;
+    }
 }
