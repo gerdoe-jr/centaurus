@@ -2,12 +2,13 @@
 #define __CENTAURUS_WORKER_H
 
 #include "task.h"
+#include "logger.h"
 
 #include <boost/thread/thread.hpp>
 #include <boost/thread/mutex.hpp>
 using scoped_lock = boost::mutex::scoped_lock;
 
-class CentaurusWorker : public ICentaurusWorker
+class CentaurusWorker : public ICentaurusWorker, protected CentaurusLogger
 {
 public:
     CentaurusWorker();
@@ -18,6 +19,8 @@ public:
     
     void Wait() override;
     state State() const override;
+    void SetWorkerLogger(ICentaurusLogger* log) override;
+    ICentaurusLogger* GetWorkerLogger() override;
     
     void Run();
     std::string GetName();

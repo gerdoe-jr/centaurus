@@ -6,6 +6,7 @@
 /* CentaurusWorker */
 
 CentaurusWorker::CentaurusWorker()
+    : CentaurusLogger("CentaurusWorker")
 {
     m_State = Waiting;
 }
@@ -40,8 +41,20 @@ ICentaurusWorker::state CentaurusWorker::State() const
     return (ICentaurusWorker::state)m_State.load();
 }
 
+void CentaurusWorker::SetWorkerLogger(ICentaurusLogger* log)
+{
+    SetLogForward(log);
+}
+
+ICentaurusLogger* CentaurusWorker::GetWorkerLogger()
+{
+    return dynamic_cast<ICentaurusLogger*>(this);
+}
+
 void CentaurusWorker::Run()
 {
+    SetLogName(GetName());
+
     while (m_State != Terminated)
     {
         try {
@@ -63,6 +76,7 @@ void CentaurusWorker::Run()
         } catch (const boost::thread_interrupted& ti) {
             m_State = Terminated;
         } catch (std::exception& e) {
+            Error(e.what());
             centaurus->OnWorkerException(this, e);
             m_State = Terminated;
         }

@@ -21,23 +21,16 @@ public:
     void AssociatePath(const std::wstring& path) override;
     std::wstring GetPath() const override;
     void SetCodePage(unsigned codepage) override;
-    
+
     CroFile* File(CroBankFile type) const override;
     std::string String(const char* data, size_t len) override;
     CroFile* CroFileStru() override;
     CroFile* CroFileBank() override;
     CroFile* CroFileIndex() override;
 
-    void ExportHeaders() const;
-
-    void LoadBankInfo(ICentaurusLoader* cro) override;
-    void LoadStructure(ICentaurusLoader* cro);
+    void LoadStructure(ICronosAPI* cro) override;
 
     BankProps LoadProps(CroRecordMap* stru);
-
-    CroBuffer& Attr(const std::string& name) override;
-    CroBuffer& Attr(unsigned index) override;
-    unsigned AttrCount() const override;
 
     bool IsValidBase(unsigned index) const override;
     CroBase& Base(unsigned index) override;
@@ -50,7 +43,7 @@ private:
     unsigned m_uCodePage;
     std::unique_ptr<CroFile> m_Files[CroBankFile_Count];
 
-    std::map<std::string, CroBuffer> m_Attrs;
+    //std::map<std::string, CroBuffer> m_Attrs;
     
     uint32_t m_BankId;
     std::wstring m_BankName;

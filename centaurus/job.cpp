@@ -16,6 +16,7 @@ CentaurusJob::~CentaurusJob()
 
 void CentaurusJob::Execute()
 {
+    m_pTask->Invoke(this);
     try {
         m_pTask->RunTask();
     }

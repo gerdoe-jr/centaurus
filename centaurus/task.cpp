@@ -4,10 +4,29 @@
 #include <croexception.h>
 #include <crofile.h>
 
+CentaurusTask::CentaurusTask()
+    : CentaurusLogger("CentaurusTask", logger),
+    m_TaskName("CentaurusTask")
+{
+    m_pInvoker = NULL;
+}
+
+CentaurusTask::CentaurusTask(const std::string& taskName)
+    : CentaurusLogger(taskName, logger),
+    m_TaskName(taskName)
+{
+    m_pInvoker = NULL;
+}
 
 CentaurusTask::~CentaurusTask()
 {
     Release();
+}
+
+void CentaurusTask::Invoke(ICentaurusWorker* invoker)
+{
+    m_pInvoker = invoker;
+    SetLogForward(m_pInvoker ? m_pInvoker->GetWorkerLogger() : logger);
 }
 
 void CentaurusTask::RunTask()
@@ -50,7 +69,7 @@ bool CentaurusTask::AcquireBank(ICentaurusBank* bank)
 void CentaurusTask::AcquireTable(CroTable* table)
 {
     auto lock = boost::mutex::scoped_lock(m_DataLock);
-    centaurus->LogTable(*table);
+    LogTable(*table);
     m_Tables.emplace_back(table);
 }
 
@@ -79,4 +98,14 @@ void CentaurusTask::ReleaseTable(CroTable* table)
             break;
         }
     }
+}
+
+ICentaurusWorker* CentaurusTask::Invoker() const
+{
+    return m_pInvoker;
+}
+
+const std::string& CentaurusTask::TaskName() const
+{
+    return m_TaskName;
 }

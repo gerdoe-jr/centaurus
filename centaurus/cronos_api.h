@@ -1,14 +1,15 @@
-#ifndef __CENTAURUS_LOADER_H
-#define __CENTAURUS_LOADER_H
+#ifndef __CRONOS_API_H
+#define __CRONOS_API_H
 
 #include "centaurus.h"
 #include "task.h"
 #include <crorecord.h>
 
-class CentaurusLoader : public CentaurusTask, public ICentaurusLoader
+class CronosAPI : public CentaurusTask, public ICronosAPI
 {
 public:
-    CentaurusLoader();
+    CronosAPI();
+    CronosAPI(const std::string& taskName);
 
     void RunTask() override;
     void Release() override;
@@ -22,6 +23,8 @@ public:
     unsigned Start() const override;
     unsigned End() const override;
     void ReleaseMap() override;
+
+    ICentaurusLogger* CronosLog() override;
 protected:
     ICentaurusBank* m_pBank;
     CroFile* m_pFile;

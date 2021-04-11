@@ -20,9 +20,11 @@ void FixHeader(const std::wstring& datPath)
     }*/
 }
 
+static ICentaurusLogger* findLog;
+
 void FindBanks(const std::wstring& path)
 {
-    printf("[FindBanks] %s\n", WcharToAnsi(path, 866).c_str());
+    findLog->Log("%s\n", WcharToAnsi(path, 866).c_str());
 
     auto [files, dirs] = ListDirectory(path);
     for (auto& file : files)
@@ -33,25 +35,23 @@ void FindBanks(const std::wstring& path)
             ICentaurusBank* bank = centaurus->WaitBank(path);
             if (!centaurus->IsBankLoaded(bank))
             {
-                fprintf(stderr, "[FindBanks] Failed to connect %s\n",
+                findLog->Error("Failed to connect %s\n",
                     WcharToAnsi(path, 866).c_str());
                 break;
             }
 
             std::string name = WcharToAnsi(bank->BankName(), 866);
-            printf("[FindBanks] \"%s\", ID %d\n",
-                name.c_str(), bank->BankId());
+            findLog->Log("\"%s\", ID %d\n", name.c_str(), bank->BankId());
+
             if (testMode)
             {
-                printf("[FindBanks] TEST \"%s\"\n",
-                    WcharToAnsi(path, 866).c_str());
+                findLog->Log("TEST \"%s\"\n", WcharToAnsi(path, 866).c_str());
             }
             else if (exportMode)
             {
                 if (centaurus->IsBankExported(bank->BankId()))
                 {
-                    printf("[FindBanks] \"%s\" already exported\n",
-                        name.c_str());
+                    findLog->Log("\"%s\" already exported\n", name.c_str());
                 }
                 else
                 {
@@ -96,11 +96,13 @@ int main(int argc, char** argv)
     centaurus->SetTableSizeLimit(tableLimit * 1024 * 1024);
     centaurus->SetWorkerLimit(workerLimit);
 
+    findLog = CentaurusLogger_Forward("FindBanks");
     FindBanks(bankPath);
 
     Centaurus_RunThread();
     Centaurus_Idle();
 
+    CentaurusLogger_Destroy(findLog);
     Centaurus_Exit();
     return 0;
 }

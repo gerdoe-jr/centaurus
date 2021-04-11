@@ -3,11 +3,12 @@ project(centaurus)
 
 set(HEADERS
     centaurus.h
+    cronos_api.h
+    logger.h
     api.h
     bank.h
     task.h
     worker.h
-    loader.h
     fetch.h
     export.h
     job.h
@@ -16,11 +17,12 @@ set(HEADERS
 
 set(SOURCES
     centaurus.cpp
+    cronos_api.cpp
+    logger.cpp
     api.cpp
     bank.cpp
     task.cpp
     worker.cpp
-    loader.cpp
     fetch.cpp
     export.cpp
     job.cpp

@@ -23,9 +23,7 @@ void CentaurusScheduler::ScheduleTask(ICentaurusTask* task)
             new CentaurusJob(task)).get();
 
         job->Start();
-
-        printf("[Scheduler] ScheduleTask %p -> %s\n",
-            task, job->GetName().c_str());
+        Log("ScheduleTask %p -> %s\n", task, job->GetName().c_str());
     }
 
     m_SyncCond.notify_one();
@@ -61,7 +59,7 @@ void CentaurusScheduler::Execute()
 
             if (job->State() == ICentaurusWorker::Terminated)
             {
-                printf("[Scheduler] %s terminated.\n", job->GetName().c_str());
+                Log("%s terminated.\n", job->GetName().c_str());
                 ICentaurusTask* task = job->JobTask();
 
                 centaurus->ReleaseTask(task);

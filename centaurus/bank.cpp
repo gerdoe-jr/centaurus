@@ -59,7 +59,7 @@ bool CentaurusBank::Connect()
             crofile_status st = file->Open();
             if (st != CROFILE_OK)
             {
-                fprintf(stderr, "CroFile status %u\n", st);
+                logger->Error("CroFile status %u\n", st);
                 m_Files[(CroBankFile)i] = NULL;
                 continue;
             }
@@ -69,7 +69,7 @@ bool CentaurusBank::Connect()
         }
         catch (const std::exception& e) {
             centaurus->OnException(e);
-            fprintf(stderr, "CroFile(%s) %s\n", WcharToAnsi(
+            logger->Error("CroFile(%s) %s\n", WcharToAnsi(
                 file->GetPath()).c_str(), e.what());
             m_Files[(CroBankFile)i] = NULL;
         }
@@ -131,39 +131,6 @@ CroFile* CentaurusBank::CroFileIndex()
     return File(CroBankFile::CroIndex);
 }
 
-void CentaurusBank::ExportHeaders() const
-{
-    sc::error_code ec;
-    std::wstring headerPath = m_Path + L"\\include";
-
-    fs::create_directory(headerPath, ec);
-    if (ec) throw std::runtime_error("ExportHeaders !create_directory");
-
-    for (unsigned i = 0; i < CroBankFile_Count; i++)
-    {
-        CroFile* file = File((CroBankFile)i);
-        if (!file) continue;
-
-        FILE* fHdr = NULL;
-        switch (i)
-        {
-        case CroStru:
-            _wfopen_s(&fHdr, (headerPath + L"\\CroStru.h").c_str(), L"w");
-            break;
-        case CroBank:
-            _wfopen_s(&fHdr, (headerPath + L"\\CroBank.h").c_str(), L"w");
-            break;
-        case CroIndex:
-            _wfopen_s(&fHdr, (headerPath + L"\\CroIndex.h").c_str(), L"w");
-            break;
-        }
-
-        if (!fHdr) throw std::runtime_error("ExportHeaders !fHdr");
-        centaurus->ExportABIHeader(file->ABI(), fHdr);
-        fclose(fHdr);
-    }
-}
-
 /*void CentaurusBank::LoadStructure(ICentaurusExport* exp)
 {
     CroFile* stru = File(CroStru);
@@ -215,24 +182,23 @@ void CentaurusBank::ExportHeaders() const
     centaurus->LogBuffer(ns1Attr.GetAttr());
 }*/
 
-void CentaurusBank::LoadBankInfo(ICentaurusLoader* cro)
+void CentaurusBank::LoadStructure(ICronosAPI* cro)
 {
-    LoadStructure(cro);
-}
+    auto* log = cro->CronosLog();
 
-void CentaurusBank::LoadStructure(ICentaurusLoader* cro)
-{
     CroFile* file = cro->SetLoaderFile(CroStru);
     if (!file) throw std::runtime_error("no structure");
 
     auto stru = cro->GetRecordMap(1, file->EntryCountFileSize());
+
+    log->LogRecordMap(*stru);
     for (cronos_id id = cro->Start(); id != cro->End(); id++)
     {
         if (!stru->HasRecord(id)) continue;
-        printf("stru record %" FCroId "\n", id);
+        log->Log("stru record %" FCroId "\n", id);
 
         CroBuffer rec = stru->LoadRecord(id);
-        centaurus->LogBuffer(rec, 866);
+        log->LogBuffer(rec, 1251);
     }
     
     cro->ReleaseMap();
@@ -241,24 +207,6 @@ void CentaurusBank::LoadStructure(ICentaurusLoader* cro)
 BankProps CentaurusBank::LoadProps(CroRecordMap* stru)
 {
     return {};
-}
-
-CroBuffer& CentaurusBank::Attr(const std::string& name)
-{
-    auto it = m_Attrs.find(name);
-    if (it == m_Attrs.end())
-        throw std::runtime_error("invalid attribute");
-    return it->second;
-}
-
-CroBuffer& CentaurusBank::Attr(unsigned index)
-{
-    throw std::runtime_error("attr by index is not implemented yet");
-}
-
-unsigned CentaurusBank::AttrCount() const
-{
-    return m_Attrs.size();
 }
 
 bool CentaurusBank::IsValidBase(unsigned index) const

@@ -35,23 +35,24 @@ CentaurusAPI* _centaurus = NULL;
 
 /* CentaurusAPI */
 
+CentaurusAPI::CentaurusAPI()
+    : CentaurusLogger("CentaurusAPI", stdout, stderr)
+{
+}
+
+CentaurusAPI::~CentaurusAPI()
+{
+}
+
 void CentaurusAPI::Init(const std::wstring& path)
 {
-    m_fOutput = stdout;
-    m_fError = stderr;
-
     PrepareDataPath(path);
-    m_TableSizeLimit = 512 * 1024 * 1024; //512 MB
-    m_uWorkerLimit = 4; //4 threads
+    
+    m_pScheduler = CreateWorker<CentaurusScheduler>();
+    m_pFetch = CreateWorker<CentaurusFetch>();
 
-    m_pScheduler = std::make_unique<CentaurusScheduler>();
-    m_pFetch = std::make_unique<CentaurusFetch>();
-
-    m_ExportIndex = json::object();
-    m_pScheduler->SetPoolSize(m_uWorkerLimit);
-
-    m_pScheduler->Start();
-    m_pFetch->Start();
+    SetTableSizeLimit(CENTAURUS_API_TABLE_LIMIT);
+    SetWorkerLimit(CENTAURUS_API_WORKER_LIMIT);
 }
 
 void CentaurusAPI::Exit()
@@ -59,10 +60,6 @@ void CentaurusAPI::Exit()
     m_pFetch->Stop();
     m_pScheduler->Stop();
 
-    if (m_fOutput != stdout) fclose(m_fOutput);
-    if (m_fError != stderr) fclose(m_fError);
-
-    
     m_Tasks.clear();
     m_Banks.clear();
 }
@@ -81,6 +78,7 @@ void CentaurusAPI::SetWorkerLimit(unsigned count)
 void CentaurusAPI::PrepareDataPath(const std::wstring& path)
 {
     m_DataPath = path;
+    m_ExportIndex = json::object();
     fs::create_directories(m_DataPath);
 
     fs::create_directory(GetExportPath());
@@ -101,6 +99,17 @@ std::wstring CentaurusAPI::GetTaskPath() const
 std::wstring CentaurusAPI::GetBankPath() const
 {
     return m_DataPath + L"\\bank";
+}
+
+void CentaurusAPI::StartWorker(ICentaurusWorker* worker)
+{
+    worker->SetWorkerLogger(this);
+    worker->Start();
+}
+
+void CentaurusAPI::StopWorker(ICentaurusWorker* worker)
+{
+    if (worker) worker->Stop();
 }
 
 std::wstring CentaurusAPI::BankFile(ICentaurusBank* bank)
@@ -163,11 +172,11 @@ ICentaurusBank* CentaurusAPI::WaitBank(const std::wstring& path)
     return bank;
 }
 
-void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
+void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out)
 {
-    if (!out) out = m_fOutput;
-
+    if (!out) out = LogFile(LogOutput);
     cronos_abi_num abiVersion = abi->GetABIVersion();
+    
     fprintf(out, "// Cronos %dx %s %s, ABI %02d.%02d\n\n",
         abi->GetVersion(),
         abi->IsLite() ? "Lite" : "Pro",
@@ -262,168 +271,6 @@ void CentaurusAPI::ExportABIHeader(const CronosABI* abi, FILE* out) const
     fprintf(out, "\n");
 }
 
-void CentaurusAPI::LogBankFiles(ICentaurusBank* bank)
-{
-    auto lock = scoped_lock(m_LogLock);
-    static const char* _croName[] = { "CroStru", "CroBank", "CroIndex" };
-
-    bank->Connect();
-
-    for (unsigned i = 0; i < CroBankFile_Count; i++)
-    {
-        CroFile* file = bank->File((CroBankFile)i);
-        if (!file) continue;
-
-        
-        const CronosABI* abi = file->ABI();
-        cronos_abi_num abiVersion = abi->GetABIVersion();
-
-        fprintf(m_fOutput,
-            "\t[%s] Cronos %dx %s %s, ABI %02d.%02d\n", _croName[i],
-            abi->GetVersion(), abi->IsLite() ? "Lite" : "Pro",
-            abi->GetModel() == cronos_model_big ? "big model" : "small model",
-            abiVersion.first, abiVersion.second
-        );
-    }
-    
-    bank->Disconnect();
-}
-
-void CentaurusAPI::LogBuffer(const CroBuffer& buf, unsigned codepage)
-{
-    auto lock = scoped_lock(m_LogLock);
-
-    const char ascii_lup = 201, ascii_rup = 187,
-        ascii_lsp = 199, ascii_rsp = 182,
-        ascii_lbt = 200, ascii_rbt = 188,
-        ascii_up_cross = 209, ascii_bt_cross = 207,
-        ascii_cross = 197,
-        ascii_v_sp = 179, ascii_h_sp = 196,
-        ascii_v_border = 186, ascii_h_border = 205;
-
-    const cronos_size line = 0x10;
-
-    //code page
-#ifdef WIN32
-    if (!codepage) codepage = GetConsoleOutputCP();
-#endif
-
-    //start
-    putc(ascii_lup, m_fOutput);
-    for (cronos_rel i = 0; i < 8; i++) putc(ascii_h_border, m_fOutput);
-    putc(ascii_up_cross, m_fOutput);
-    for (cronos_rel i = 0; i < line * 3 - 1; i++)
-        putc(ascii_h_border, m_fOutput);
-    putc(ascii_up_cross, m_fOutput);
-    for (cronos_rel i = 0; i < line; i++)
-        putc(ascii_h_border, m_fOutput);
-    putc(ascii_rup, m_fOutput);
-
-    putc('\n', m_fOutput);
-
-    //header
-    putc(ascii_v_border, m_fOutput);
-    fprintf(m_fOutput, " offset ");
-    putc(ascii_v_sp, m_fOutput);
-    for (cronos_rel i = 0; i < line; i++)
-        fprintf(m_fOutput, i < line - 1 ? "%02x " : "%02x", i & 0xFF);
-    putc(ascii_v_sp, m_fOutput);
-    switch (codepage)
-    {
-    case CP_UTF7: fprintf(m_fOutput, " UTF-7  "); break;
-    case CP_UTF8: fprintf(m_fOutput, " UTF-8  "); break;
-    default: fprintf(m_fOutput, " ANSI CP #%05d ", codepage);
-    }
-    putc(ascii_v_border, m_fOutput);
-
-    putc('\n', m_fOutput);
-
-    //split
-    putc(ascii_lsp, m_fOutput);
-    for (cronos_rel i = 0; i < 8; i++)
-        putc(ascii_h_sp, m_fOutput);
-    putc(ascii_cross, stdout);
-    for (cronos_rel i = 0; i < line * 3 - 1; i++)
-        putc(ascii_h_sp, m_fOutput);
-    putc(ascii_cross, m_fOutput);
-    for (cronos_rel i = 0; i < line; i++)
-        putc(ascii_h_sp, m_fOutput);
-    putc(ascii_rsp, m_fOutput);
-
-    putc('\n', m_fOutput);
-
-    //hex dump
-    for (cronos_size off = 0; off < buf.GetSize(); off += line)
-    {
-        cronos_size len = std::min(buf.GetSize() - off, line);
-
-        putc(ascii_v_border, m_fOutput);
-        fprintf(m_fOutput, "%08" FCroOff, off);
-        if (len) putc(ascii_v_sp, m_fOutput);
-        else break;
-
-        for (cronos_rel i = 0; i < line; i++)
-        {
-            if (i < len)
-            {
-                fprintf(m_fOutput, i < line - 1 ? "%02X " : "%02X",
-                    buf.GetData()[off + i] & 0xFF);
-            }
-            else fprintf(m_fOutput, i < line - 1 ? "   " : "  ");
-        }
-
-        putc(ascii_v_sp, m_fOutput);
-
-#ifdef WIN32
-        SetConsoleOutputCP(codepage);
-#endif
-        for (cronos_rel i = 0; i < line; i++)
-        {
-            if (i < len)
-            {
-                uint8_t byte = buf.GetData()[off + i];
-                putc(byte >= 0x20 ? (char)byte : '.', m_fOutput);
-            }
-            else putc(' ', m_fOutput);
-        }
-#ifdef WIN32
-        SetConsoleOutputCP(866);
-#endif
-        putc(ascii_v_border, m_fOutput);
-
-        putc('\n', m_fOutput);
-    }
-
-    //end
-    putc(ascii_lbt, m_fOutput);
-
-    for (cronos_rel i = 0; i < 8; i++)
-        putc(ascii_h_border, m_fOutput);
-    putc(ascii_bt_cross, m_fOutput);
-
-    for (cronos_rel i = 0; i < line * 3 - 1; i++)
-        putc(ascii_h_border, m_fOutput);
-
-    putc(ascii_bt_cross, m_fOutput);
-    for (cronos_rel i = 0; i < line; i++)
-        putc(ascii_h_border, m_fOutput);
-    putc(ascii_rbt, m_fOutput);
-
-    putc('\n', m_fOutput);
-}
-
-void CentaurusAPI::LogTable(const CroTable& table)
-{
-    /*fprintf(m_fOutput,
-        "== %s TABLE 0x%" FCroOff " %" FCroSize " ID "
-        "%" FCroId "-%" FCroId " COUNT %" FCroIdx "\n",
-        table.GetFileType() == CRONOS_TAD ? "TAD" : "DAT",
-        table.TableOffset(), table.TableSize(),
-        table.IdStart(), table.IdEnd(),
-        table.GetEntryCount()
-    );*/
-}
-
 #include <boost/lexical_cast.hpp>
 
 std::wstring CentaurusAPI::TaskFile(ICentaurusTask* task)
@@ -445,13 +292,8 @@ void CentaurusAPI::TaskSyncJSON(ICentaurusTask* task, json value)
     json taskJson;
     std::wstring jsonPath = TaskFile(task);
 
-    {
-        auto lock = scoped_lock(m_LogLock);
-
-        std::wstring dump = TextToWchar(value.dump());
-        fprintf(m_fOutput, "[CentaurusAPI] TaskSyncJSON %s\n",
-            WcharToAnsi(dump, 866).c_str());
-    }
+    std::wstring dump = TextToWchar(value.dump());
+    Log("TaskSyncJSON %s\n", WcharToAnsi(dump, 866).c_str());
 
     try { taskJson = ReadJSONFile(jsonPath); }
     catch (const std::exception& e) { taskJson = json::object(); }
@@ -467,11 +309,7 @@ void CentaurusAPI::TaskSyncJSON(ICentaurusTask* task, json value)
 
 void CentaurusAPI::StartTask(ICentaurusTask* task)
 {
-    {
-        auto lock = scoped_lock(m_LogLock);
-        fprintf(m_fOutput, "[CentaurusAPI] StartTask %p\n", task);
-    }
-
+    Log("StartTask %p\n", task);
     {
         auto lock = scoped_lock(m_TaskLock);
         m_Tasks.emplace_back(task);
@@ -575,16 +413,13 @@ void CentaurusAPI::Sync(ICentaurusWorker* worker)
         if (bank)
         {
             m_Banks.emplace_back(bank);
-            fprintf(m_fOutput, "[CentaurusAPI] Loaded bank \"%s\"\n",
-                WcharToAnsi(dir, 866).c_str());
+            Log("Loaded bank \"%s\"\n", WcharToAnsi(dir, 866).c_str());
         }
         else if (!dir.empty())
         {
             m_FailedBanks.push_back(dir);
-            fprintf(m_fError,
-                "[CentaurusAPI] Failed to load bank at \"%s\"\n",
-                WcharToAnsi(dir, 866).c_str()
-            );
+            Error("Failed to load bank at \"%s\"\n",
+                WcharToAnsi(dir, 866).c_str());
         }
     }
 
@@ -595,8 +430,7 @@ void CentaurusAPI::Sync(ICentaurusWorker* worker)
 
 void CentaurusAPI::OnException(const std::exception& exc)
 {
-    auto lock = scoped_lock(m_LogLock);
-    fprintf(m_fError, "[CentaurusAPI] %s\n", exc.what());
+    Error(exc.what());
 #ifdef CENTAURUS_DEBUG
     //throw exc;
 #endif
@@ -605,11 +439,7 @@ void CentaurusAPI::OnException(const std::exception& exc)
 void CentaurusAPI::OnWorkerException(ICentaurusWorker* worker,
     const std::exception& exc)
 {
-    auto lock = scoped_lock(m_LogLock);
     auto* _worker = dynamic_cast<CentaurusWorker*>(worker);
-
-    fprintf(m_fError, "CentaurusWorker(%s) %s\n",
-        _worker->GetName().c_str(), exc.what());
 #ifdef CENTAURUS_DEBUG
     //throw exc;
 #endif

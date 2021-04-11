@@ -8,6 +8,8 @@
 class CentaurusFetch : public CentaurusWorker
 {
 public:
+    CentaurusFetch();
+
     void RequestBank(const std::wstring& path);
     void RequestBanks(std::vector<std::wstring> dirs);
 protected:

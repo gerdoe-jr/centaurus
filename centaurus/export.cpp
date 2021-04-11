@@ -141,8 +141,9 @@ void ExportBuffer::Flush()
 /* CentaurusExport*/
 
 CentaurusExport::CentaurusExport()
-    : m_ExportFormat(ExportCSV)
+    : CronosAPI("CentaurusExport")
 {
+    m_ExportFormat = ExportCSV;
     m_TableLimit = 512 * 1024 * 1024;
     m_BaseLimit = m_TableLimit;
 }
@@ -365,7 +366,7 @@ void CentaurusExport::Export()
             file->EntryCountFileSize());
         auto bank = file->LoadRecordMap(map_id, burst);
 
-        printf("BURST %" FCroIdx "\n", burst);
+        Log("BURST %" FCroIdx "\n", burst);
 
         for (cronos_id id = Start(); id != End(); id++)
         {
@@ -384,6 +385,39 @@ void CentaurusExport::Export()
     FlushBuffers();
     centaurus->UpdateBankExportIndex(
         m_pBank->BankId(), m_ExportPath);
+}
+
+void CentaurusExport::ExportHeaders()
+{
+    sc::error_code ec;
+    std::wstring headerPath = m_ExportPath + L"\\include";
+
+    fs::create_directory(headerPath, ec);
+    if (ec) throw std::runtime_error("ExportHeaders !create_directory");
+
+    for (unsigned i = 0; i < CroBankFile_Count; i++)
+    {
+        CroFile* file = m_pBank->File((CroBankFile)i);
+        if (!file) continue;
+
+        FILE* fHdr = NULL;
+        switch (i)
+        {
+        case CroStru:
+            _wfopen_s(&fHdr, (headerPath + L"\\CroStru.h").c_str(), L"w");
+            break;
+        case CroBank:
+            _wfopen_s(&fHdr, (headerPath + L"\\CroBank.h").c_str(), L"w");
+            break;
+        case CroIndex:
+            _wfopen_s(&fHdr, (headerPath + L"\\CroIndex.h").c_str(), L"w");
+            break;
+        }
+
+        if (!fHdr) throw std::runtime_error("ExportHeaders !fHdr");
+        centaurus->ExportABIHeader(file->ABI(), fHdr);
+        fclose(fHdr);
+    }
 }
 
 centaurus_size CentaurusExport::GetMemoryUsage()

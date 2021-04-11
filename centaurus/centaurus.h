@@ -37,7 +37,7 @@ class CroAttr;
 class CroBase;
 class CroRecordMap;
 
-class ICentaurusLoader;
+class ICronosAPI;
 
 class ICentaurusBank
 {
@@ -54,11 +54,7 @@ public:
     virtual CroFile* File(CroBankFile file) const = 0;
     virtual std::string String(const char* data, size_t len) = 0;
 
-    virtual void LoadBankInfo(ICentaurusLoader* cro) = 0;
-
-    virtual CroBuffer& Attr(const std::string& name) = 0;
-    virtual CroBuffer& Attr(unsigned index) = 0;
-    virtual unsigned AttrCount() const = 0;
+    virtual void LoadStructure(ICronosAPI* cro) = 0;
 
     virtual bool IsValidBase(unsigned index) const = 0;
     virtual CroBase& Base(unsigned index) = 0;
@@ -70,11 +66,14 @@ public:
 
 /* CentaurusTask */
 
+class ICentaurusWorker;
+
 class ICentaurusTask
 {
 public:
     virtual ~ICentaurusTask() {}
 
+    virtual void Invoke(ICentaurusWorker* invoker) = 0;
     virtual void RunTask() = 0;
     virtual void Release() = 0;
     virtual centaurus_size GetMemoryUsage() = 0;
@@ -83,6 +82,39 @@ public:
     virtual CroTable* AcquireTable(CroTable&& table) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
     virtual void ReleaseTable(CroTable* table) = 0;
+
+    virtual ICentaurusWorker* Invoker() const = 0;
+    virtual const std::string& TaskName() const = 0;
+};
+
+/* CentaurusLogger */
+
+enum CentaurusLogLevel
+{
+    LogOutput,
+    LogError
+};
+
+class ICentaurusLogger
+{
+public:
+    virtual void LockLogger() = 0;
+    virtual void UnlockLogger() = 0;
+    virtual void* GetLogMutex() = 0;
+    virtual const std::string& GetLogName() const = 0;
+
+    virtual void LogPrint(CentaurusLogLevel lvl,
+        const char* fmt, va_list ap) = 0;
+    virtual void LogPrint(CentaurusLogLevel lvl,
+        const char* fmt, ...) = 0;
+
+    virtual void LogBankFiles(ICentaurusBank* bank) = 0;
+    virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
+    virtual void LogTable(const CroTable& table) = 0;
+    virtual void LogRecordMap(const CroRecordMap& records) = 0;
+
+    virtual void Log(const char* fmt, ...) = 0;
+    virtual void Error(const char* fmt, ...) = 0;
 };
 
 /* CentaurusWorker */
@@ -101,13 +133,15 @@ public:
     virtual void Stop() = 0;
     virtual void Wait() = 0;
     virtual state State() const = 0;
+    virtual void SetWorkerLogger(ICentaurusLogger* log) = 0;
+    virtual ICentaurusLogger* GetWorkerLogger() = 0;
 protected:
     virtual void Execute() = 0;
 };
 
-/* CentaurusLoader */
+/* CronosAPI */
 
-class ICentaurusLoader
+class ICronosAPI
 {
 public:
     virtual void LoadBank(ICentaurusBank* bank) = 0;
@@ -119,6 +153,8 @@ public:
     virtual unsigned Start() const = 0;
     virtual unsigned End() const = 0;
     virtual void ReleaseMap() = 0;
+
+    virtual ICentaurusLogger* CronosLog() = 0;
 };
 
 /* CentaurusExport */
@@ -139,6 +175,9 @@ public:
 
 /* CentaurusAPI */
 
+#define CENTAURUS_API_TABLE_LIMIT (512*1024*1024)
+#define CENTAURUS_API_WORKER_LIMIT (4)
+
 class ICentaurusAPI
 {
 public:
@@ -155,19 +194,17 @@ public:
     virtual std::wstring GetTaskPath() const = 0;
     virtual std::wstring GetBankPath() const = 0;
 
+    virtual void StartWorker(ICentaurusWorker* worker) = 0;
+    virtual void StopWorker(ICentaurusWorker* worker) = 0;
+
     virtual std::wstring BankFile(ICentaurusBank* bank) = 0;
     virtual void ConnectBank(const std::wstring& dir) = 0;
     virtual void DisconnectBank(ICentaurusBank* bank) = 0;
     virtual ICentaurusBank* FindBank(const std::wstring& path) = 0;
     virtual ICentaurusBank* WaitBank(const std::wstring& dir) = 0;
 
-    virtual void ExportABIHeader(const CronosABI* abi,
-        FILE* out = NULL) const = 0;
+    virtual void ExportABIHeader(const CronosABI* abi, FILE* out = NULL) = 0;
 
-    virtual void LogBankFiles(ICentaurusBank* bank) = 0;
-    virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
-    virtual void LogTable(const CroTable& table) = 0;
-    
     virtual bool IsBankLoaded(ICentaurusBank* bank) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
 
@@ -192,6 +229,7 @@ public:
 /* Centaurus */
 
 extern CENTAURUS_API ICentaurusAPI* centaurus;
+extern CENTAURUS_API ICentaurusLogger* logger;
 
 CENTAURUS_API bool Centaurus_Init(const std::wstring& path);
 CENTAURUS_API void Centaurus_Exit();
@@ -201,5 +239,11 @@ CENTAURUS_API void Centaurus_Idle();
 
 //CENTAURUS_API ICentaurusTask* CentaurusTask_Run(CentaurusRun run);
 CENTAURUS_API ICentaurusTask* CentaurusTask_Export(ICentaurusBank* bank);
+
+CENTAURUS_API ICentaurusLogger* CentaurusLogger_Create(std::string name,
+    FILE* fOut = stdout, FILE* fErr = stderr);
+CENTAURUS_API ICentaurusLogger* CentaurusLogger_Forward(std::string name,
+    ICentaurusLogger* forward = logger);
+CENTAURUS_API void CentaurusLogger_Destroy(ICentaurusLogger* log);
 
 #endif

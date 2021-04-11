@@ -1,7 +1,13 @@
 #include "fetch.h"
-#include "loader.h"
 #include "bank.h"
+#include "cronos_api.h"
 #include <win32util.h>
+
+CentaurusFetch::CentaurusFetch()
+{
+    m_LoadedPath = L"";
+    m_pLoadedBank = NULL;
+}
 
 void CentaurusFetch::RequestBank(const std::wstring& path)
 {
@@ -46,26 +52,28 @@ void CentaurusFetch::Execute()
 
 bool CentaurusFetch::LoadPath(const std::wstring& path)
 {
-    auto cro = std::make_unique<CentaurusLoader>();
+    auto cro = std::make_unique<CronosAPI>("CentaurusFetch");
     CentaurusBank* bank = new CentaurusBank();
     m_pLoadedBank = NULL;
 
-    bank->AssociatePath(path);
-    if (!cro->AcquireBank(bank))
-    {
+    try {
+        bank->AssociatePath(path);
+        cro->LoadBank(bank);
+
+        bank->LoadStructure(cro.get());
+        m_pLoadedBank = bank;
+    }
+    catch (const std::exception& e) {
+        Error("%s", e.what());
+
         delete bank;
-        return false;
+        m_pLoadedBank = NULL;
     }
 
-    cro->LoadBank(bank);
-    m_pLoadedBank = bank;
-
-    bank->LoadBankInfo(cro.get());
-    return true;
+    return m_pLoadedBank != NULL;
 }
 
 void CentaurusFetch::LogLoaderFail(const std::wstring& dir)
 {
-    fprintf(stderr, "[CentaurusFetch] failed to load %s\n",
-        WcharToAnsi(dir).c_str());
+    Error("failed to load %s\n", WcharToAnsi(dir).c_str());
 }

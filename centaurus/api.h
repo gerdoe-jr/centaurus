@@ -3,6 +3,7 @@
 
 #include "centaurus.h"
 #include "scheduler.h"
+#include "logger.h"
 #include "fetch.h"
 #include <utility>
 #include <vector>
@@ -14,9 +15,12 @@
 
 #include <json_file.h>
 
-class CentaurusAPI : public ICentaurusAPI
+class CentaurusAPI : public ICentaurusAPI, public CentaurusLogger
 {
 public:
+    CentaurusAPI();
+    ~CentaurusAPI();
+
     void Init(const std::wstring& path) override;
     void Exit() override;
 
@@ -28,16 +32,22 @@ public:
     std::wstring GetTaskPath() const override;
     std::wstring GetBankPath() const override;
 
+    void StartWorker(ICentaurusWorker* worker) override;
+    void StopWorker(ICentaurusWorker* worker) override;
+    template<typename T> inline std::unique_ptr<T> CreateWorker()
+    {
+        T* worker = new T;
+        StartWorker(worker);
+        return std::unique_ptr<T>(worker);
+    }
+
     std::wstring BankFile(ICentaurusBank* bank) override;
     void ConnectBank(const std::wstring& path) override;
     void DisconnectBank(ICentaurusBank* bank) override;
     ICentaurusBank* FindBank(const std::wstring& path) override;
     ICentaurusBank* WaitBank(const std::wstring& path) override;
     
-    void ExportABIHeader(const CronosABI* abi, FILE* out) const override;
-    void LogBankFiles(ICentaurusBank* bank) override;
-    void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) override;
-    void LogTable(const CroTable& table) override;
+    void ExportABIHeader(const CronosABI* abi, FILE* out) override;
 
     bool IsBankLoaded(ICentaurusBank* bank) override;
     bool IsBankAcquired(ICentaurusBank* bank) override;
@@ -62,10 +72,6 @@ public:
     void UpdateBankExportIndex(uint32_t bankId,
         const std::wstring& path) override;
 private:
-    boost::mutex m_LogLock;
-    FILE* m_fOutput;
-    FILE* m_fError;
-
     centaurus_size m_TableSizeLimit;
     unsigned m_uWorkerLimit;
     std::wstring m_DataPath;

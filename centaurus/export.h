@@ -3,8 +3,8 @@
 
 #ifdef CENTAURUS_INTERNAL
 #include "centaurus.h"
+#include "cronos_api.h"
 #include "task.h"
-#include "loader.h"
 #include <crotable.h>
 #include <string>
 
@@ -40,7 +40,7 @@ private:
 #include <map>
 #include <json.hpp>
 
-class CentaurusExport : public CentaurusLoader, public ICentaurusExport
+class CentaurusExport : public CronosAPI, public ICentaurusExport
 {
 public:
     CentaurusExport();
@@ -55,7 +55,7 @@ public:
     void Release() override;
 
     void Export();
-    void ExportCroFile(CroFile* file);
+    void ExportHeaders();
     
     centaurus_size GetMemoryUsage() override;
     void OnExportRecord(CroBuffer& record, uint32_t id);
