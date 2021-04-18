@@ -111,24 +111,19 @@ CroFile* CentaurusBank::File(CroBankFile type) const
     return !m_Files[type] ? NULL : m_Files[type].get();
 }
 
-std::string CentaurusBank::String(const char* data, size_t len)
+std::wstring CentaurusBank::BankWString(const uint8_t* str, cronos_size len)
 {
-    return WcharToText(AnsiToWchar(std::string(data, len), m_uCodePage));
+    return AnsiToWchar(std::string((const char*)str, len), m_uCodePage);
 }
 
-CroFile* CentaurusBank::CroFileStru()
+std::string CentaurusBank::BankString(const uint8_t* str, cronos_size len)
 {
-    return File(CroBankFile::CroStru);
+    return WcharToText(BankWString(str, len));
 }
 
-CroFile* CentaurusBank::CroFileBank()
+CroFile* CentaurusBank::BankFile(crobank_file file)
 {
-    return File(CroBankFile::CroBank);
-}
-
-CroFile* CentaurusBank::CroFileIndex()
-{
-    return File(CroBankFile::CroIndex);
+    return File(file);
 }
 
 /*void CentaurusBank::LoadStructure(ICentaurusExport* exp)

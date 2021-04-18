@@ -2,14 +2,14 @@
 #define __CENTAURUS_BANK_H
 
 #include "centaurus.h"
+#include <crobank.h>
 #include <crofile.h>
-#include <croattr.h>
 #include <utility>
 #include <vector>
 #include <string>
 
 using BankProps = std::vector<CroAttr>;
-class CentaurusBank : public ICentaurusBank, public ICroParser
+class CentaurusBank : public ICentaurusBank, public ICroBank
 {
 public:
     CentaurusBank();
@@ -23,10 +23,10 @@ public:
     void SetCodePage(unsigned codepage) override;
 
     CroFile* File(CroBankFile type) const override;
-    std::string String(const char* data, size_t len) override;
-    CroFile* CroFileStru() override;
-    CroFile* CroFileBank() override;
-    CroFile* CroFileIndex() override;
+    
+    std::wstring BankWString(const uint8_t* str, cronos_size len) override;
+    std::string BankString(const uint8_t* str, cronos_size len) override;
+    CroFile* BankFile(crobank_file file) override;
 
     void LoadStructure(ICronosAPI* cro) override;
     

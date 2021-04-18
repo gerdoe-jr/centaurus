@@ -21,13 +21,6 @@ typedef uint64_t centaurus_size;
 
 /* CentaurusBank */
 
-enum CroBankFile {
-    CroStru,
-    CroBank,
-    CroIndex,
-    CroBankFile_Count
-};
-
 class CronosABI;
 class CroBuffer;
 class CroTable;
@@ -38,6 +31,18 @@ class CroBase;
 class CroRecordMap;
 
 class ICronosAPI;
+
+#ifndef CroBank
+enum class CroBank : unsigned {
+    Stru,
+    Bank,
+    Index,
+    FileCount
+};
+
+using CroBankFile = unsigned;
+#define crobank_file CroBankFile
+#endif
 
 class ICentaurusBank
 {

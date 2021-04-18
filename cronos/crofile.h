@@ -23,7 +23,7 @@ class CroFile
 {
 public:
     CroFile(const std::wstring& path);
-public:
+
     crofile_status Open();
     void Close();
     void Reset();
