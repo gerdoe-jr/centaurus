@@ -24,6 +24,8 @@ static FILE* _wfopen(const wchar_t* path, const wchar_t* mode)
 
 #endif
 
+/* CroFile */
+
 CroFile::CroFile(const std::wstring& path)
     : m_Path(path)
 {

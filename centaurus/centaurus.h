@@ -26,6 +26,7 @@ class CroBuffer;
 class CroTable;
 class CroEntry;
 class CroFile;
+class CroBank;
 class CroAttr;
 class CroBase;
 class CroRecordMap;
@@ -33,14 +34,13 @@ class CroRecordMap;
 class ICronosAPI;
 
 #ifndef CroBank
-enum class CroBank : unsigned {
+enum class CroBankFile : unsigned {
     Stru,
     Bank,
     Index,
     FileCount
 };
 
-using CroBankFile = unsigned;
 #define crobank_file CroBankFile
 #endif
 
@@ -49,15 +49,7 @@ class ICentaurusBank
 public:
     virtual ~ICentaurusBank() {}
 
-    virtual bool Connect() = 0;
-    virtual void Disconnect() = 0;
-    
-    virtual void AssociatePath(const std::wstring& dir) = 0;
-    virtual std::wstring GetPath() const = 0;
-    virtual void SetCodePage(unsigned codepage) = 0;
-
-    virtual CroFile* File(CroBankFile file) const = 0;
-    virtual std::string String(const char* data, size_t len) = 0;
+    virtual CroBank* Bank() = 0;
 
     virtual void LoadStructure(ICronosAPI* cro) = 0;
 

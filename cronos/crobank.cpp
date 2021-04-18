@@ -14,7 +14,7 @@ CroBank::~CroBank()
     Disconnect();
 }
 
-void CroBank::Connect()
+bool CroBank::Connect()
 {
     for (unsigned i = 0; i < FileCount; i++)
     {
@@ -32,6 +32,8 @@ void CroBank::Connect()
             m_CroFile[i] = std::move(file);
         else m_CroFile[i] = NULL;
     }
+
+    return File(Stru) && File(Bank) && File(Index);
 }
 
 void CroBank::Disconnect()
@@ -62,6 +64,18 @@ bool CroBank::TryBankPath()
             return false;
         }
     }
+
+    return true;
+}
+
+void CroBank::SetBankPath(const std::wstring& path)
+{
+    m_Path = path;
+}
+
+const std::wstring& CroBank::GetBankPath() const
+{
+    return m_Path;
 }
 
 void CroBank::SetTextCodePage(unsigned cp)
@@ -98,4 +112,19 @@ const std::wstring& CroBank::FileName(crobank_file file) const
     };
 
     return _croFileNames[file];
+}
+
+void CroBank::ParserStart(CroParser* parser)
+{
+
+}
+
+void CroBank::ParserEnd(CroParser* parser)
+{
+
+}
+
+void CroBank::BankCronosException(const CroException& exc)
+{
+    throw std::runtime_error("bank cronos exception not implemented");
 }

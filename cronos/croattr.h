@@ -1,19 +1,18 @@
 #ifndef __CROATTR_H
 #define __CROATTR_H
 
-#include "crobank.h"
-#include "crostream.h"
+#include "croparser.h"
 #include <string>
 
 #define CROATTR_PREFIX 0x03
 #define CROATTR_REF_PREFIX 0x04
 
-class CroAttr
+class CroAttr : public ICroParsee
 {
 public:
-    CroAttr();
+    virtual void Parse(CroParser* parser, CroStream& stream);
 
-    void Parse(ICroBank* bank, CroStream& stream);
+    inline const std::string& AttrName() const { return m_Name; }
 private:
     std::string m_Name;
 };

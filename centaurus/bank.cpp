@@ -1,6 +1,6 @@
 ﻿#include "bank.h"
 #include "export.h"
-#include "croattr.h"
+#include <crostru.h>
 #include "win32util.h"
 #include <stdexcept>
 #include <fstream>
@@ -27,103 +27,37 @@ static int _wfopen_s(FILE** fpFile, const wchar_t* path, const wchar_t* mode)
 
 #endif
 
+/* CentaurusBank */
+
 CentaurusBank::CentaurusBank()
+    : CroBank(L"")
 {
     m_BankId = 0;
-    m_uCodePage = 1251;
 }
 
 CentaurusBank::~CentaurusBank()
 {
-    CroFile* stru = File(CroStru);
-    CroFile* bank = File(CroBank);
-    CroFile* index = File(CroIndex);
-
-    if (stru) stru->Close();
-    if (bank) bank->Close();
-    if (index) index->Close();
+    CroBank::Disconnect();
 }
 
-bool CentaurusBank::Connect()
+std::wstring CentaurusBank::GetWString(const uint8_t* str, cronos_size len)
 {
-    m_Files[CroStru] = std::make_unique<CroFile>(m_Path + L"\\CroStru");
-    m_Files[CroBank] = std::make_unique<CroFile>(m_Path + L"\\CroBank");
-    m_Files[CroIndex] = std::make_unique<CroFile>(m_Path + L"\\CroIndex");
-
-    for (unsigned i = 0; i < CroBankFile_Count; i++)
-    {
-        CroFile* file = File((CroBankFile)i);
-        if (!file) continue;
-
-        try {
-            crofile_status st = file->Open();
-            if (st != CROFILE_OK)
-            {
-                logger->Error("CroFile status %u\n", st);
-                m_Files[(CroBankFile)i] = NULL;
-                continue;
-            }
-
-            cronos_size limit = centaurus->RequestTableLimit();
-            file->SetTableLimits(limit);
-        }
-        catch (const std::exception& e) {
-            centaurus->OnException(e);
-            logger->Error("CroFile(%s) %s\n", WcharToAnsi(
-                file->GetPath()).c_str(), e.what());
-            m_Files[(CroBankFile)i] = NULL;
-        }
-    }
-
-    return File(CroStru) && File(CroBank);
+    return AnsiToWchar(std::string((const char*)str, len), m_TextCodePage);
 }
 
-void CentaurusBank::Disconnect()
+std::string CentaurusBank::GetString(const uint8_t* str, cronos_size len)
 {
-    for (unsigned i = 0; i < CroBankFile_Count; i++)
-    {
-        auto& file = m_Files[i];
-        if (file)
-        {
-            file->Close();
-            file = NULL;
-        }
-    }
+    return WcharToText(GetWString(str, len));
 }
 
-void CentaurusBank::AssociatePath(const std::wstring& dir)
+void CentaurusBank::BankCronosException(const CroException& exc)
 {
-    m_Path = dir;
+    centaurus->OnException(exc);
 }
 
-std::wstring CentaurusBank::GetPath() const
+CroBank* CentaurusBank::Bank()
 {
-    return m_Path;
-}
-
-void CentaurusBank::SetCodePage(unsigned codepage)
-{
-    m_uCodePage = codepage;
-}
-
-CroFile* CentaurusBank::File(CroBankFile type) const
-{
-    return !m_Files[type] ? NULL : m_Files[type].get();
-}
-
-std::wstring CentaurusBank::BankWString(const uint8_t* str, cronos_size len)
-{
-    return AnsiToWchar(std::string((const char*)str, len), m_uCodePage);
-}
-
-std::string CentaurusBank::BankString(const uint8_t* str, cronos_size len)
-{
-    return WcharToText(BankWString(str, len));
-}
-
-CroFile* CentaurusBank::BankFile(crobank_file file)
-{
-    return File(file);
+    return dynamic_cast<CroBank*>(this);
 }
 
 /*void CentaurusBank::LoadStructure(ICentaurusExport* exp)
@@ -180,30 +114,28 @@ CroFile* CentaurusBank::BankFile(crobank_file file)
 void CentaurusBank::LoadStructure(ICronosAPI* cro)
 {
     auto* log = cro->CronosLog();
-    CroFile* file = cro->SetLoaderFile(CroStru);
+    
+    CroFile* file = cro->SetLoaderFile(CroBankFile::Stru);
+    
     if (!file) throw std::runtime_error("no structure");
-
     uint32_t key = file->GetSecretKey(file->GetSecret());
     file->SetupCrypt(key, CRONOS_DEFAULT_SERIAL);
 
-    auto stru = cro->GetRecordMap(1, file->EntryCountFileSize());
+    CroStru stru = CroStru(this, cro->GetRecordMap(
+        1, file->EntryCountFileSize()));
+    CroRecordMap* map = stru.CroStruMap();
 
-    log->LogRecordMap(*stru);
-    for (cronos_id id = cro->Start(); id != cro->End(); id++)
+    log->LogRecordMap(*map);
+    for (cronos_id id = map->IdStart(); id != map->IdEnd(); id++)
     {
-        if (!stru->HasRecord(id)) continue;
+        if (!map->HasRecord(id)) continue;
         log->Log("stru record %" FCroId "\n", id);
 
-        CroBuffer rec = stru->LoadRecord(id);
+        CroBuffer rec = map->LoadRecord(id);
         log->LogBuffer(rec, 1251);
     }
     
     cro->ReleaseMap();
-}
-
-BankProps CentaurusBank::LoadProps(CroRecordMap* stru)
-{
-    return {};
 }
 
 bool CentaurusBank::IsValidBase(unsigned index) const

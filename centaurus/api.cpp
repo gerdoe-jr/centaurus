@@ -152,7 +152,11 @@ void CentaurusAPI::DisconnectBank(ICentaurusBank* bank)
 ICentaurusBank* CentaurusAPI::FindBank(const std::wstring& path)
 {
     for (auto& bank : m_Banks)
-        if (!bank->GetPath().compare(path)) return bank.get();
+    {
+        auto* _bank = bank->Bank();
+        if (!_bank->GetBankPath().compare(path)) return bank.get();
+    }
+
     return NULL;
 }
 

@@ -26,6 +26,9 @@ public:
     inline const CronosABI* ABI() { return m_pFile->ABI(); }
     inline ICroParsee* Parsee() { return m_pParsee; }
 
+    std::string LoadString(const uint8_t* str, cronos_size len);
+    std::wstring LoadWString(const uint8_t* str, cronos_size len);
+
     virtual void Parse(ICroParsee* parsee, CroStream& stream);
 
     template<typename T>
@@ -41,7 +44,7 @@ public:
     }
 
     template<typename T>
-    inline T Parse(const CroBuffer& buffer)
+    inline T Parse(CroBuffer& buffer)
     {
         T value = T();
         CroStream stream = CroStream(buffer);
@@ -53,12 +56,9 @@ public:
         return value;
     }
 protected:
-    std::string LoadString(const uint8_t* str, cronos_size len);
-    std::wstring LoadWString(const uint8_t* str, cronos_size len);
+    virtual void StartParsing(ICroParsee* parsee);
+    virtual void EndParsing();
 private:
-    void StartParsing(crobank_file file);
-    void EndParsing();
-
     CroBank* m_pBank;
     CroFile* m_pFile;
     ICroParsee* m_pParsee;

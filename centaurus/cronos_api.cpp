@@ -1,5 +1,6 @@
 #include "cronos_api.h"
 #include <crofile.h>
+#include <crobank.h>
 
 CronosAPI::CronosAPI()
     : CentaurusTask("CronosAPI")
@@ -31,7 +32,7 @@ void CronosAPI::LoadBank(ICentaurusBank* bank)
     if (AcquireBank(bank))
     {
         m_pBank = bank;
-        SetLoaderFile(CroStru);
+        SetLoaderFile(CroBankFile::Stru);
     }
     else
     {
@@ -41,7 +42,7 @@ void CronosAPI::LoadBank(ICentaurusBank* bank)
 
 CroFile* CronosAPI::SetLoaderFile(CroBankFile ftype)
 {
-    m_pFile = m_pBank->File(ftype);
+    m_pFile = m_pBank->Bank()->File(ftype);
     if (!m_pFile)
         throw std::runtime_error("SetLoaderFile no file");
     return m_pFile;

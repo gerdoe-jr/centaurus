@@ -10,6 +10,14 @@ CroProp::CroProp()
     m_Value = 0;
 }
 
+void CroProp::Parse(CroParser* parser, CroStream& stream)
+{
+    uint8_t nameLen = stream.Read<uint8_t>();
+    m_Name = parser->LoadString(stream.Read(nameLen), nameLen);
+
+    m_Value = stream.Read<uint32_t>();
+}
+
 const std::string& CroProp::GetName() const
 {
     return m_Name;
@@ -25,13 +33,6 @@ std::string CroProp::GetString() const
     return std::string((const char*)m_Prop.GetData(), m_Prop.GetSize());
 }
 
-void CroProp::Parse(ICroBank* bank, CroStream& stream)
-{
-    uint8_t nameLen = stream.Read<uint8_t>();
-    m_Name = bank->String((const char*)stream.Read(nameLen), nameLen);
-    m_Value = stream.Read<uint32_t>();
-}
-
 /* CroField */
 
 CroField::CroField()
@@ -41,6 +42,27 @@ CroField::CroField()
     m_Flags = 0;
     m_DataIndex = 0;
     m_DataLength = 0;
+}
+
+void CroField::Parse(CroParser* parser, CroStream& stream)
+{
+    uint16_t size = stream.Read<uint16_t>();
+    cronos_rel pos = stream.GetPosition();
+
+    m_Type = (CroFieldType)stream.Read<uint16_t>();
+    m_Index = stream.Read<uint32_t>();
+
+    uint8_t nameLen = stream.Read<uint8_t>();
+    m_Name = parser->LoadString(stream.Read(nameLen), nameLen);
+
+    m_Flags = stream.Read<uint32_t>();
+    if (stream.Read<uint8_t>())
+    {
+        m_DataIndex = stream.Read<uint32_t>();
+        m_DataLength = stream.Read<uint32_t>();
+    }
+
+    stream.SetPosition(pos + size);
 }
 
 const std::string& CroField::GetName() const
@@ -58,27 +80,6 @@ cronos_flags CroField::GetFlags() const
     return m_Flags;
 }
 
-void CroField::Parse(ICroBank* bank, CroStream& stream)
-{
-    uint16_t size = stream.Read<uint16_t>();
-    cronos_rel pos = stream.GetPosition();
-
-    m_Type = (CroFieldType)stream.Read<uint16_t>();
-    m_Index = stream.Read<uint32_t>();
-
-    uint8_t nameLen = stream.Read<uint8_t>();
-    m_Name = bank->String((const char*)stream.Read(nameLen), nameLen);
-    
-    m_Flags = stream.Read<uint32_t>();
-    if (stream.Read<uint8_t>())
-    {
-        m_DataIndex = stream.Read<uint32_t>();
-        m_DataLength = stream.Read<uint32_t>();
-    }
-
-    stream.SetPosition(pos + size);
-}
-
 /* CroBase */
 
 CroBase::CroBase()
@@ -89,6 +90,32 @@ CroBase::CroBase()
     m_LinkedId = 0;
     m_BaseIndex = 0;
     m_Flags = 0;
+}
+
+void CroBase::Parse(CroParser* parser, CroStream& base)
+{
+    m_VocFlags = base.Read<uint16_t>(); // vocflags
+    base.Read<uint16_t>(); // unk1
+    m_BaseVersion = base.Read<uint16_t>();
+    m_BitcardId = base.Read<uint32_t>();
+    if (m_BaseVersion == CROBASE_LINKED)
+        m_LinkedId = base.Read<uint32_t>();
+    m_BaseIndex = base.Read<uint32_t>();
+
+    uint8_t nameLen = base.Read<uint8_t>();
+    m_Name = parser->LoadString(base.Read(nameLen), nameLen);
+
+    uint8_t mcLen = base.Read<uint8_t>();
+    m_Mnemocode = parser->LoadString(base.Read(mcLen), mcLen);
+
+    m_Flags = base.Read<uint32_t>();
+    uint32_t fieldNum = base.Read<uint32_t>();
+    for (unsigned i = 0; i < fieldNum; i++)
+    {
+        CroField field;
+        field.Parse(parser, base);
+        m_Fields.insert(std::make_pair(i, field));
+    }
 }
 
 const std::string& CroBase::GetName() const
@@ -114,34 +141,6 @@ unsigned CroBase::FieldEnd() const
     return m_Fields.empty() ? 0 : std::prev(m_Fields.end())->first;
 }
 
-void CroBase::Parse(ICroBank* bank, CroProp& prop)
-{
-    CroStream base = CroStream(prop.GetProp());
-
-    m_VocFlags = base.Read<uint16_t>(); // vocflags
-    base.Read<uint16_t>(); // unk1
-    m_BaseVersion = base.Read<uint16_t>();
-    m_BitcardId = base.Read<uint32_t>();
-    if (m_BaseVersion == CROBASE_LINKED)
-        m_LinkedId = base.Read<uint32_t>();
-    m_BaseIndex = base.Read<uint32_t>();
-
-    uint8_t nameLen = base.Read<uint8_t>();
-    m_Name = bank->String((const char*)base.Read(nameLen), nameLen);
-
-    uint8_t mcLen = base.Read<uint8_t>();
-    m_Mnemocode = bank->String((const char*)base.Read(mcLen), mcLen);
-    
-    m_Flags = base.Read<uint32_t>();
-    uint32_t fieldNum = base.Read<uint32_t>();
-    for (unsigned i = 0; i < fieldNum; i++)
-    {
-        CroField field;
-        field.Parse(bank, base);
-        m_Fields.insert(std::make_pair(i, field));
-    }
-}
-
 /* CroPropNS */
 
 CroPropNS::CroPropNS()
@@ -150,9 +149,15 @@ CroPropNS::CroPropNS()
     m_CustomProt = 0;
 }
 
-void CroPropNS::Parse(ICroBank* bank, CroProp& prop)
+void CroPropNS::Parse(CroParser* parser, CroStream& stream)
 {
-    CroFile* stru = bank->CroFileStru();
+    CroProp::Parse(parser, stream);
+    Parse(parser, *this);
+}
+
+void CroPropNS::Parse(CroParser* parser, CroProp& prop)
+{
+    CroFile* stru = parser->File();
     CroData crypt = CroData(stru, INVALID_CRONOS_ID,
         cronos02_crypt_table.m_pMem, cronos02_crypt_table.m_Size);
 
@@ -169,13 +174,13 @@ void CroPropNS::Parse(ICroBank* bank, CroProp& prop)
 
     m_Serial = hdr.Read<uint32_t>();
     m_CustomProt = hdr.Read<uint32_t>();
-    
+
     uint32_t passLen = hdr.Read<uint32_t>();
     if (passLen)
     {
         CroBuffer pass;
         pass.Write(ns.Read(passLen), passLen);
         stru->Decrypt(pass, prefix + 0x0C, &crypt);
-        m_SysPass = bank->String((const char*)pass.GetData(), passLen);
+        m_SysPass = parser->LoadString(pass.GetData(), passLen);
     }
 }

@@ -26,10 +26,12 @@ public:
     CroBank(const std::wstring& path);
     virtual ~CroBank();
 
-    virtual void Connect();
+    virtual bool Connect();
     virtual void Disconnect();
     virtual bool TryBankPath();
     
+    void SetBankPath(const std::wstring& path);
+    const std::wstring& GetBankPath() const;
     void SetTextCodePage(unsigned cp = CRONOS_DEFAULT_CODEPAGE);
     unsigned GetTextCodePage() const;
 
@@ -40,13 +42,12 @@ public:
 
     virtual void ParserStart(CroParser* parser);
     virtual void ParserEnd(CroParser* parser);
-    CroParser* Parser();
 protected:
     virtual void BankCronosException(const CroException& exc);
-private:
+
     std::wstring m_Path;
     unsigned m_TextCodePage;
-
+private:
     std::unique_ptr<CroFile> m_CroFile[FileCount];
 };
 
