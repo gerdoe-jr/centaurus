@@ -8,6 +8,8 @@
 #include "crorecord.h"
 #include <string>
 
+#define CRONOS_DEFAULT_SERIAL 1
+
 enum crofile_status {
     CROFILE_OK = 0,
     CROFILE_ERROR,
@@ -26,6 +28,24 @@ public:
     void Close();
     void Reset();
     void SetTableLimits(cronos_size tableLimit);
+
+    void SetupCrypt();
+    void SetupCrypt(uint32_t secret, uint32_t serial);
+    void LoadCrypt(CroData& key, unsigned keyLen = 8);
+    void Decrypt(CroBuffer& data, uint32_t prefix, const CroData* crypt = NULL);
+
+    inline cronos_size GetDefaultBlockSize() const { return m_DefLength; }
+    inline bool IsEncrypted() const { return m_bEncrypted; }
+    inline bool IsCompressed() const { return m_bCompressed; }
+    inline const CroData& GetSecret() const { return m_Secret; }
+    inline const CroData& GetLiteSecret() const { return m_LiteSecret; }
+    inline const CroData& GetCrypt() const { return m_Crypt; }
+    inline CroData& GetCrypt() { return m_Crypt; }
+
+    inline uint32_t GetSecretKey(const CroData& secret)
+    {
+        return secret.Get<uint32_t>((cronos_off)0x00);
+    }
 
     inline const CronosABI* ABI() const
     {
@@ -52,62 +72,51 @@ public:
             const std::string& msg = "");
     bool IsFailed() const;
 
-    inline cronos_size GetDefaultBlockSize() const { return m_uDefLength;  }
-    bool IsEncrypted() const;
-    bool IsCompressed() const;
-
-    void SetDefaultCrypt();
-    void SetCryptKey(uint32_t secret, uint32_t serial = 1);
-    inline const CroData& GetCryptTable() const { return m_Crypt; }
-    void LoadCryptTable(CroData& key);
-    void Decrypt(CroBuffer& data, uint32_t prefix, const CroData* crypt = NULL);
-
     bool IsEndOfEntries() const;
-
     bool IsValidOffset(cronos_off off, cronos_filetype type) const;
     FILE* FilePointer(cronos_filetype ftype) const;
     cronos_size FileSize(cronos_filetype ftype);
     cronos_off GetOffset(cronos_filetype ftype) const;
     void Seek(cronos_off off, cronos_filetype ftype);
-    void Read(CroData& data, uint32_t count, cronos_size size);
+    void Read(CroData& data, cronos_id id, cronos_filetype ftype,
+        cronos_pos pos, cronos_size size, cronos_idx count = 1);
+    void Read(CroData& data, cronos_id id, const cronos_abi_value* value,
+        cronos_idx count = 1);
     inline cronos_size DatFileSize() const { return m_DatSize; }
     inline cronos_size TadFileSize() const { return m_TadSize; }
 
     template<typename T = CroData>
-    inline T Read(cronos_id id, uint32_t count, cronos_size size,
-            cronos_filetype ftype)
+    inline T Read(cronos_id id, cronos_value value, uint32_t count = 1)
     {
         T data = T();
-
-        data.InitData(this, id, ftype, GetOffset(ftype), count*size);
-        Read(data, count, size);
-
+        
+        Read(data, id, ABI()->GetValue(value), count);
         return data;
     }
 
     template<typename T = CroData>
-    inline T Read(cronos_id id, uint32_t count, cronos_size size,
-            cronos_filetype ftype, cronos_off off)
+    inline T Read(cronos_id id, cronos_filetype ftype,
+        cronos_pos pos, cronos_size size)
     {
         T data = T();
 
-        data.InitData(this, id, ftype, off, count*size);
-        Read(data, count, size);
-
+        Read(data, id, ftype, pos, size);
         return data;
     }
 
-    template<typename T = CroData>
-    inline T Read(cronos_id id, uint32_t count, cronos_value value)
+    inline void LoadTable(cronos_filetype ftype, cronos_id id, cronos_pos pos,
+        cronos_size size, cronos_idx count, CroTable& table)
     {
-        const auto* i = ABI()->GetValue(value);
-        return Read<T>(id, count, i->m_Size, i->m_FileType, i->m_Offset);
+        Read(table, id, ftype, pos, size, count);
+        table.Sync();
     }
 
-    void LoadTable(cronos_filetype ftype, cronos_id id,
-        cronos_size limit, CroTable& table);
-    void LoadTable(cronos_filetype ftype, cronos_id id,
-        cronos_off start, cronos_off end, CroTable& table);
+    inline void LoadTable(cronos_filetype ftype, cronos_id id, cronos_pos pos,
+        cronos_off end, CroTable& table)
+    {
+        Read(table, id, ftype, pos, end - pos, 1);
+        table.Sync();
+    }
 
     cronos_idx EntryCountFileSize() const;
     inline cronos_id IdEntryEnd() const
@@ -145,11 +154,16 @@ private:
 
     CronosABI* m_pABI;
     cronos_version m_Version;
-
-    uint32_t m_uFlags;
-    uint32_t m_uDefLength;
     cronos_size m_uTadRecordSize;
-
+    
+    CroData m_Header;
+    bool m_bEncrypted;
+    bool m_bCompressed;
+    cronos_size m_DefLength;
+    
+    CroData m_Secret;
+    CroData m_LiteSecret;
+    CroData m_Pad;
     CroData m_Crypt;
 };
 

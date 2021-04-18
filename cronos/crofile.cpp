@@ -1,6 +1,7 @@
 ﻿#include "crofile.h"
 #include "cronos_abi.h"
 #include "cronos_format.h"
+#include "cronos02.h"
 #include "croexception.h"
 #include <algorithm>
 #include <string.h>
@@ -43,14 +44,14 @@ crofile_status CroFile::Open()
         if (fDat) fclose(fDat);
         if (fTad) fclose(fTad);
         return SetError(CROFILE_FOPEN, std::string("CroFile::Open")
-                + std::string(!fDat ? " !fDat" : "")
-                + std::string(!fTad ? " !fTad" : "")
+            + std::string(!fDat ? " !fDat" : "")
+            + std::string(!fTad ? " !fTad" : "")
         );
     }
 
     m_fDat = fDat;
     m_fTad = fTad;
-    
+
     m_DatSize = FileSize(CRONOS_DAT);
     m_TadSize = FileSize(CRONOS_TAD);
 
@@ -58,18 +59,19 @@ crofile_status CroFile::Open()
 
     //Generic ABI
     m_pABI = CronosABI::GenericABI();
-    CroData hdr = Read(INVALID_CRONOS_ID, 1, cronos_hdr);
-
-    /*if (memcmp(hdr.Data(cronos_hdr_sig), CRONOS_HEADER, 7))
-    {
-        Close();
-        return SetError(CROFILE_HEADER, "invalid header");
-    }*/
+    m_Header = Read(CRONOS_FILE_ID, cronos_hdr);
 
     char szMajor[4] = {0};
     char szMinor[4] = {0};
-    memcpy(szMajor, hdr.Data(cronos_hdr_major), 2);
-    memcpy(szMinor, hdr.Data(cronos_hdr_minor), 2);
+    memcpy(szMajor, m_Header.Data(cronos_hdr_major), 2);
+    memcpy(szMinor, m_Header.Data(cronos_hdr_minor), 2);
+
+    uint16_t flags = m_Header.Get<uint16_t>(cronos_hdr_flags);
+    m_bEncrypted = flags & CRONOS_ENCRYPTION;
+    m_bCompressed = flags & CRONOS_COMPRESSION;
+
+    uint16_t defLength = m_Header.Get<uint16_t>(cronos_hdr_deflength);
+    m_DefLength = defLength;
 
     cronos_abi_num abiVersion = cronos_abi_version(
         atoi(szMajor), atoi(szMinor));
@@ -80,17 +82,14 @@ crofile_status CroFile::Open()
             + szMajor + "." + szMinor);
     }
 
-    m_uFlags = hdr.Get<uint16_t>(cronos_hdr_flags);
-    m_uDefLength = hdr.Get<uint16_t>(cronos_hdr_deflength);
+    m_Version = ABI()->GetVersion();
     m_uTadRecordSize = ABI()->Size(cronos_tad_entry);
 
-    // 32-bit secret higher part + 32-bit serial lower part
-    if (IsEncrypted())
-    {
-        CroData secret = hdr.CopyValue(cronos_hdr_secret);
-        
-        SetCryptKey(secret.Get<uint32_t>((cronos_off)0x00), 1);
-    }
+    m_Secret = Read(CRONOS_FILE_ID, cronos_secret);
+    if (ABI()->IsLite())
+        m_LiteSecret = Read(CRONOS_FILE_ID, cronos_litesecret);
+    if (m_Version == CRONOS3)
+        m_Pad = Read(CRONOS_FILE_ID, cronos_pad);
 
     return SetError(CROFILE_OK);
 }
@@ -117,6 +116,53 @@ void CroFile::SetTableLimits(cronos_size tableLimit)
 {
     m_DatTableLimit = tableLimit / 2 + tableLimit / 4;
     m_TadTableLimit = tableLimit / 4;
+}
+
+void CroFile::SetupCrypt()
+{
+    CroData key;
+    LoadCrypt(key);
+}
+
+void CroFile::SetupCrypt(uint32_t secret, uint32_t serial)
+{
+    CroData key;
+    key.Write((uint8_t*)&serial, sizeof(uint32_t));
+    key.Write((uint8_t*)&secret, sizeof(uint32_t));
+    LoadCrypt(key);
+}
+
+void CroFile::LoadCrypt(CroData& key, unsigned keyLen)
+{
+    if (key.IsEmpty())
+    {
+        Read(m_Crypt, CRONOS_FILE_ID, &cronos02_crypt_table);
+    }
+    else
+    {
+        m_Crypt = Read(CRONOS_FILE_ID, cronos_crypt);
+
+        auto bf = std::make_unique<blowfish_t>();
+        blowfish_init(bf.get(), key.GetData(), keyLen);
+        blowfish_decrypt_buffer(bf.get(), m_Crypt.GetData(),
+            m_Crypt.GetSize());
+    }
+}
+
+void CroFile::Decrypt(CroBuffer& block, uint32_t prefix, const CroData* crypt)
+{
+    if (!crypt) crypt = &m_Crypt;
+    if (m_Crypt.IsEmpty())
+    {
+        SetError("Decrypt !m_Crypt");
+        return;
+    }
+
+    uint8_t* pBlock = block.GetData();
+    const uint8_t* pTable = GetVersion() <= 4
+        ? crypt->GetData() + 0x100 : crypt->GetData();
+    for (unsigned i = 0; i < block.GetSize(); i++)
+        pBlock[i] = pTable[pBlock[i]] - (uint8_t)(i + prefix);
 }
 
 crofile_status CroFile::SetError(crofile_status st,
@@ -148,52 +194,6 @@ bool CroFile::IsFailed() const
     if (!m_Error.empty())
         return true;
     return false;
-}
-
-bool CroFile::IsEncrypted() const
-{
-    return m_uFlags & CRONOS_ENCRYPTION;
-}
-
-bool CroFile::IsCompressed() const
-{
-    return m_uFlags & CRONOS_COMPRESSION;
-}
-
-void CroFile::SetCryptKey(uint32_t secret, uint32_t serial)
-{
-    CroData key;
-    key.Write((uint8_t*)&serial, sizeof(uint32_t));
-    key.Write((uint8_t*)&secret, sizeof(uint32_t));
-    LoadCryptTable(key);
-}
-
-void CroFile::LoadCryptTable(CroData& key)
-{
-    m_Crypt = Read(INVALID_CRONOS_ID, 1, cronos_hdr_crypt);
-
-    if (ABI()->GetModel() != cronos_model_small)
-    {
-        auto bf = std::make_unique<blowfish_t>();
-        blowfish_init(bf.get(), key.GetData(), key.GetSize());
-        blowfish_decrypt_buffer(bf.get(), m_Crypt.GetData(),
-            m_Crypt.GetSize());
-    }
-}
-
-void CroFile::Decrypt(CroBuffer& block, uint32_t prefix, const CroData* crypt)
-{
-    if (!crypt) crypt = &m_Crypt;
-    if (m_Crypt.IsEmpty())
-    {
-        SetError("Decrypt !m_Crypt");
-        return;
-    }
-
-    uint8_t* pBlock = block.GetData();
-    const uint8_t* pTable = crypt->GetData();
-    for (unsigned i = 0; i < block.GetSize(); i++)
-        pBlock[i] = pTable[0x100 + pBlock[i]] - (uint8_t)(i + prefix);
 }
 
 bool CroFile::IsEndOfEntries() const
@@ -243,59 +243,83 @@ void CroFile::Seek(cronos_off off, cronos_filetype ftype)
     _fseeki64(FilePointer(ftype), off, SEEK_SET);
 }
 
-void CroFile::Read(CroData& data, uint32_t count, cronos_size size)
+void CroFile::Read(CroData& data, cronos_id id, cronos_filetype ftype,
+    cronos_pos pos, cronos_size size, cronos_idx count)
 {
-    if (data.GetFileType() == CRONOS_INVALID_FILETYPE)
-        throw CroException(this, "Read invalid filetype");
-
-    FILE* fp = FilePointer(data.GetFileType());
-    cronos_size totalsize = count*size;
-    Seek(data.GetStartOffset(), data.GetFileType());
-    
-    cronos_size fileSize = data.GetFileType() == CRONOS_DAT
-        ? m_DatSize : m_TadSize;
-
-    size_t read = fread(data.GetData(),
-        std::min(size, fileSize), count, fp);
-    if (read < count)
+    if (ftype == CRONOS_TAD || ftype == CRONOS_DAT)
     {
-        if (ferror(fp)) throw CroStdError(this);
+        FILE* fp;
+        cronos_size fileSize;
+
+        if (ftype == CRONOS_TAD)
+        {
+            fp = m_fTad;
+            fileSize = m_TadSize;
+        }
+        else
+        {
+            fp = m_fDat;
+            fileSize = m_DatSize;
+        }
+
+        cronos_pos dataPos;
+        cronos_size dataSize;
+
+        if (data.GetFileType() == CRONOS_INVALID_FILETYPE)
+        {
+            dataPos = pos;
+            dataSize = size;
+        }
+        else
+        {
+            dataPos = data.GetStartOffset();
+            dataSize = data.IsEmpty() ? size : data.GetSize();
+        }
+
+        cronos_size totalSize = count * size;
+        if (dataPos + totalSize > fileSize)
+        {
+            totalSize = fileSize - dataPos;
+            count = totalSize / dataSize;
+        }
+        data.InitData(this, id, ftype, dataPos, totalSize);
         
-        if (read) data.Alloc(read * size);
-        else throw CroException(this, "CroFile !fread");
+        _fseeki64(fp, dataPos, SEEK_SET);
+        cronos_idx read = (cronos_idx)fread(data.GetData(),
+            dataSize, count, fp);
+
+        if (read < count)
+        {
+            if (ferror(fp)) throw CroStdError(this);
+
+            if (read) data.Alloc(read * dataSize);
+            else throw CroException(this, "CroFile !fread");
+        }
+
+        m_bEOB = feof(fp);
     }
-
-    m_bEOB = feof(fp);
+    else if (ftype == CRONOS_MEM)
+    {
+        throw CroException(this, "Read CRONOS_MEM with file pos");
+    }
+    else
+    {
+        throw CroException(this, "Invalid cronos file type");
+    }
 }
 
-void CroFile::LoadTable(cronos_filetype ftype, cronos_id id,
-    cronos_size limit, CroTable& table)
+void CroFile::Read(CroData& data, cronos_id id, const cronos_abi_value* value,
+    cronos_idx count)
 {
-    table.InitEntity(this, id);
-
-    if (!IsValidOffset(table.GetStartOffset(), ftype))
-        return;
-
-    table.InitTable(this, ftype, id, limit);
-    Read(table, table.GetEntryCount(), table.GetEntrySize());
-    table.Sync();
-}
-
-void CroFile::LoadTable(cronos_filetype ftype, cronos_id id,
-    cronos_off start, cronos_off end, CroTable& table)
-{
-    table.InitEntity(this, id);
-
-    end = std::min(end, ftype == CRONOS_TAD
-        ? m_TadSize : m_DatSize);
-    cronos_size size = end - start;
-
-    if (!IsValidOffset(start, ftype))
-        return;
-
-    table.InitTable(this, ftype, id, size);
-    Read(table, 1, size);
-    table.Sync();
+    cronos_filetype ftype = value->m_FileType;
+    if (ftype == CRONOS_MEM)
+    {
+        data.InitMemory(this, id, value);
+    }
+    else
+    {
+        Read(data, id, ftype, value->m_Offset, value->m_Size, count);
+    }
 }
 
 cronos_idx CroFile::OptimalEntryCount()
@@ -312,10 +336,10 @@ CroEntryTable CroFile::LoadEntryTable(cronos_id id, cronos_idx count)
 {
     CroEntryTable table;
     cronos_size entrySize = ABI()->Size(cronos_tad_entry);
+    cronos_pos entryStart = ABI()->Offset(cronos_tad_entry)
+        + (cronos_size)(id - 1) * entrySize;
 
-    table.SetOffset(ABI()->Offset(cronos_tad_entry)
-        + (cronos_size)(id - 1) * entrySize);
-    LoadTable(CRONOS_TAD, id, count * entrySize, table);
+    LoadTable(CRONOS_TAD, id, entryStart, entrySize, count, table);
     return table;
 }
 
@@ -380,10 +404,8 @@ CroBlockTable CroFile::LoadBlockTable(CroEntryTable* tad,
     cronos_size size = BlockTableOffsets(tad, id, count, start, end);
     CroBlockTable table = CroBlockTable(*tad, id, count);
 
-    table.SetOffset(start);
     LoadTable(CRONOS_DAT, id, start, end, table);
     table.SetEntryCount(count);
-
     return table;
 }
 
@@ -391,12 +413,12 @@ CroRecordMap CroFile::LoadRecordMap(cronos_id id, cronos_idx count)
 {
     CroRecordMap map;
     cronos_size entrySize = ABI()->Size(cronos_tad_entry);
-
-    map.SetOffset(ABI()->Offset(cronos_tad_entry)
-        + (cronos_size)(id - 1) * entrySize);
-    LoadTable(CRONOS_TAD, id, count * entrySize, map);
-
+    cronos_pos entryStart = ABI()->Offset(cronos_tad_entry)
+        + (cronos_size)(id - 1) * entrySize;
+    
+    LoadTable(CRONOS_TAD, id, entryStart, entrySize, count, map);
     map.Load();
+
     return map;
 }
 

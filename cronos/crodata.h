@@ -24,10 +24,14 @@ public:
     CroData(CroFile* file, cronos_id id,
         const uint8_t* data, cronos_size size);
     
+    static CroData CopyData(const CroData& data);
+
     void SetOffset(cronos_off off);
     void SetOffset(cronos_off off, cronos_filetype ftype);
     void InitData(CroFile* file, cronos_id id, cronos_filetype ftype,
             cronos_off off, cronos_size size);
+    void InitMemory(CroFile* file, cronos_id id,
+        const cronos_abi_value* value);
 
     cronos_filetype GetFileType() const;
     cronos_pos GetStartOffset() const;

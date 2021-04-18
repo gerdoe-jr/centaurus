@@ -29,7 +29,7 @@ public:
     CroFile* CroFileIndex() override;
 
     void LoadStructure(ICronosAPI* cro) override;
-
+    
     BankProps LoadProps(CroRecordMap* stru);
 
     bool IsValidBase(unsigned index) const override;

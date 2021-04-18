@@ -12,6 +12,7 @@ using cronos_abi_num = std::pair<cronos_version, cronos_version>;
 
 #define CRONOS_V3 3
 #define CRONOS_V4 4
+#define CRONOS_V7 7
 
 #define INVALID_CRONOS_VERSION (cronos_version)-1
 #define INVALID_CRONOS_ABI (std::make_pair(INVALID_CRONOS_VERSION,   \
@@ -36,7 +37,8 @@ typedef uint32_t cronos_idx;
 #define FCroId PRIu32
 #define FCroIdx PRIu32
 
-#define INVALID_CRONOS_ID 0
+#define INVALID_CRONOS_ID (cronos_id)-1
+#define CRONOS_FILE_ID 0
 
 typedef enum {
     CRONOS_INVALID_FILETYPE,

@@ -185,9 +185,11 @@ CroFile* CentaurusBank::CroFileIndex()
 void CentaurusBank::LoadStructure(ICronosAPI* cro)
 {
     auto* log = cro->CronosLog();
-
     CroFile* file = cro->SetLoaderFile(CroStru);
     if (!file) throw std::runtime_error("no structure");
+
+    uint32_t key = file->GetSecretKey(file->GetSecret());
+    file->SetupCrypt(key, CRONOS_DEFAULT_SERIAL);
 
     auto stru = cro->GetRecordMap(1, file->EntryCountFileSize());
 

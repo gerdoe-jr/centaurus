@@ -69,9 +69,11 @@ const char* CronosABI::GetValueName(cronos_value value) const noexcept
         "cronos_hdr_minor",
         "cronos_hdr_flags",
         "cronos_hdr_deflength",
-        "cronos_hdr_secret",
-        "cronos_hdrlite_secret",
-        "cronos_hdr_crypt",
+        
+        "cronos_secret",
+        "cronos_litesecret",
+        "cronos_pad",
+        "cronos_crypt",
 
         "cronos_tad_entry",
         "cronos_tad_offset",
@@ -151,7 +153,8 @@ public:
     virtual void InstallABI(cronos_version ver, cronos_abi_num num) noexcept
     {
         /* header */
-        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 4096, 0);
+        install_value(CRONOS_DAT, cronos_value_struct,
+            0x00, CRONOS_HEADER_SIZE, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x00, 7, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x0A, 2, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x0D, 2, 0);
@@ -198,12 +201,19 @@ public:
     void InstallABI(cronos_version ver,
         cronos_abi_num num) noexcept override
     {
-        /* header */
         install_value(CRONOS_DAT, cronos_value_data, 0x13, 8, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x33, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_data,
+            CRONOS3_PAD_OFFSET, CRONOS3_PAD_SIZE, 0);
         if (GetModel() == cronos_model_small)
+        {
             install_abi_value(cronos02_crypt_table);
-        else install_value(CRONOS_DAT, cronos_value_data, 0xFC, 512, 0);
+        }
+        else
+        {
+            install_value(CRONOS_DAT, cronos_value_data,
+                CRONOS3_CRYPT_OFFSET, CRONOS3_CRYPT_SIZE, 0);
+        }
 
         /* TAD */
         install_value(CRONOS_TAD, cronos_value_struct, 0x08, 12, 0);
@@ -246,12 +256,12 @@ public:
 
     bool IsCompatible(cronos_abi_num num) const override
     {
-        return num.first == 1 && num.second >= 11 && num.second <= 19;
+        return num.first == 1 && num.second >= 11 && num.second < 19;
     }
 
     bool IsLite() const override
     {
-        return Minor() == 14 || Minor() == 19;
+        return Minor() == 14;
     }
 
     cronos_model GetModel() const override
@@ -262,10 +272,12 @@ public:
     void InstallABI(cronos_version ver,
         cronos_abi_num num) noexcept override
     {
-        /* header */
         install_value(CRONOS_DAT, cronos_value_data, 0x13, 8, 0);
         install_value(CRONOS_DAT, cronos_value_data, 0x33, 8, 0);
-        install_value(CRONOS_DAT, cronos_value_data, 0xF8, 512, 0);
+        install_value(CRONOS_DAT, cronos_value_data,
+            INVALID_CRONOS_OFFSET, CRONOS4_PAD_SIZE, 0);
+        install_value(CRONOS_DAT, cronos_value_data,
+            CRONOS4_CRYPT_OFFSET, CRONOS4_CRYPT_SIZE, 0);
 
         /* TAD */
         install_value(CRONOS_TAD, cronos_value_struct, 0x10, 16, 0);
@@ -289,3 +301,71 @@ public:
         install_value(CRONOS_DAT, cronos_value_data, 0x08, 0, 0);
     }
 } cronos_abi_v4;
+
+/* Cronos 7x ABI */
+
+class CronosABI_V7 : public CronosABI_Generic
+{
+public:
+    CronosABI_V7() : CronosABI_Generic()
+    {
+    }
+
+    CronosABI_V7(cronos_abi_num num)
+        : CronosABI_Generic(CRONOS_V7, num)
+    {
+        InstallABI(CRONOS_V7, num);
+    }
+
+    CronosABI* LoadABI(cronos_abi_num num) const override
+    {
+        return new CronosABI_V7(num);
+    }
+
+    bool IsCompatible(cronos_abi_num num) const override
+    {
+        return num.first == 1 && num.second > 14 && num.second <= 19;
+    }
+
+    bool IsLite() const override
+    {
+        return false;
+    }
+
+    cronos_model GetModel() const override
+    {
+        return cronos_model_big;
+    }
+
+    void InstallABI(cronos_version ver,
+        cronos_abi_num num) noexcept override
+    {
+        install_value(CRONOS_DAT, cronos_value_data, 0x13, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_data, 0x33, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_data,
+            INVALID_CRONOS_OFFSET, CRONOS7_PAD_SIZE, 0);
+        install_value(CRONOS_DAT, cronos_value_data,
+            CRONOS7_CRYPT_OFFSET, CRONOS7_CRYPT_SIZE, 0);
+
+        /* TAD */
+        install_value(CRONOS_TAD, cronos_value_struct, 0x10, 16, 0);
+        install_value(CRONOS_TAD, cronos_value_uint64,
+            0x00, 8, 0x0000FFFFFFFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint32, 0x0C, 4, 0xFFFFFFFF);
+        install_value(CRONOS_TAD, cronos_value_uint64,
+            0x00, 0, 0xFFFF000000000000);
+
+        /* DAT */
+        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 12, 0);
+        install_value(CRONOS_DAT, cronos_value_uint64,
+            0x00, 8, 0x0000FFFFFFFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_uint32, 0x08, 4, 0xFFFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_data, 0x0C, 0, 0);
+
+        install_value(CRONOS_DAT, cronos_value_struct, 0x00, 8, 0);
+        install_value(CRONOS_DAT, cronos_value_uint64,
+            0x00, 8, 0x0000FFFFFFFFFFFF);
+        install_value(CRONOS_DAT, cronos_value_data, 0x08, 0, 0);
+    }
+} cronos_abi_v7;

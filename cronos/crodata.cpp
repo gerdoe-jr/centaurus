@@ -3,7 +3,9 @@
 #include "croexception.h"
 #include <string.h>
 
-CroData::CroData() : CroBuffer()
+CroData::CroData()
+    : CroBuffer(),
+    CroEntity(NULL, INVALID_CRONOS_ID)
 {
     m_FileType = CRONOS_INVALID_FILETYPE;
     m_uOffset = INVALID_CRONOS_OFFSET;
@@ -37,6 +39,21 @@ CroData::CroData(CroFile* file, cronos_id id,
     InitBuffer((uint8_t*)data, size, false);
 }
 
+CroData CroData::CopyData(const CroData& data)
+{
+    CroData copy;
+    size_t size = data.GetSize();
+
+    copy.InitData(data.File(), data.Id(), CRONOS_MEM,
+        INVALID_CRONOS_OFFSET, size);
+    if (!data.IsEmpty())
+    {
+        memcpy(copy.GetData(), data.GetData(), size);
+    }
+
+    return copy;
+}
+
 void CroData::SetOffset(cronos_off off)
 {
     m_uOffset = off;
@@ -56,6 +73,16 @@ void CroData::InitData(CroFile* file, cronos_id id, cronos_filetype ftype,
 
     m_FileType = ftype;
     m_uOffset = off;
+}
+
+void CroData::InitMemory(CroFile* file, cronos_id id,
+    const cronos_abi_value* value)
+{
+    InitEntity(file, id);
+    InitBuffer((uint8_t*)value->m_pMem, value->m_Size, false);
+
+    m_FileType = CRONOS_MEM;
+    m_uOffset = INVALID_CRONOS_OFFSET;
 }
 
 cronos_filetype CroData::GetFileType() const

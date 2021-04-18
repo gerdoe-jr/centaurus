@@ -14,9 +14,11 @@ enum cronos_value : unsigned {
     cronos_hdr_minor,
     cronos_hdr_flags,
     cronos_hdr_deflength,
-    cronos_hdr_secret,
-    cronos_hdrlite_secret,
-    cronos_hdr_crypt,
+
+    cronos_secret,
+    cronos_litesecret,
+    cronos_pad,
+    cronos_crypt,
 
     cronos_tad_entry,
     cronos_tad_offset,

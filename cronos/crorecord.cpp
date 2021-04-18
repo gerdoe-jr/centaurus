@@ -21,8 +21,8 @@ void CroRecord::AddPart(cronos_off off, cronos_size size)
 CroBlock CroRecordMap::ReadBlock(cronos_off off, cronos_size size)
 {
     CroBlock block = CroBlock(size == ABI()->Size(cronos_first_block_hdr));
-    block.InitData(File(), INVALID_CRONOS_ID, CRONOS_DAT, off, size);
-    File()->Read(block, 1, size);
+    File()->Read(block, CRONOS_FILE_ID, CRONOS_DAT, off, size);
+    
     return block;
 }
 
@@ -91,7 +91,7 @@ CroBuffer CroRecordMap::LoadRecord(cronos_id id)
     CroBuffer out;
     for (auto& [off, size] : rec.RecordParts())
     {
-        CroData part = file->Read(id, 1, size, CRONOS_DAT, off);
+        CroData part = file->Read(id, CRONOS_DAT, off, size);
         out.Write(part.GetData(), part.GetSize());
     }
 
