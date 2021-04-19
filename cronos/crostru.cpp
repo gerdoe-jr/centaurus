@@ -1,5 +1,6 @@
 #include "crostru.h"
 #include "croattr.h"
+#include "croprop.h"
 
 /* CroStru */
 
@@ -40,17 +41,66 @@ bool CroStru::GetAttrByName(const std::string& name,
             CroStream _stream = CroStream(_record);
 
             _stream.Read<uint8_t>();
-            CroAttr attr = Parse<CroAttr>(_stream);
+            cronos_off attrStart = _stream.GetPosition();
 
+            CroAttr attr = Parse<CroAttr>(_stream);
             if (attr.AttrName() == name)
             {
                 record.Copy(_record.GetData(), _record.GetSize());
-                stream = _stream;
+                stream = CroStream(record);
                 
+                stream.SetPosition(attrStart);
                 return true;
             }
         }
     }
 
     return false;
+}
+
+bool CroStru::LoadBankProps()
+{
+    CroBuffer attr;
+    CroStream props;
+    if (!GetAttrByName(CROATTR_BANK, attr, props))
+    {
+        return false;
+    }
+
+    while (props.Remaining() > 0)
+    {
+        CroProp prop = Parse<CroProp>(props);
+        CroBuffer& data = prop.Prop();
+
+        if (prop.IsRef())
+        {
+            cronos_id blockId = prop.RefBlockId();
+            croblock_type type = GetBlockType(blockId);
+            if (type != CROBLOCK_PROP)
+            {
+                throw std::runtime_error("ref block is not a prop");
+            }
+
+            CroBuffer record = m_pStru->LoadRecord(blockId);
+            if (record.IsEmpty())
+            {
+                throw std::runtime_error("prop ref block is empty");
+            }
+
+            CroStream block = CroStream(record);
+            block.Read<uint8_t>();
+
+            cronos_size propSize = block.Remaining();
+            data.Write(block.Read(propSize), propSize);
+        }
+        else
+        {
+            cronos_size propSize = prop.PropSize();
+            data.Write(props.Read(propSize), propSize);
+        }
+
+        Bank()->OnParseProp(prop);
+    }
+
+    return true;
 }

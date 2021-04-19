@@ -7,6 +7,7 @@
 #define CRONOS_DEFAULT_CODEPAGE 1251
 
 class CroParser;
+class CroProp;
 
 class CroBank
 {
@@ -28,15 +29,18 @@ public:
     virtual CroFile* File(crobank_file file);
     const std::wstring& FileName(crobank_file file);
 
+    CroParser* Parser();
     virtual void ParserStart(CroParser* parser);
     virtual void ParserEnd(CroParser* parser);
-protected:
-    virtual void BankCronosException(const CroException& exc);
 
+    virtual void OnCronosException(const CroException& exc);
+    virtual void OnParseProp(CroProp& prop);
+protected:
     std::wstring m_Path;
     unsigned m_TextCodePage;
 private:
     std::unique_ptr<CroFile> m_CroFile[CROFILE_COUNT];
+    CroParser* m_Parser;
 };
 
 #endif

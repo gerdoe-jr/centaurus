@@ -17,7 +17,7 @@ public:
     virtual void Parse(CroParser* parser, CroStream& stream);
 
     const std::string& GetName() const;
-    CroBuffer& GetProp();
+    CroBuffer& Prop();
     std::string GetString() const;
     
     inline bool IsRef() const { return !(m_Value & CROPROP_REF); }

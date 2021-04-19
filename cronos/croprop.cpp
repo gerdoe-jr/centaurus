@@ -23,7 +23,7 @@ const std::string& CroProp::GetName() const
     return m_Name;
 }
 
-CroBuffer& CroProp::GetProp()
+CroBuffer& CroProp::Prop()
 {
     return m_Prop;
 }
@@ -161,7 +161,7 @@ void CroPropNS::Parse(CroParser* parser, CroProp& prop)
     CroData crypt = CroData(stru, INVALID_CRONOS_ID,
         cronos02_crypt_table.m_pMem, cronos02_crypt_table.m_Size);
 
-    CroBuffer in = prop.GetProp();
+    CroBuffer in = prop.Prop();
     CroBuffer out;
 
     CroStream ns(in);

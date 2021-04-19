@@ -17,7 +17,8 @@ public:
 
     std::wstring GetWString(const uint8_t* str, cronos_size len) override;
     std::string GetString(const uint8_t* str, cronos_size len) override;
-    void BankCronosException(const CroException& exc) override;
+    void OnCronosException(const CroException& exc) override;
+    void OnParseProp(CroProp& prop) override;
 
     CroBank* Bank() override;
     CroFile* BankFile(crobank_file file) override;

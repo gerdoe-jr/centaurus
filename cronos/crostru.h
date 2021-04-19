@@ -7,6 +7,8 @@
 #define CROATTR_PREFIX      0x03
 #define CROATTR_MIN_SIZE    0x0F
 
+#define CROATTR_BANK        "Bank"
+
 #define CROPROP_PREFIX      0x04
 
 enum croblock_type : uint8_t {
@@ -24,6 +26,8 @@ public:
     croblock_type GetBlockType(cronos_id blockId);
     bool GetAttrByName(const std::string& name,
         CroBuffer& record, CroStream& stream);
+    
+    bool LoadBankProps();
 private:
     CroRecordMap* m_pStru;
 };

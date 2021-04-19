@@ -7,6 +7,7 @@ CroBank::CroBank(const std::wstring& path)
     : m_Path(path),
     m_TextCodePage(CRONOS_DEFAULT_CODEPAGE)
 {
+    m_Parser = NULL;
 }
 
 CroBank::~CroBank()
@@ -24,7 +25,7 @@ bool CroBank::Open()
             file->Open();
         }
         catch (const CroException& exc) {
-            BankCronosException(exc);
+            OnCronosException(exc);
             file->SetError(CROFILE_ERROR);
         }
 
@@ -60,7 +61,7 @@ bool CroBank::TryBankPath()
                 return false;
         }
         catch (const CroException& exc) {
-            BankCronosException(exc);
+            OnCronosException(exc);
             return false;
         }
     }
@@ -114,17 +115,27 @@ const std::wstring& CroBank::FileName(crobank_file file)
     return _croFileNames[file];
 }
 
+CroParser* CroBank::Parser()
+{
+    return m_Parser;
+}
+
 void CroBank::ParserStart(CroParser* parser)
 {
-
+    m_Parser = parser;
 }
 
 void CroBank::ParserEnd(CroParser* parser)
 {
-
+    m_Parser = NULL;
 }
 
-void CroBank::BankCronosException(const CroException& exc)
+void CroBank::OnCronosException(const CroException& exc)
 {
     throw std::runtime_error("bank cronos exception not implemented");
+}
+
+void CroBank::OnParseProp(CroProp& prop)
+{
+
 }

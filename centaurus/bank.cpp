@@ -50,9 +50,17 @@ std::string CentaurusBank::GetString(const uint8_t* str, cronos_size len)
     return WcharToText(GetWString(str, len));
 }
 
-void CentaurusBank::BankCronosException(const CroException& exc)
+void CentaurusBank::OnCronosException(const CroException& exc)
 {
     centaurus->OnException(exc);
+}
+
+void CentaurusBank::OnParseProp(CroProp& prop)
+{
+    CroBank::OnParseProp(prop);
+
+    logger->Log("CroProp(%s)\n", prop.GetName().c_str());
+    logger->LogBuffer(prop.Prop(), 1251);
 }
 
 CroBank* CentaurusBank::Bank()
@@ -139,11 +147,9 @@ void CentaurusBank::LoadStructure(ICronosAPI* cro)
     CroStru stru = CroStru(this, cro->GetRecordMap(
         1, file->EntryCountFileSize()));
     
-    CroBuffer attr;
-    CroStream props;
-    if (stru.GetAttrByName("Bank", attr, props))
+    if (!stru.LoadBankProps())
     {
-        log->LogBuffer(attr, 1251);
+        log->Error("failed to bank props\n");
     }
     
     cro->ReleaseMap();
