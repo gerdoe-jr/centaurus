@@ -87,9 +87,9 @@ crofile_status CroFile::Open()
     m_Version = ABI()->GetVersion();
     m_uTadRecordSize = ABI()->Size(cronos_tad_entry);
 
-    m_Secret = Read(CRONOS_FILE_ID, cronos_secret);
+    m_Secret = m_Header.Value(cronos_secret);
     if (ABI()->IsLite())
-        m_LiteSecret = Read(CRONOS_FILE_ID, cronos_litesecret);
+        m_LiteSecret = m_Header.Value(cronos_litesecret);
     if (m_Version == CRONOS3)
         m_Pad = Read(CRONOS_FILE_ID, cronos_pad);
 
@@ -136,7 +136,7 @@ void CroFile::SetupCrypt(uint32_t secret, uint32_t serial)
 
 void CroFile::LoadCrypt(CroData& key, unsigned keyLen)
 {
-    if (key.IsEmpty())
+    if (key.IsEmpty() || ABI()->GetModel() == cronos_model_small)
     {
         Read(m_Crypt, CRONOS_FILE_ID, &cronos02_crypt_table);
     }

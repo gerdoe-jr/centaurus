@@ -8,7 +8,6 @@
 #include <vector>
 #include <string>
 
-using BankProps = std::vector<CroAttr>;
 class CentaurusBank : public CroBank, public ICentaurusBank
 {
 public:
@@ -28,14 +27,17 @@ public:
 
     void LoadStructure(ICronosAPI* cro) override;
 
+    uint32_t BankFormSaveVer() const override;
+    uint32_t BankId() const override;
+    const std::wstring& BankName() const override;
+    uint32_t BankSerial() const override;
+    uint32_t BankCustomProt() const override;
+    const std::wstring& BankSysPass() const override;
+    int BankVersion() const override;
+
     bool IsValidBase(unsigned index) const override;
     CroBase& Base(unsigned index) override;
     unsigned BaseEnd() const override;
-
-    uint32_t BankId() const override;
-    const std::wstring& BankName() const override;
-private:
-    
 };
 
 #endif

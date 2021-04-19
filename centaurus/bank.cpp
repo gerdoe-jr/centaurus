@@ -173,6 +173,41 @@ void CentaurusBank::LoadStructure(ICronosAPI* cro)
     cro->ReleaseMap();
 }
 
+uint32_t CentaurusBank::BankFormSaveVer() const
+{
+    return m_BankFormSaveVer;
+}
+
+uint32_t CentaurusBank::BankId() const
+{
+    return m_BankId;
+}
+
+const std::wstring& CentaurusBank::BankName() const
+{
+    return m_BankName;
+}
+
+uint32_t CentaurusBank::BankSerial() const
+{
+    return m_BankSerial;
+}
+
+uint32_t CentaurusBank::BankCustomProt() const
+{
+    return m_BankCustomProt;
+}
+
+const std::wstring& CentaurusBank::BankSysPass() const
+{
+    return m_BankSysPass;
+}
+
+int CentaurusBank::BankVersion() const
+{
+    return m_BankVersion;
+}
+
 bool CentaurusBank::IsValidBase(unsigned index) const
 {
     return index < m_Bases.size();
@@ -190,14 +225,4 @@ CroBase& CentaurusBank::Base(unsigned index)
 unsigned CentaurusBank::BaseEnd() const
 {
     return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->m_BaseIndex;
-}
-
-uint32_t CentaurusBank::BankId() const
-{
-    return m_BankId;
-}
-
-const std::wstring& CentaurusBank::BankName() const
-{
-    return m_BankName;
 }

@@ -56,12 +56,19 @@ public:
 
     virtual void LoadStructure(ICronosAPI* cro) = 0;
 
+    virtual uint32_t BankFormSaveVer() const = 0;
+    virtual uint32_t BankId() const = 0;
+    virtual const std::wstring& BankName() const = 0;
+    virtual uint32_t BankSerial() const = 0;
+    virtual uint32_t BankCustomProt() const = 0;
+    virtual const std::wstring& BankSysPass() const = 0;
+    virtual int BankVersion() const = 0;
+
     virtual bool IsValidBase(unsigned index) const = 0;
     virtual CroBase& Base(unsigned index) = 0;
     virtual unsigned BaseEnd() const = 0;
-
-    virtual uint32_t BankId() const = 0;
-    virtual const std::wstring& BankName() const = 0;
+    //virtual uint32_t BankId() const = 0;
+    //virtual const std::wstring& BankName() const = 0;
 };
 
 /* CentaurusTask */
