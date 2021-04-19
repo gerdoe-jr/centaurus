@@ -134,7 +134,6 @@ void CentaurusBank::Disconnect()
 void CentaurusBank::LoadStructure(ICronosAPI* cro)
 {
     auto* log = cro->CronosLog();
-    
     CroFile* file = cro->SetLoaderFile(CROFILE_STRU);
     
     if (!file) throw std::runtime_error("no structure");
@@ -149,26 +148,7 @@ void CentaurusBank::LoadStructure(ICronosAPI* cro)
         log->Error("failed to bank props\n");
     }
     
-    printf("\tm_BankFormSaveVer = %u\n", m_BankFormSaveVer);
-    printf("\tm_BankId = %u\n", m_BankId);
-    printf("\tm_BankName = \"%s\"\n", WcharToAnsi(m_BankName, 866).c_str());
-    printf("\tm_Bases\n");
-    for (auto& base : m_Bases)
-    {
-        printf("\t\t%03u\t\"%s\"\n", base.m_BaseIndex,
-            WcharToAnsi(TextToWchar(base.m_Name), 866).c_str());
-    }
-    printf("\tm_Formuls\n");
-    for (auto& formula : m_Formuls)
-    {
-        printf("\t\t\"%s\"\n", GetString(formula.GetData(),
-            formula.GetSize()).c_str());
-    }
-    printf("\tm_BankSerial = %u\n", m_BankSerial);
-    printf("\tm_BankCustomProt = %u\n", m_BankCustomProt);
-    printf("\tm_BankSysPass = \"%s\"\n", WcharToAnsi(
-        m_BankSysPass, 866).c_str());
-    printf("\tm_BankVersion = %d\n", m_BankVersion);
+    log->LogBankStructure(this);
 
     cro->ReleaseMap();
 }

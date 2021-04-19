@@ -1,7 +1,9 @@
 #include "logger.h"
 #include "api.h"
 #include <crofile.h>
+#include <croprop.h>
 #include <crorecord.h>
+#include <win32util.h>
 #include <cstdarg>
 #include <ctime>
 
@@ -157,6 +159,40 @@ void CentaurusLogger::LogBankFiles(ICentaurusBank* bank)
     }
 
     bank->Disconnect();
+}
+
+void CentaurusLogger::LogBankStructure(ICentaurusBank* bank)
+{
+    if (m_pForward)
+    {
+        m_pForward->LogBankStructure(bank);
+        return;
+    }
+
+    auto lock = scoped_lock(GetLogBoostMutex());
+
+    fprintf(m_fOutput, "\tm_BankFormSaveVer = %u\n", bank->BankFormSaveVer());
+    fprintf(m_fOutput, "\tm_BankId = %u\n", bank->BankId());
+    fprintf(m_fOutput, "\tm_BankName = \"%s\"\n",
+        WcharToAnsi(bank->BankName(), 866).c_str());
+    fprintf(m_fOutput, "\tm_Bases\n");
+    for (unsigned i = 0; i <= bank->BaseEnd(); i++)
+    {
+        auto& base = bank->Base(i);
+        fprintf(m_fOutput, "\t\t%03u\t\"%s\"\n", base.m_BaseIndex,
+            WcharToAnsi(TextToWchar(base.m_Name), 866).c_str());
+    }
+    /*fprintf(m_fOutput, "\tm_Formuls\n");
+    for (auto& formula : m_Formuls)
+    {
+        fprintf(m_fOutput, "\t\t\"%s\"\n", GetString(formula.GetData(),
+            formula.GetSize()).c_str());
+    }*/
+    fprintf(m_fOutput, "\tm_BankSerial = %u\n", bank->BankSerial());
+    fprintf(m_fOutput, "\tm_BankCustomProt = %u\n", bank->BankCustomProt());
+    fprintf(m_fOutput, "\tm_BankSysPass = \"%s\"\n", WcharToAnsi(
+        bank->BankSysPass(), 866).c_str());
+    fprintf(m_fOutput, "\tm_BankVersion = %d\n", bank->BankVersion());
 }
 
 void CentaurusLogger::LogBuffer(const CroBuffer& buf, unsigned codepage)

@@ -67,8 +67,6 @@ public:
     virtual bool IsValidBase(unsigned index) const = 0;
     virtual CroBase& Base(unsigned index) = 0;
     virtual unsigned BaseEnd() const = 0;
-    //virtual uint32_t BankId() const = 0;
-    //virtual const std::wstring& BankName() const = 0;
 };
 
 /* CentaurusTask */
@@ -116,6 +114,7 @@ public:
         const char* fmt, ...) = 0;
 
     virtual void LogBankFiles(ICentaurusBank* bank) = 0;
+    virtual void LogBankStructure(ICentaurusBank* bank) = 0;
     virtual void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) = 0;
     virtual void LogTable(const CroTable& table) = 0;
     virtual void LogRecordMap(const CroRecordMap& records) = 0;

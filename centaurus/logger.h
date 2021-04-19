@@ -31,6 +31,7 @@ public:
         const char* fmt, ...) override;
 
     void LogBankFiles(ICentaurusBank* bank) override;
+    void LogBankStructure(ICentaurusBank* bank) override;
     void LogBuffer(const CroBuffer& buf, unsigned codepage = 0) override;
     void LogTable(const CroTable& table) override;
     void LogRecordMap(const CroRecordMap& records) override;
