@@ -151,18 +151,14 @@ CroPropNS::CroPropNS()
 
 void CroPropNS::Parse(CroParser* parser, CroStream& stream)
 {
-    CroProp::Parse(parser, stream);
-    Parse(parser, *this);
-}
-
-void CroPropNS::Parse(CroParser* parser, CroProp& prop)
-{
     CroFile* stru = parser->File();
     CroData crypt = CroData(stru, INVALID_CRONOS_ID,
         cronos02_crypt_table.m_pMem, cronos02_crypt_table.m_Size);
 
-    CroBuffer in = prop.Prop();
-    CroBuffer out;
+    CroBuffer in, out;
+    
+    cronos_size propSize = stream.Remaining();
+    in.Write(stream.Read(propSize), propSize);
 
     CroStream ns(in);
     ns.Read<uint8_t>();

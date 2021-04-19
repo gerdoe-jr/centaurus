@@ -58,9 +58,6 @@ void CentaurusBank::OnCronosException(const CroException& exc)
 void CentaurusBank::OnParseProp(CroProp& prop)
 {
     CroBank::OnParseProp(prop);
-
-    logger->Log("CroProp(%s)\n", prop.GetName().c_str());
-    logger->LogBuffer(prop.Prop(), 1251);
 }
 
 CroBank* CentaurusBank::Bank()
@@ -152,25 +149,47 @@ void CentaurusBank::LoadStructure(ICronosAPI* cro)
         log->Error("failed to bank props\n");
     }
     
+    printf("\tm_BankFormSaveVer = %u\n", m_BankFormSaveVer);
+    printf("\tm_BankId = %u\n", m_BankId);
+    printf("\tm_BankName = \"%s\"\n", WcharToAnsi(m_BankName, 866).c_str());
+    printf("\tm_Bases\n");
+    for (auto& base : m_Bases)
+    {
+        printf("\t\t%03u\t\"%s\"\n", base.m_BaseIndex,
+            WcharToAnsi(TextToWchar(base.m_Name), 866).c_str());
+    }
+    printf("\tm_Formuls\n");
+    for (auto& formula : m_Formuls)
+    {
+        printf("\t\t\"%s\"\n", GetString(formula.GetData(),
+            formula.GetSize()).c_str());
+    }
+    printf("\tm_BankSerial = %u\n", m_BankSerial);
+    printf("\tm_BankCustomProt = %u\n", m_BankCustomProt);
+    printf("\tm_BankSysPass = \"%s\"\n", WcharToAnsi(
+        m_BankSysPass, 866).c_str());
+    printf("\tm_BankVersion = %d\n", m_BankVersion);
+
     cro->ReleaseMap();
 }
 
 bool CentaurusBank::IsValidBase(unsigned index) const
 {
-    return m_Bases.find(index) != m_Bases.end();
+    return index < m_Bases.size();
 }
 
 CroBase& CentaurusBank::Base(unsigned index)
 {
-    auto it = m_Bases.find(index);
+    /*auto it = m_Bases.find(index);
     if (it == m_Bases.end())
         throw std::runtime_error("invalid base");;
-    return it->second;
+    return it->second;*/
+    return m_Bases.at(index);
 }
 
 unsigned CentaurusBank::BaseEnd() const
 {
-    return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->first + 1;
+    return m_Bases.empty() ? 0 : std::prev(m_Bases.end())->m_BaseIndex;
 }
 
 uint32_t CentaurusBank::BankId() const

@@ -35,10 +35,7 @@ public:
     uint32_t BankId() const override;
     const std::wstring& BankName() const override;
 private:
-    uint32_t m_BankId;
-    std::wstring m_BankName;
-
-    std::map<cronos_idx, CroBase> m_Bases;
+    
 };
 
 #endif

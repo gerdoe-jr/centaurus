@@ -1,13 +1,14 @@
 #ifndef __CROPARSER_H
 #define __CROPARSER_H
 
-#include "crobank.h"
+#include "crofile.h"
 #include "crostream.h"
 #include "cronos_abi.h"
 #include "croexception.h"
 #include <stdexcept>
 #include <string>
 
+class CroBank;
 class CroParser;
 
 class ICroParsee

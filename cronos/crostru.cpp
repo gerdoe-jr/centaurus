@@ -1,4 +1,5 @@
 #include "crostru.h"
+#include "crobank.h"
 #include "croattr.h"
 #include "croprop.h"
 
@@ -99,7 +100,9 @@ bool CroStru::LoadBankProps()
             data.Write(props.Read(propSize), propSize);
         }
 
+        Bank()->ParserStart(this);
         Bank()->OnParseProp(prop);
+        Bank()->ParserEnd(this);
     }
 
     return true;

@@ -2,12 +2,12 @@
 #define __CROBANK_H
 
 #include "crofile.h"
+#include "croprop.h"
 #include "croexception.h"
 
 #define CRONOS_DEFAULT_CODEPAGE 1251
 
 class CroParser;
-class CroProp;
 
 class CroBank
 {
@@ -41,6 +41,16 @@ protected:
 private:
     std::unique_ptr<CroFile> m_CroFile[CROFILE_COUNT];
     CroParser* m_Parser;
+public:
+    uint32_t m_BankFormSaveVer;
+    uint32_t m_BankId;
+    std::wstring m_BankName;
+    std::vector<CroBase> m_Bases;
+    std::vector<CroBuffer> m_Formuls;
+    uint32_t m_BankSerial;
+    uint32_t m_BankCustomProt;
+    std::wstring m_BankSysPass;
+    int m_BankVersion;
 };
 
 #endif

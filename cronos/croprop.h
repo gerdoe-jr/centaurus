@@ -5,9 +5,18 @@
 #include <string>
 #include <map>
 
-#define CROPROP_REF 0x80000000
-#define CROPROP_SIZE(value) (value&0x7FFFFFFF)
-#define CROPROP_MIN_SIZE 0x0F
+#define CROPROP_REF             0x80000000
+#define CROPROP_SIZE(value)     (value&0x7FFFFFFF)
+#define CROPROP_MIN_SIZE        0x0F
+
+#define CROPROP_BANK            "Bank"
+#define CROPROP_BANKFORMSAVEVER "BankFormSaveVer"
+#define CROPROP_BANKID          "BankId"
+#define CROPROP_BANKNAME        "BankName"
+#define CROPROP_BASE_PREFIX     "Base"
+#define CROPROP_FORMULA_PREFIX  "Formuls"
+#define CROPROP_NS1             "NS1"
+#define CROPROP_VERSION         "Version"
 
 class CroProp : public ICroParsee
 {
@@ -96,13 +105,12 @@ private:
     std::map<unsigned, CroField> m_Fields;
 };
 
-class CroPropNS : public CroProp
+class CroPropNS : public ICroParsee
 {
 public:
     CroPropNS();
 
     void Parse(CroParser* parser, CroStream& stream) override;
-    void Parse(CroParser* parser, CroProp& prop);
 
     inline uint32_t Serial() const { return m_Serial; }
     inline uint32_t CustomProt() const { return m_CustomProt; }

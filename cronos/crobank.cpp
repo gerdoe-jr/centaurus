@@ -8,6 +8,12 @@ CroBank::CroBank(const std::wstring& path)
     m_TextCodePage(CRONOS_DEFAULT_CODEPAGE)
 {
     m_Parser = NULL;
+
+    m_BankFormSaveVer = 0;
+    m_BankId = 0;
+    m_BankSerial = 0;
+    m_BankCustomProt = 0;
+    m_BankVersion = 0;
 }
 
 CroBank::~CroBank()
@@ -137,5 +143,33 @@ void CroBank::OnCronosException(const CroException& exc)
 
 void CroBank::OnParseProp(CroProp& prop)
 {
+    const std::string& name = prop.GetName();
+    CroBuffer& data = prop.Prop();
 
+    if (name == CROPROP_BANK)
+    {
+
+    }
+    else if (name == CROPROP_BANKFORMSAVEVER)
+        m_BankFormSaveVer = (uint32_t)atoll(prop.GetString().c_str());
+    else if (name == CROPROP_BANKID)
+        m_BankId = (uint32_t)atoll(prop.GetString().c_str());
+    else if (name == CROPROP_BANKNAME)
+        m_BankName = GetWString(data.GetData(), data.GetSize());
+    else if (name.starts_with(CROPROP_BASE_PREFIX))
+        m_Bases.emplace_back(Parser()->Parse<CroBase>(data));
+    else if (name.starts_with(CROPROP_FORMULA_PREFIX))
+        m_Formuls.emplace_back(data);
+    else if (name == CROPROP_NS1)
+    {
+        CroPropNS ns1 = Parser()->Parse<CroPropNS>(data);
+        std::string pass = ns1.SysPassword();
+
+        m_BankSerial = ns1.Serial();
+        m_BankCustomProt = ns1.CustomProt();
+        m_BankSysPass = GetWString((const uint8_t*)
+            pass.c_str(), pass.size());
+    }
+    else if (name == CROPROP_VERSION)
+        m_BankVersion = atoi(prop.GetString().c_str());
 }
