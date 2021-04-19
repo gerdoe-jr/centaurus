@@ -344,6 +344,8 @@ void CentaurusExport::Release()
 
 void CentaurusExport::Export()
 {
+    // !! MEMORY LEAK !!
+
     if (m_Export.empty())
         throw std::runtime_error("CentaurusExport bank is not loaded");
 
@@ -379,7 +381,6 @@ void CentaurusExport::Export()
         map_id = bank->IdEnd();
         ReleaseMap();
     } while (map_id < file->IdEntryEnd());
-    // BUG BUG BUG
 
     FlushBuffers();
     centaurus->UpdateBankExportIndex(
