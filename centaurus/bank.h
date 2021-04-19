@@ -20,6 +20,10 @@ public:
     void BankCronosException(const CroException& exc) override;
 
     CroBank* Bank() override;
+    CroFile* BankFile(crobank_file file) override;
+
+    bool Connect() override;
+    void Disconnect() override;
 
     void LoadStructure(ICronosAPI* cro) override;
 

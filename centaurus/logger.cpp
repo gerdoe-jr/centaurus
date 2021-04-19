@@ -139,9 +139,9 @@ void CentaurusLogger::LogBankFiles(ICentaurusBank* bank)
 
     bank->Connect();
 
-    for (unsigned i = 0; i < CroBankFile_Count; i++)
+    for (unsigned i = 0; i < CROFILE_COUNT; i++)
     {
-        CroFile* file = bank->File((CroBankFile)i);
+        CroFile* file = bank->BankFile((crobank_file)i);
         if (!file) continue;
 
 

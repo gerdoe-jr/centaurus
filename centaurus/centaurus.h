@@ -33,15 +33,14 @@ class CroRecordMap;
 
 class ICronosAPI;
 
-#ifndef CroBank
-enum class CroBankFile : unsigned {
-    Stru,
-    Bank,
-    Index,
-    FileCount
-};
-
-#define crobank_file CroBankFile
+#ifndef CROBANK_TYPES
+#define CROBANK_TYPES
+typedef enum : unsigned {
+    CROFILE_STRU,
+    CROFILE_BANK,
+    CROFILE_INDEX,
+    CROFILE_COUNT,
+} crobank_file;
 #endif
 
 class ICentaurusBank
@@ -50,6 +49,10 @@ public:
     virtual ~ICentaurusBank() {}
 
     virtual CroBank* Bank() = 0;
+    virtual CroFile* BankFile(crobank_file file) = 0;
+
+    virtual bool Connect() = 0;
+    virtual void Disconnect() = 0;
 
     virtual void LoadStructure(ICronosAPI* cro) = 0;
 
@@ -142,8 +145,9 @@ class ICronosAPI
 {
 public:
     virtual void LoadBank(ICentaurusBank* bank) = 0;
-    virtual CroFile* SetLoaderFile(CroBankFile ftype) = 0;
+    virtual CroFile* SetLoaderFile(crobank_file ftype) = 0;
     virtual ICentaurusBank* TargetBank() const = 0;
+    virtual CroBank* Bank() const = 0;
 
     virtual CroRecordMap* GetRecordMap(unsigned id, unsigned count) = 0;
     virtual CroBuffer GetRecord(unsigned id) = 0;

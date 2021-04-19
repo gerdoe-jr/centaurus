@@ -37,7 +37,7 @@ CentaurusBank::CentaurusBank()
 
 CentaurusBank::~CentaurusBank()
 {
-    CroBank::Disconnect();
+    Disconnect();
 }
 
 std::wstring CentaurusBank::GetWString(const uint8_t* str, cronos_size len)
@@ -58,6 +58,21 @@ void CentaurusBank::BankCronosException(const CroException& exc)
 CroBank* CentaurusBank::Bank()
 {
     return dynamic_cast<CroBank*>(this);
+}
+
+CroFile* CentaurusBank::BankFile(crobank_file file)
+{
+    return File(file);
+}
+
+bool CentaurusBank::Connect()
+{
+    return Bank()->Open();
+}
+
+void CentaurusBank::Disconnect()
+{
+    Bank()->Close();
 }
 
 /*void CentaurusBank::LoadStructure(ICentaurusExport* exp)
@@ -115,7 +130,7 @@ void CentaurusBank::LoadStructure(ICronosAPI* cro)
 {
     auto* log = cro->CronosLog();
     
-    CroFile* file = cro->SetLoaderFile(CroBankFile::Stru);
+    CroFile* file = cro->SetLoaderFile(CROFILE_STRU);
     
     if (!file) throw std::runtime_error("no structure");
     uint32_t key = file->GetSecretKey(file->GetSecret());

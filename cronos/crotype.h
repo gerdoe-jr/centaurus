@@ -47,4 +47,14 @@ typedef enum {
     CRONOS_DAT
 } cronos_filetype;
 
+#ifndef CROBANK_TYPES
+#define CROBANK_TYPES
+typedef enum : unsigned {
+    CROFILE_STRU,
+    CROFILE_BANK,
+    CROFILE_INDEX,
+    CROFILE_COUNT,
+} crobank_file;
+#endif
+
 #endif

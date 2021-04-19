@@ -11,14 +11,14 @@ CroBank::CroBank(const std::wstring& path)
 
 CroBank::~CroBank()
 {
-    Disconnect();
+    Close();
 }
 
-bool CroBank::Connect()
+bool CroBank::Open()
 {
-    for (unsigned i = 0; i < FileCount; i++)
+    for (unsigned i = 0; i < CROFILE_COUNT; i++)
     {
-        std::wstring path = m_Path + L"\\" + FileName(i);
+        std::wstring path = m_Path + L"\\" + FileName((crobank_file)i);
         std::unique_ptr<CroFile> file = std::make_unique<CroFile>(path);
         try {
             file->Open();
@@ -33,12 +33,12 @@ bool CroBank::Connect()
         else m_CroFile[i] = NULL;
     }
 
-    return File(Stru) && File(Bank) && File(Index);
+    return File(CROFILE_STRU) && File(CROFILE_BANK) && File(CROFILE_INDEX);
 }
 
-void CroBank::Disconnect()
+void CroBank::Close()
 {
-    for (unsigned i = 0; i < FileCount; i++)
+    for (unsigned i = 0; i < CROFILE_COUNT; i++)
     {
         auto& file = m_CroFile[i];
         if (file)
@@ -51,9 +51,9 @@ void CroBank::Disconnect()
 
 bool CroBank::TryBankPath()
 {
-    for (unsigned i = 0; i < FileCount; i++)
+    for (unsigned i = 0; i < CROFILE_COUNT; i++)
     {
-        std::wstring path = m_Path + L"\\" + FileName(i);
+        std::wstring path = m_Path + L"\\" + FileName((crobank_file)i);
         std::unique_ptr<CroFile> file = std::make_unique<CroFile>(path);
         try {
             if (file->Open() != CROFILE_OK)
@@ -103,7 +103,7 @@ CroFile* CroBank::File(crobank_file file)
     return m_CroFile[file].get();
 }
 
-const std::wstring& CroBank::FileName(crobank_file file) const
+const std::wstring& CroBank::FileName(crobank_file file)
 {
     static std::wstring _croFileNames[] = {
         L"CroStru",

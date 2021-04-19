@@ -57,7 +57,7 @@ bool CentaurusFetch::LoadPath(const std::wstring& path)
     m_pLoadedBank = NULL;
 
     try {
-        bank->AssociatePath(path);
+        bank->SetBankPath(path);
         cro->LoadBank(bank);
 
         bank->LoadStructure(cro.get());

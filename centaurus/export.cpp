@@ -198,7 +198,8 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
         if (data[i] == record_sep || i == record.GetSize() - 1)
         {
             size_t length = (ptrdiff_t)&data[i] - (ptrdiff_t)cursor;
-            std::string value = m_pBank->String(cursor, length);
+            std::string value = Bank()->GetString(
+                (const uint8_t*)cursor, length);
             out->Write(value);
             
             cursor = &data[i+1];
@@ -277,7 +278,7 @@ void CentaurusExport::RunTask()
             auto& _export = m_Export[i];
 
             try {
-                auto croBank = m_pBank->File(CroBank);
+                auto croBank = Bank()->File(CROFILE_BANK);
                 auto defSize = croBank->GetDefaultBlockSize();
 
                 _export->SetExportFilePath(exportPath);
@@ -356,7 +357,7 @@ void CentaurusExport::Export()
     if (m_Export.empty())
         throw std::runtime_error("CentaurusExport bank is not loaded");
 
-    auto file = SetLoaderFile(CroBank);
+    auto file = SetLoaderFile(CROFILE_BANK);
     cronos_size defSize = file->GetDefaultBlockSize();
     
     cronos_id map_id = 1;
@@ -395,21 +396,21 @@ void CentaurusExport::ExportHeaders()
     fs::create_directory(headerPath, ec);
     if (ec) throw std::runtime_error("ExportHeaders !create_directory");
 
-    for (unsigned i = 0; i < CroBankFile_Count; i++)
+    for (unsigned i = 0; i < CROFILE_COUNT; i++)
     {
-        CroFile* file = m_pBank->File((CroBankFile)i);
+        CroFile* file = m_pBank->File((crobank_file)i);
         if (!file) continue;
 
         FILE* fHdr = NULL;
         switch (i)
         {
-        case CroStru:
+        case CROFILE_STRU:
             _wfopen_s(&fHdr, (headerPath + L"\\CroStru.h").c_str(), L"w");
             break;
-        case CroBank:
+        case CROFILE_BANK:
             _wfopen_s(&fHdr, (headerPath + L"\\CroBank.h").c_str(), L"w");
             break;
-        case CroIndex:
+        case CROFILE_INDEX:
             _wfopen_s(&fHdr, (headerPath + L"\\CroIndex.h").c_str(), L"w");
             break;
         }

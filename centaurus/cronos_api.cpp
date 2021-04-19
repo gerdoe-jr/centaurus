@@ -31,8 +31,8 @@ void CronosAPI::LoadBank(ICentaurusBank* bank)
 {
     if (AcquireBank(bank))
     {
-        m_pBank = bank;
-        SetLoaderFile(CroBankFile::Stru);
+        m_pBank = dynamic_cast<CentaurusBank*>(bank);
+        SetLoaderFile(CROFILE_STRU);
     }
     else
     {
@@ -40,7 +40,7 @@ void CronosAPI::LoadBank(ICentaurusBank* bank)
     }
 }
 
-CroFile* CronosAPI::SetLoaderFile(CroBankFile ftype)
+CroFile* CronosAPI::SetLoaderFile(crobank_file ftype)
 {
     m_pFile = m_pBank->Bank()->File(ftype);
     if (!m_pFile)
@@ -50,7 +50,12 @@ CroFile* CronosAPI::SetLoaderFile(CroBankFile ftype)
 
 ICentaurusBank* CronosAPI::TargetBank() const
 {
-    return m_pBank;
+    return dynamic_cast<ICentaurusBank*>(m_pBank);
+}
+
+CroBank* CronosAPI::Bank() const
+{
+    return dynamic_cast<CroBank*>(m_pBank);
 }
 
 CroRecordMap* CronosAPI::GetRecordMap(unsigned id, unsigned count)

@@ -3,7 +3,7 @@
 /* CroStru */
 
 CroStru::CroStru(CroBank* bank, CroRecordMap* stru)
-    : CroParser(bank, CroBank::Stru),
+    : CroParser(bank, CROFILE_STRU),
     m_pStru(stru)
 {
 }

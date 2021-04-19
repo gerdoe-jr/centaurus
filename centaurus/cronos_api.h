@@ -2,6 +2,7 @@
 #define __CRONOS_API_H
 
 #include "centaurus.h"
+#include "bank.h"
 #include "task.h"
 #include <crorecord.h>
 
@@ -15,8 +16,9 @@ public:
     void Release() override;
 
     virtual void LoadBank(ICentaurusBank* bank);
-    virtual CroFile* SetLoaderFile(CroBankFile ftype);
-    virtual ICentaurusBank* TargetBank() const;
+    virtual CroFile* SetLoaderFile(crobank_file ftype);
+    virtual ICentaurusBank* TargetBank() const override;
+    virtual CroBank* Bank() const override;
 
     CroRecordMap* GetRecordMap(unsigned id, unsigned count) override;
     CroBuffer GetRecord(unsigned id) override;
@@ -26,7 +28,7 @@ public:
 
     ICentaurusLogger* CronosLog() override;
 protected:
-    ICentaurusBank* m_pBank;
+    CentaurusBank* m_pBank;
     CroFile* m_pFile;
 
     CroRecordMap* m_pMap;
