@@ -107,6 +107,7 @@ public:
     virtual void UnlockLogger() = 0;
     virtual void* GetLogMutex() = 0;
     virtual const std::string& GetLogName() const = 0;
+    virtual ICentaurusLogger* LogForwarder() = 0;
 
     virtual void LogPrint(CentaurusLogLevel lvl,
         const char* fmt, va_list ap) = 0;

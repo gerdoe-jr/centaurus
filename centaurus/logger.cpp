@@ -58,6 +58,8 @@ void CentaurusLogger::SetLogForward(ICentaurusLogger* forward)
     m_fOutput = NULL;
     m_fError = NULL;
     m_pForward = forward;
+    while (m_pForward->LogForwarder())
+        m_pForward = m_pForward->LogForwarder();
 }
 
 void CentaurusLogger::LockLogger()
@@ -80,6 +82,11 @@ void* CentaurusLogger::GetLogMutex()
 const std::string& CentaurusLogger::GetLogName() const
 {
     return m_LogName;
+}
+
+ICentaurusLogger* CentaurusLogger::LogForwarder()
+{
+    return m_pForward;
 }
 
 std::string CentaurusLogger::LogLevelName(CentaurusLogLevel lvl)

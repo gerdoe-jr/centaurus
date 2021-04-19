@@ -284,8 +284,10 @@ void CroFile::Read(CroData& data, cronos_id id, cronos_filetype ftype,
             totalSize = fileSize - dataPos;
             count = totalSize / dataSize;
         }
-        data.InitData(this, id, ftype, dataPos, totalSize);
         
+        data.InitData(this, id, ftype, dataPos, totalSize);
+        if (!totalSize) return;
+
         _fseeki64(fp, dataPos, SEEK_SET);
         cronos_idx read = (cronos_idx)fread(data.GetData(),
             dataSize, count, fp);

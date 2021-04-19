@@ -220,27 +220,17 @@ void CentaurusExport::RunTask()
     m_BankJson = {
         {"id", m_pBank->BankId()},
         {"name", WcharToText(m_pBank->BankName())},
-        {"attributes", json::object()},
+        {"serial", m_pBank->BankSerial()},
+        {"password", WcharToText(m_pBank->BankSysPass())},
+        {"version", m_pBank->BankVersion()},
         {"bases", json::array()}
     };
 
-    auto& bankAttrs = m_BankJson["attributes"];
     auto& bankBases = m_BankJson["bases"];
     SyncBankJson();
 
     try {
-        // bankAttributes
-        /*for (unsigned i = 0; i < m_pBank->AttrCount(); i++)
-        {
-            auto& attr = m_pBank->Attr(i);
-            auto& data = attr.GetAttr();
-            bankAttrs[attr.GetName()] = m_pBank->String(
-                (const char*)data.GetData(), data.GetSize());
-        }*/
-        
-        
-        // bankBases
-        for (unsigned i = 0; i != m_pBank->BaseEnd(); i++)
+        for (unsigned i = 0; i <= m_pBank->BaseEnd(); i++)
         {
             if (!m_pBank->IsValidBase(i)) continue;
             auto& base = m_pBank->Base(i);
@@ -254,7 +244,7 @@ void CentaurusExport::RunTask()
                         {"name", field.GetName()},
                         {"type", field.GetType()},
                         {"flags", field.GetFlags()}
-                        });
+                    });
                 }
                 catch (const std::exception& e) {
                     _CrtDbgBreak();
@@ -360,28 +350,36 @@ void CentaurusExport::Export()
     auto file = SetLoaderFile(CROFILE_BANK);
     cronos_size defSize = file->GetDefaultBlockSize();
     
+    uint32_t key = file->GetSecretKey(file->GetSecret());
+    file->SetupCrypt(key, m_pBank->BankSerial());
+
     cronos_id map_id = 1;
     cronos_idx burst = m_TableLimit / defSize;
     do {
         burst = std::min((cronos_id)(m_TableLimit / defSize),
             file->EntryCountFileSize());
-        auto bank = file->LoadRecordMap(map_id, burst);
+        auto bank = GetRecordMap(map_id, burst);
+        if (bank->IsEmpty())
+        {
+            ReleaseMap();
+            break;
+        }
 
         Log("BURST %" FCroIdx "\n", burst);
-
-        for (cronos_id id = Start(); id != End(); id++)
+        for (cronos_id id = bank->IdStart(); id != bank->IdEnd(); id++)
         {
-            if (!bank.HasRecord(id)) continue;
-            CroBuffer data = bank.LoadRecord(id);
+            if (!bank->HasRecord(id)) continue;
+            CroBuffer data = bank->LoadRecord(id);
 
             SaveExportRecord(data, id);
 
             OnExportRecord(data, id);
         }
 
-        map_id = End();
+        map_id = bank->IdEnd();
         ReleaseMap();
-    } while (map_id != End());
+    } while (map_id < file->IdEntryEnd());
+    // BUG BUG BUG
 
     FlushBuffers();
     centaurus->UpdateBankExportIndex(

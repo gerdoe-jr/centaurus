@@ -69,7 +69,10 @@ void CroData::InitData(CroFile* file, cronos_id id, cronos_filetype ftype,
         cronos_off off, cronos_size size)
 {
     InitEntity(file, id);
-    Alloc(size);
+    if (size > 0)
+    {
+        Alloc(size);
+    }
 
     m_FileType = ftype;
     m_uOffset = off;

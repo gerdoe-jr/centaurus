@@ -20,6 +20,7 @@ public:
     void UnlockLogger() override;
     void* GetLogMutex() override;
     const std::string& GetLogName() const override;
+    ICentaurusLogger* LogForwarder() override;
 
     std::string LogLevelName(CentaurusLogLevel lvl);
     void LogWrite(CentaurusLogger* log, CentaurusLogLevel lvl,
