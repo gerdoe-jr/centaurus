@@ -4,9 +4,6 @@
 #include "croparser.h"
 #include <string>
 
-#define CROATTR_PREFIX 0x03
-#define CROATTR_REF_PREFIX 0x04
-
 class CroAttr : public ICroParsee
 {
 public:

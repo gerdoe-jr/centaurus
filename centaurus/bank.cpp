@@ -138,16 +138,12 @@ void CentaurusBank::LoadStructure(ICronosAPI* cro)
 
     CroStru stru = CroStru(this, cro->GetRecordMap(
         1, file->EntryCountFileSize()));
-    CroRecordMap* map = stru.CroStruMap();
-
-    log->LogRecordMap(*map);
-    for (cronos_id id = map->IdStart(); id != map->IdEnd(); id++)
+    
+    CroBuffer attr;
+    CroStream props;
+    if (stru.GetAttrByName("Bank", attr, props))
     {
-        if (!map->HasRecord(id)) continue;
-        log->Log("stru record %" FCroId "\n", id);
-
-        CroBuffer rec = map->LoadRecord(id);
-        log->LogBuffer(rec, 1251);
+        log->LogBuffer(attr, 1251);
     }
     
     cro->ReleaseMap();
