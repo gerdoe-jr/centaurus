@@ -100,13 +100,10 @@ void CentaurusBank::LoadStructure()
     uint32_t key = file->GetSecretKey(file->GetSecret());
     file->SetupCrypt(key, CRONOS_DEFAULT_SERIAL);
 
-    auto map = file->LoadRecordMap(1, file->EntryCountFileSize());
-    auto stru = CroStru(Bank(), &map);
+    auto stru = file->LoadRecordMap(1, file->EntryCountFileSize());
+    auto parser = CroStruParser(Bank(), &stru);
 
-    if (!stru.LoadBankProps())
-    {
-        throw std::runtime_error("failed to load bank props");
-    }
+    parser.LoadBankProps();
 }
 
 uint32_t CentaurusBank::BankFormSaveVer() const

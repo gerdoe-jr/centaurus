@@ -12,7 +12,6 @@ set(SOURCES
     crodata.cpp
     crotable.cpp
     crofile.cpp
-    crobank.cpp
     cronos02.cpp
     cronos_abi.cpp
     crostream.cpp
@@ -21,8 +20,7 @@ set(SOURCES
     croblock.cpp
     crorecord.cpp
     crostru.cpp
-    croattr.cpp
-    croprop.cpp
+    crobank.cpp
 )
 
 set(HEADERS
@@ -34,7 +32,6 @@ set(HEADERS
     crodata.h
     crotable.h
     crofile.h
-    crobank.h
     cronos02.h
     crodata.h
     cronos_abi.h
@@ -45,8 +42,7 @@ set(HEADERS
     croblock.h
     crorecord.h
     crostru.h
-    croattr.h
-    croprop.h
+    crobank.h
 )
 
 add_library(cronos ${SOURCES} ${HEADERS})

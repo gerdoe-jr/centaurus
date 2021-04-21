@@ -2,7 +2,7 @@
 #define __CROBANK_H
 
 #include "crofile.h"
-#include "croprop.h"
+#include "crostru.h"
 #include "croexception.h"
 
 #define CRONOS_DEFAULT_CODEPAGE 1251

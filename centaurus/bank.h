@@ -2,9 +2,8 @@
 #define __CENTAURUS_BANK_H
 
 #include "centaurus.h"
-#include <crobank.h>
-#include <croprop.h>
 #include <crostru.h>
+#include <crobank.h>
 #include <utility>
 #include <vector>
 #include <string>

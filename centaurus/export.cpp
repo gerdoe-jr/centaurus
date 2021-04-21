@@ -2,8 +2,7 @@
 #include "api.h"
 #include "win32util.h"
 #include "croexception.h"
-#include "crofile.h"
-#include "croattr.h"
+#include <crofile.h>
 
 #include <json_file.h>
 #include <boost/filesystem.hpp>
