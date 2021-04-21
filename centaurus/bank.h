@@ -4,9 +4,12 @@
 #include "centaurus.h"
 #include <crobank.h>
 #include <croprop.h>
+#include <crostru.h>
 #include <utility>
 #include <vector>
 #include <string>
+
+class CroRecordMap;
 
 class CentaurusBank : public CroBank, public ICentaurusBank
 {
@@ -25,8 +28,9 @@ public:
     bool Connect() override;
     void Disconnect() override;
 
-    void LoadStructure(ICronosAPI* cro) override;
-
+    void Load(ICronosAPI* cro) override;
+    void LoadStructure();
+    
     uint32_t BankFormSaveVer() const override;
     uint32_t BankId() const override;
     const std::wstring& BankName() const override;
@@ -38,6 +42,8 @@ public:
     bool IsValidBase(unsigned index) const override;
     CroBase& Base(unsigned index) override;
     unsigned BaseEnd() const override;
+private:
+    ICronosAPI* m_pCronos;
 };
 
 #endif

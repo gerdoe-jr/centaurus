@@ -32,7 +32,7 @@ static int _wfopen_s(FILE** fpFile, const wchar_t* path, const wchar_t* mode)
 CentaurusBank::CentaurusBank()
     : CroBank(L"")
 {
-    m_BankId = 0;
+    m_pCronos = NULL;
 }
 
 CentaurusBank::~CentaurusBank()
@@ -80,77 +80,33 @@ void CentaurusBank::Disconnect()
     Bank()->Close();
 }
 
-/*void CentaurusBank::LoadStructure(ICentaurusExport* exp)
+void CentaurusBank::Load(ICronosAPI* cro)
 {
-    CroFile* stru = File(CroStru);
-    if (!stru) throw std::runtime_error("no structure");
-    auto* abi = stru->ABI();
-    
-    exp->ReadRecord(stru, 1, m_BankRecord);
-    m_AttrStream = CroStream(m_BankRecord);
-    
-    auto& stream = m_AttrStream;
-    uint8_t prefix = stream.Read<uint8_t>();
+    m_pCronos = cro;
 
-    if (prefix != CROATTR_PREFIX)
+    LoadStructure();
+
+    m_pCronos = NULL;
+}
+
+void CentaurusBank::LoadStructure()
+{
+    CroFile* file = m_pCronos->SetLoaderFile(CROFILE_STRU);
+    if (!file)
     {
-        printf("prefix %u\n", prefix);
-        centaurus->LogBuffer(m_BankRecord);
-        throw std::runtime_error("not an attr prefix");
+        throw std::runtime_error("no structure");
     }
-
-    CroAttr attr;
-    try {
-        while (!stream.IsOverflowed())
-        {
-            CroAttr attr = LoadAttribute(exp);
-            
-            m_Attrs.push_back(attr);
-        }
-    }
-    catch (const std::exception& e) {
-        fprintf(stderr, "[CentaurusBank] CroAttr(%s) exception\n",
-            attr.GetName().c_str());
-#ifdef CENTAURUS_DEBUG
-        CroBuffer& _attr = attr.GetAttr();
-        if (!_attr.IsEmpty()) centaurus->LogBuffer(_attr);
-#endif
-        centaurus->OnException(e);
-    }
-
-    m_BankId = (uint32_t)atoi(Attr("BankId").String());
-    m_BankName = AnsiToWchar(Attr("BankName").GetString());
-
-    CroAttrNS ns1;
-    CroAttr& ns1Attr = Attr("NS1");
-    ns1.Parse(this, ns1Attr);
     
-    printf("NS1 BankSerial %u\n", ns1.BankSerial());
-    printf("NS1 BankCustomProt %u\n", ns1.BankCustomProt());
-    printf("NS1 BankSysPass %s\n", ns1.BankSysPassword().c_str());
-    centaurus->LogBuffer(ns1Attr.GetAttr());
-}*/
-
-void CentaurusBank::LoadStructure(ICronosAPI* cro)
-{
-    auto* log = cro->CronosLog();
-    CroFile* file = cro->SetLoaderFile(CROFILE_STRU);
-    
-    if (!file) throw std::runtime_error("no structure");
     uint32_t key = file->GetSecretKey(file->GetSecret());
     file->SetupCrypt(key, CRONOS_DEFAULT_SERIAL);
 
-    CroStru stru = CroStru(this, cro->GetRecordMap(
-        1, file->EntryCountFileSize()));
-    
+    auto map = file->LoadRecordMap(1, file->EntryCountFileSize());
+    auto stru = CroStru(Bank(), &map);
+
     if (!stru.LoadBankProps())
     {
-        log->Error("failed to bank props\n");
+        throw std::runtime_error("failed to load bank props");
     }
-    
-    log->LogBankStructure(this);
-
-    cro->ReleaseMap();
 }
 
 uint32_t CentaurusBank::BankFormSaveVer() const

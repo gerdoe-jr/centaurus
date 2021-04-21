@@ -9,6 +9,7 @@ CentaurusTask::CentaurusTask()
     m_TaskName("CentaurusTask")
 {
     m_pInvoker = NULL;
+    m_Limit = 0;
 }
 
 CentaurusTask::CentaurusTask(const std::string& taskName)
@@ -16,6 +17,7 @@ CentaurusTask::CentaurusTask(const std::string& taskName)
     m_TaskName(taskName)
 {
     m_pInvoker = NULL;
+    m_Limit = 0;
 }
 
 CentaurusTask::~CentaurusTask()
@@ -27,6 +29,7 @@ void CentaurusTask::Invoke(ICentaurusWorker* invoker)
 {
     m_pInvoker = invoker;
     SetLogForward(m_pInvoker ? m_pInvoker->GetWorkerLogger() : logger);
+    m_Limit = invoker->GetMemoryLimit();
 }
 
 void CentaurusTask::RunTask()

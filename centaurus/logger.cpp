@@ -20,6 +20,19 @@
 
 #include <algorithm>
 
+#ifndef WIN32
+#define _fseeki64 fseeko64
+#define _ftelli64 ftello64
+
+#include "win32util.h"
+
+static FILE* _wfopen(const wchar_t* path, const wchar_t* mode)
+{
+    return fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
+}
+
+#endif
+
 using scoped_lock = boost::mutex::scoped_lock;
 
 CentaurusLogger::CentaurusLogger(const std::string& name)
@@ -48,6 +61,14 @@ CentaurusLogger::CentaurusLogger(const std::string& name,
     m_pForward = NULL;
 }
 
+CentaurusLogger::~CentaurusLogger()
+{
+    if (IsLogOpen())
+    {
+        CloseLog();
+    }
+}
+
 void CentaurusLogger::SetLogName(const std::string& name)
 {
     m_LogName = name;
@@ -60,6 +81,47 @@ void CentaurusLogger::SetLogForward(ICentaurusLogger* forward)
     m_pForward = forward;
     while (m_pForward->LogForwarder())
         m_pForward = m_pForward->LogForwarder();
+}
+
+void CentaurusLogger::OpenLog(const std::wstring& outputLog, const std::wstring& errorLog)
+{
+    auto lock = scoped_lock(m_LogLock);
+
+    m_fOutput = _wfopen(outputLog.c_str(), L"a");
+    if (!m_fOutput)
+    {
+        throw std::runtime_error("failed to open output log file");
+    }
+
+    m_fError = _wfopen(errorLog.c_str(), L"a");
+    if (!m_fError)
+    {
+        throw std::runtime_error("failed to open error log file");
+    }
+}
+
+void CentaurusLogger::SetLogIO()
+{
+    auto lock = scoped_lock(m_LogLock);
+
+    m_fOutput = stdout;
+    m_fError = stderr;
+}
+
+bool CentaurusLogger::IsLogOpen() const
+{
+    return m_fOutput || m_fError;
+}
+
+void CentaurusLogger::CloseLog()
+{
+    auto lock = scoped_lock(m_LogLock);
+
+    if (m_fOutput && m_fOutput != stdout) fclose(m_fOutput);
+    if (m_fError && m_fError != stderr) fclose(m_fError);
+
+    m_fOutput = NULL;
+    m_fError = NULL;
 }
 
 void CentaurusLogger::LockLogger()

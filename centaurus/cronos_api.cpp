@@ -18,6 +18,22 @@ CronosAPI::CronosAPI(const std::string& taskName)
     m_pMap = NULL;
 }
 
+void CronosAPI::Invoke(ICentaurusWorker* invoker)
+{
+    CentaurusTask::Invoke(invoker);
+
+    //m_BlockLimit = m_Limit / m_pBank->
+    CroFile* file = m_pBank->BankFile(CROFILE_BANK);
+
+    cronos_size blockSize = file->GetDefaultBlockSize();
+    cronos_size partSize = blockSize - file->ABI()
+        ->Size(cronos_first_block_hdr);
+
+    cronos_size count = ((m_Limit / 2) / blockSize);
+    m_BlockLimit = count * blockSize;
+    m_ExportLimit = count * partSize;
+}
+
 void CronosAPI::RunTask()
 {
 }
@@ -29,15 +45,13 @@ void CronosAPI::Release()
 
 void CronosAPI::LoadBank(ICentaurusBank* bank)
 {
-    if (AcquireBank(bank))
-    {
-        m_pBank = dynamic_cast<CentaurusBank*>(bank);
-        SetLoaderFile(CROFILE_STRU);
-    }
-    else
+    if (!AcquireBank(bank))
     {
         throw std::runtime_error("failed to load bank");
     }
+
+    m_pBank = dynamic_cast<CentaurusBank*>(bank);
+    SetLoaderFile(CROFILE_STRU);
 }
 
 CroFile* CronosAPI::SetLoaderFile(crobank_file ftype)

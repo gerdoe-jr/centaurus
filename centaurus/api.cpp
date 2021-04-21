@@ -36,23 +36,58 @@ CentaurusAPI* _centaurus = NULL;
 /* CentaurusAPI */
 
 CentaurusAPI::CentaurusAPI()
-    : CentaurusLogger("CentaurusAPI", stdout, stderr)
+    : CentaurusLogger("CentaurusAPI")
 {
+    m_MemoryLimit = 0;
+    m_WorkerLimit = 0;
 }
 
 CentaurusAPI::~CentaurusAPI()
 {
 }
 
+void CentaurusAPI::SetMemoryLimit(centaurus_size limit)
+{
+    m_MemoryLimit = limit;
+}
+
+void CentaurusAPI::SetWorkerLimit(unsigned threads)
+{
+    m_WorkerLimit = threads;
+    m_pScheduler->SetPoolSize(m_WorkerLimit);
+}
+
+centaurus_size CentaurusAPI::TotalMemoryUsage()
+{
+    auto lock = scoped_lock(m_TaskLock);
+
+    centaurus_size total = 0;
+    for (auto& task : m_Tasks)
+        total += task->GetMemoryUsage();
+    return total;
+}
+
+centaurus_size CentaurusAPI::GetMemoryLimit()
+{
+    return m_MemoryLimit;
+}
+centaurus_size CentaurusAPI::GetWorkerMemoryLimit()
+{
+    return GetMemoryLimit() / m_WorkerLimit;
+}
+
 void CentaurusAPI::Init(const std::wstring& path)
 {
+    SetLogIO();
     PrepareDataPath(path);
     
+    m_MemoryLimit = CENTAURUS_MEMORY_LIMIT;
+    m_WorkerLimit = CENTAURUS_WORKER_LIMIT;
+
     m_pScheduler = CreateWorker<CentaurusScheduler>();
     m_pFetch = CreateWorker<CentaurusFetch>();
 
-    SetTableSizeLimit(CENTAURUS_API_TABLE_LIMIT);
-    SetWorkerLimit(CENTAURUS_API_WORKER_LIMIT);
+    m_pScheduler->SetPoolSize(m_WorkerLimit);
 }
 
 void CentaurusAPI::Exit()
@@ -62,17 +97,6 @@ void CentaurusAPI::Exit()
 
     m_Tasks.clear();
     m_Banks.clear();
-}
-
-void CentaurusAPI::SetTableSizeLimit(centaurus_size limit)
-{
-    m_TableSizeLimit = limit;
-}
-
-void CentaurusAPI::SetWorkerLimit(unsigned count)
-{
-    m_uWorkerLimit = count;
-    m_pScheduler->SetPoolSize(m_uWorkerLimit);
 }
 
 void CentaurusAPI::PrepareDataPath(const std::wstring& path)
@@ -104,6 +128,7 @@ std::wstring CentaurusAPI::GetBankPath() const
 void CentaurusAPI::StartWorker(ICentaurusWorker* worker)
 {
     worker->SetWorkerLogger(this);
+    worker->SetMemoryLimit(GetWorkerMemoryLimit());
     worker->Start();
 }
 
@@ -358,25 +383,6 @@ bool CentaurusAPI::IsBankAcquired(ICentaurusBank* bank)
     }
 
     return false;
-}
-
-centaurus_size CentaurusAPI::TotalMemoryUsage()
-{
-    auto lock = scoped_lock(m_TaskLock);
-
-    centaurus_size total = 0;
-    for (auto& task : m_Tasks)
-        total += task->GetMemoryUsage();
-    return total;
-}
-
-centaurus_size CentaurusAPI::RequestTableLimit()
-{
-    centaurus_size ramUsage = TotalMemoryUsage();
-    if (ramUsage > m_TableSizeLimit) return m_TableSizeLimit;
-
-    cronos_size available = m_TableSizeLimit - ramUsage;
-    return std::min(m_TableSizeLimit, available / 2);
 }
 
 void CentaurusAPI::Run()

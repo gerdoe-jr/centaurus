@@ -12,9 +12,16 @@ public:
     CentaurusLogger(const std::string& name);
     CentaurusLogger(const std::string& name, ICentaurusLogger* forward);
     CentaurusLogger(const std::string& name, FILE* out, FILE* err);
+    virtual ~CentaurusLogger();
 
     void SetLogName(const std::string& name);
     void SetLogForward(ICentaurusLogger* forward);
+
+    void OpenLog(const std::wstring& outputLog,
+        const std::wstring& errorLog) override;
+    void SetLogIO() override;
+    bool IsLogOpen() const override;
+    void CloseLog() override;
 
     void LockLogger() override;
     void UnlockLogger() override;

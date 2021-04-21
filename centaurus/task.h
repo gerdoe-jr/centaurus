@@ -41,6 +41,7 @@ public:
     boost::atomic<float> m_fTaskProgress;
 protected:
     boost::mutex m_DataLock;
+    centaurus_size m_Limit;
     std::vector<ICentaurusBank*> m_Banks;
     std::vector<std::unique_ptr<CroTable>> m_Tables;
 private:

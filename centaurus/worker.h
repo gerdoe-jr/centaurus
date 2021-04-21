@@ -19,11 +19,17 @@ public:
     
     void Wait() override;
     state State() const override;
+    
     void SetWorkerLogger(ICentaurusLogger* log) override;
     ICentaurusLogger* GetWorkerLogger() override;
     
+    void SetMemoryLimit(centaurus_size limit) override;
+    centaurus_size GetMemoryLimit() const override;
+
     void Run();
     std::string GetName();
+private:
+    centaurus_size m_MemoryLimit;
 protected:
     virtual void Execute() = 0;
 

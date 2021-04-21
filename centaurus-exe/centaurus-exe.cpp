@@ -93,7 +93,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    centaurus->SetTableSizeLimit(tableLimit * 1024 * 1024);
+    centaurus->SetMemoryLimit(tableLimit * 1024 * 1024);
     centaurus->SetWorkerLimit(workerLimit);
 
     findLog = CentaurusLogger_Forward("FindBanks");

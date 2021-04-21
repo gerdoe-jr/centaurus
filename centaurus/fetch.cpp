@@ -45,8 +45,9 @@ void CentaurusFetch::Execute()
     m_LoadedPath = dir;
     if (!LoadPath(dir))
     {
+        Error("failed to load %s\n", WcharToAnsi(dir).c_str());
+
         m_pLoadedBank = NULL;
-        LogLoaderFail(dir);
     }
 }
 
@@ -60,7 +61,7 @@ bool CentaurusFetch::LoadPath(const std::wstring& path)
         bank->SetBankPath(path);
         cro->LoadBank(bank);
 
-        bank->LoadStructure(cro.get());
+        bank->Load(cro.get());
         m_pLoadedBank = bank;
     }
     catch (const std::exception& e) {
@@ -73,7 +74,3 @@ bool CentaurusFetch::LoadPath(const std::wstring& path)
     return m_pLoadedBank != NULL;
 }
 
-void CentaurusFetch::LogLoaderFail(const std::wstring& dir)
-{
-    Error("failed to load %s\n", WcharToAnsi(dir).c_str());
-}

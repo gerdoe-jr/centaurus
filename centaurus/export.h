@@ -72,8 +72,6 @@ private:
 
     std::map<cronos_idx, std::unique_ptr<ExportBuffer>> m_Export;
     nlohmann::json m_BankJson;
-    centaurus_size m_TableLimit;
-    centaurus_size m_BaseLimit;
 };
 #endif
 

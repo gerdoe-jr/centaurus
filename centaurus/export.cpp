@@ -144,8 +144,6 @@ CentaurusExport::CentaurusExport()
     : CronosAPI("CentaurusExport")
 {
     m_ExportFormat = ExportCSV;
-    m_TableLimit = 512 * 1024 * 1024;
-    m_BaseLimit = m_TableLimit;
 }
 
 CentaurusExport::~CentaurusExport()
@@ -262,9 +260,8 @@ void CentaurusExport::RunTask()
             };
 
             json baseExport = json::object();
-            
-            m_Export[i] = std::make_unique<ExportBuffer>
-                (ExportCSV, base.FieldCount());
+            m_Export[i] = std::make_unique<ExportBuffer>(
+                ExportCSV, base.FieldCount());
             auto& _export = m_Export[i];
 
             try {
@@ -344,21 +341,22 @@ void CentaurusExport::Release()
 
 void CentaurusExport::Export()
 {
-    // !! MEMORY LEAK !!
-
     if (m_Export.empty())
+    {
         throw std::runtime_error("CentaurusExport bank is not loaded");
+    }
 
     auto file = SetLoaderFile(CROFILE_BANK);
     cronos_size defSize = file->GetDefaultBlockSize();
-    
     uint32_t key = file->GetSecretKey(file->GetSecret());
+
+    
     file->SetupCrypt(key, m_pBank->BankSerial());
 
     cronos_id map_id = 1;
-    cronos_idx burst = m_TableLimit / defSize;
+    cronos_idx burst = m_BlockLimit / defSize;
     do {
-        burst = std::min((cronos_id)(m_TableLimit / defSize),
+        burst = std::min((cronos_id)(m_BlockLimit / defSize),
             file->EntryCountFileSize());
         auto bank = GetRecordMap(map_id, burst);
         if (bank->IsEmpty())
@@ -367,7 +365,6 @@ void CentaurusExport::Export()
             break;
         }
 
-        Log("BURST %" FCroIdx "\n", burst);
         for (cronos_id id = bank->IdStart(); id != bank->IdEnd(); id++)
         {
             if (!bank->HasRecord(id)) continue;
@@ -433,7 +430,7 @@ void CentaurusExport::OnExportRecord(CroBuffer& record, uint32_t id)
 {
     for (auto& [idx, _export] : m_Export)
     {
-        if (_export->GetSize() >= m_BaseLimit)
+        if (_export->GetSize() >= m_ExportLimit)
         {
             _export->Flush();
         }

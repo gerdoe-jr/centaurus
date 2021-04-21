@@ -9,6 +9,7 @@ CentaurusWorker::CentaurusWorker()
     : CentaurusLogger("CentaurusWorker")
 {
     m_State = Waiting;
+    m_MemoryLimit = 0;
 }
 
 CentaurusWorker::~CentaurusWorker()
@@ -51,10 +52,20 @@ ICentaurusLogger* CentaurusWorker::GetWorkerLogger()
     return dynamic_cast<ICentaurusLogger*>(this);
 }
 
+void CentaurusWorker::SetMemoryLimit(centaurus_size limit)
+{
+    m_MemoryLimit = limit;
+}
+
+centaurus_size CentaurusWorker::GetMemoryLimit() const
+{
+    return m_MemoryLimit;
+}
+
 void CentaurusWorker::Run()
 {
     SetLogName(GetName());
-
+    
     while (m_State != Terminated)
     {
         try {

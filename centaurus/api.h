@@ -15,6 +15,9 @@
 
 #include <json_file.h>
 
+#define CENTAURUS_MEMORY_LIMIT (512*1024*1024)
+#define CENTAURUS_WORKER_LIMIT 4
+
 class CentaurusAPI : public ICentaurusAPI, public CentaurusLogger
 {
 public:
@@ -24,9 +27,12 @@ public:
     void Init(const std::wstring& path) override;
     void Exit() override;
 
-    void SetTableSizeLimit(centaurus_size limit) override;
-    void SetWorkerLimit(unsigned count) override;
-    
+    void SetMemoryLimit(centaurus_size limit) override;
+    void SetWorkerLimit(unsigned threads) override;
+    centaurus_size TotalMemoryUsage() override;
+    centaurus_size GetMemoryLimit() override;
+    centaurus_size GetWorkerMemoryLimit() override;
+
     void PrepareDataPath(const std::wstring& path) override;
     std::wstring GetExportPath() const override;
     std::wstring GetTaskPath() const override;
@@ -52,9 +58,6 @@ public:
     bool IsBankLoaded(ICentaurusBank* bank) override;
     bool IsBankAcquired(ICentaurusBank* bank) override;
     
-    centaurus_size TotalMemoryUsage() override;
-    centaurus_size RequestTableLimit() override;
-
     std::wstring TaskFile(ICentaurusTask* task) override;
     void TaskSyncJSON(ICentaurusTask* task, json value);
     void StartTask(ICentaurusTask* task) override;
@@ -72,8 +75,8 @@ public:
     void UpdateBankExportIndex(uint32_t bankId,
         const std::wstring& path) override;
 private:
-    centaurus_size m_TableSizeLimit;
-    unsigned m_uWorkerLimit;
+    centaurus_size m_MemoryLimit;
+    unsigned m_WorkerLimit;
     std::wstring m_DataPath;
 
     boost::mutex m_BankLock;

@@ -21,7 +21,8 @@ void CentaurusScheduler::ScheduleTask(ICentaurusTask* task)
         //auto lock = scoped_lock(m_DataLock);
         CentaurusJob* job = m_Jobs.emplace_back(
             new CentaurusJob(task)).get();
-
+        job->SetMemoryLimit(centaurus->GetWorkerMemoryLimit());
+        
         job->Start();
         Log("ScheduleTask %p -> %s\n", task, job->GetName().c_str());
     }

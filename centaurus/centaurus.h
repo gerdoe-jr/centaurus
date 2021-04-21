@@ -54,7 +54,7 @@ public:
     virtual bool Connect() = 0;
     virtual void Disconnect() = 0;
 
-    virtual void LoadStructure(ICronosAPI* cro) = 0;
+    virtual void Load(ICronosAPI* cro) = 0;
 
     virtual uint32_t BankFormSaveVer() const = 0;
     virtual uint32_t BankId() const = 0;
@@ -103,6 +103,14 @@ enum CentaurusLogLevel
 class ICentaurusLogger
 {
 public:
+    virtual ~ICentaurusLogger() {}
+
+    virtual void OpenLog(const std::wstring& outputLog,
+        const std::wstring& errorLog) = 0;
+    virtual void SetLogIO() = 0;
+    virtual bool IsLogOpen() const = 0;
+    virtual void CloseLog() = 0;
+
     virtual void LockLogger() = 0;
     virtual void UnlockLogger() = 0;
     virtual void* GetLogMutex() = 0;
@@ -140,8 +148,12 @@ public:
     virtual void Stop() = 0;
     virtual void Wait() = 0;
     virtual state State() const = 0;
+    
     virtual void SetWorkerLogger(ICentaurusLogger* log) = 0;
     virtual ICentaurusLogger* GetWorkerLogger() = 0;
+
+    virtual void SetMemoryLimit(centaurus_size limit) = 0;
+    virtual centaurus_size GetMemoryLimit() const = 0;
 protected:
     virtual void Execute() = 0;
 };
@@ -194,8 +206,11 @@ public:
     virtual void Init(const std::wstring& path) = 0;
     virtual void Exit() = 0;
 
-    virtual void SetTableSizeLimit(centaurus_size limit) = 0;
-    virtual void SetWorkerLimit(unsigned count) = 0;
+    virtual void SetMemoryLimit(centaurus_size limit) = 0;
+    virtual void SetWorkerLimit(unsigned threads) = 0;
+    virtual centaurus_size TotalMemoryUsage() = 0;
+    virtual centaurus_size GetMemoryLimit() = 0;
+    virtual centaurus_size GetWorkerMemoryLimit() = 0;
 
     virtual void PrepareDataPath(const std::wstring& path) = 0;
     virtual std::wstring GetExportPath() const = 0;
@@ -215,9 +230,6 @@ public:
 
     virtual bool IsBankLoaded(ICentaurusBank* bank) = 0;
     virtual bool IsBankAcquired(ICentaurusBank* bank) = 0;
-
-    virtual centaurus_size TotalMemoryUsage() = 0;
-    virtual centaurus_size RequestTableLimit() = 0;
 
     virtual std::wstring TaskFile(ICentaurusTask* task) = 0;
     virtual void StartTask(ICentaurusTask* task) = 0;

@@ -12,6 +12,8 @@ public:
     CronosAPI();
     CronosAPI(const std::string& taskName);
 
+    virtual void Invoke(ICentaurusWorker* invoker = NULL);
+    
     void RunTask() override;
     void Release() override;
 
@@ -30,8 +32,10 @@ public:
 protected:
     CentaurusBank* m_pBank;
     CroFile* m_pFile;
-
     CroRecordMap* m_pMap;
+
+    centaurus_size m_BlockLimit;
+    centaurus_size m_ExportLimit;
 };
 
 #endif
