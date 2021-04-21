@@ -173,3 +173,48 @@ void CroBank::OnParseProp(CroProp& prop)
     else if (name == CROPROP_VERSION)
         m_BankVersion = atoi(prop.GetString().c_str());
 }
+
+/* CroBankParser */
+
+CroBankParser::CroBankParser(CroBank* bank)
+    : CroParser(bank, CROFILE_BANK)
+{
+    Reset();
+}
+
+void CroBankParser::Reset()
+{
+    m_Id = INVALID_CRONOS_ID;
+
+    m_pBase = NULL;
+
+    m_ValueOff = INVALID_CRONOS_OFFSET;
+    m_ValueSize = 0;
+}
+
+void CroBankParser::Parse(cronos_id id, CroBuffer& data)
+{
+    m_Id = id;
+    m_pData = &data;
+    m_Record = CroStream(*m_pData);
+
+    //Read record prefix
+    m_pBase = NULL;
+    m_FieldIter = m_pBase->StartField();
+}
+
+uint8_t* CroBankParser::Value()
+{
+    return m_pData->GetData() + m_ValueOff;
+}
+
+cronos_size CroBankParser::ValueSize()
+{
+    return m_ValueSize;
+}
+
+crovalue_parse CroBankParser::ParseValue()
+{
+    if (m_FieldIter == m_pBase->EndField())
+        return CroRecord_End;
+}

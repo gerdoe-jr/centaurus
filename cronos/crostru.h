@@ -60,17 +60,17 @@ private:
 
 #define CROBASE_LINKED 0x109
 
-enum CroFieldType : uint16_t {
-    Index,
-    Number,
+enum class CroType : uint16_t {
+    Ident,
+    Integer,
     String,
-    Dict,
+    VocString,
     Date,
     Time,
     File,
-    Forward,
-    Backward,
-    ForwardBackward,
+    DirectLink,
+    BacklLink,
+    DirectBackLink,
     Bind,
     Access,
     ExternalFile
@@ -84,10 +84,10 @@ public:
     void Parse(CroParser* parser, CroStream& stream) override;
 
     const std::string& GetName() const;
-    CroFieldType GetType() const;
+    CroType GetType() const;
     cronos_flags GetFlags() const;
 
-    CroFieldType m_Type;
+    CroType m_Type;
     uint32_t m_Index;
 
     std::string m_Name;
@@ -97,6 +97,7 @@ public:
     uint32_t m_DataLength;
 };
 
+using CroFieldIter = std::vector<CroField>::iterator;
 class CroBase : public ICroParsee
 {
 public:
@@ -105,9 +106,9 @@ public:
     void Parse(CroParser* parser, CroStream& stream) override;
 
     const std::string& GetName() const;
-    const CroField& Field(unsigned idx) const;
-    unsigned FieldCount() const;
-    unsigned FieldEnd() const;
+    
+    CroFieldIter StartField() { return m_Fields.begin(); }
+    CroFieldIter EndField() { return m_Fields.end(); }
 
     uint16_t m_VocFlags;
     uint16_t m_BaseVersion;
@@ -120,7 +121,7 @@ public:
 
     uint32_t m_Flags;
 private:
-    std::map<unsigned, CroField> m_Fields;
+    std::vector<CroField> m_Fields;
 };
 
 class CroPropNS : public ICroParsee

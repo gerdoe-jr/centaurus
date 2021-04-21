@@ -29,6 +29,8 @@ public:
     virtual CroFile* File(crobank_file file);
     const std::wstring& FileName(crobank_file file);
 
+    
+
     CroParser* Parser();
     virtual void ParserStart(CroParser* parser);
     virtual void ParserEnd(CroParser* parser);
@@ -51,6 +53,35 @@ public:
     uint32_t m_BankCustomProt;
     std::wstring m_BankSysPass;
     int m_BankVersion;
+};
+
+enum crovalue_parse {
+    CroValue_Next,
+    CroMulti_Next,
+    CroRecord_End
+};
+
+class CroBankParser : public CroParser
+{
+public:
+    CroBankParser(CroBank* bank);
+
+    void Reset();
+    void Parse(cronos_id id, CroBuffer& data);
+
+    uint8_t* Value();
+    cronos_size ValueSize();
+    crovalue_parse ParseValue();
+private:
+    cronos_id m_Id;
+    CroBuffer* m_pData;
+    CroStream m_Record;
+
+    CroBase* m_pBase;
+    CroFieldIter m_FieldIter;
+
+    cronos_off m_ValueOff;
+    cronos_size m_ValueSize;
 };
 
 #endif
