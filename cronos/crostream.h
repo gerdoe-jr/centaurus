@@ -11,6 +11,7 @@ public:
     CroStream(CroBuffer& buf);
 
     bool IsOverflowed() const;
+    inline void SetBuffer(CroBuffer* buf) { m_pBuffer = buf; }
     
     uint8_t* Read(cronos_size size);
     template<typename T> inline T& Get()

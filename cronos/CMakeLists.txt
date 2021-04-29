@@ -11,10 +11,11 @@ set(SOURCES
     crobuffer.cpp
     crodata.cpp
     crotable.cpp
+    crostream.cpp
+    crosync.cpp
     crofile.cpp
     cronos02.cpp
     cronos_abi.cpp
-    crostream.cpp
     croparser.cpp
     croentry.cpp
     croblock.cpp
@@ -31,11 +32,12 @@ set(HEADERS
     crobuffer.h
     crodata.h
     crotable.h
+    crostream.h
+    crosync.h
     crofile.h
     cronos02.h
     crodata.h
     cronos_abi.h
-    crostream.h
     croparser.h
     crotable.h
     croentry.h

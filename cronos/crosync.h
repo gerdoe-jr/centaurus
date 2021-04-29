@@ -1,0 +1,39 @@
+#ifndef __CROSYNC_H
+#define __CROSYNC_H
+
+#include "crobuffer.h"
+#include "crostream.h"
+#include <string>
+
+class CroSync : protected CroBuffer, protected CroStream
+{
+public:
+    CroSync();
+    CroSync(cronos_size bufferSize);
+    ~CroSync();
+
+    void InitSync(cronos_size bufferSize);
+    cronos_size SyncSize() const;
+    bool SyncEmpty() const;
+
+    virtual void Sync(const void* src, cronos_size size);
+    template<typename T> inline void Sync(const T& val)
+    {
+        Sync(&val, sizeof(val));
+    }
+protected:
+    virtual void Write(const uint8_t* src, cronos_size size);
+    virtual void Flush();
+};
+
+class CroSyncFile : public CroSync
+{
+public:
+    CroSyncFile(const std::wstring& path, cronos_size bufferSize);
+
+    void Flush() override;
+private:
+    std::wstring m_FilePath;
+};
+
+#endif

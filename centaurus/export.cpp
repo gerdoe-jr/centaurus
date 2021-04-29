@@ -12,12 +12,6 @@
 namespace fs = boost::filesystem;
 namespace sc = boost::system;
 
-#ifdef min
-#undef min
-#endif
-
-#include <algorithm>
-
 /* ExportBuffer */
 
 ExportBuffer::ExportBuffer()
@@ -100,6 +94,8 @@ void ExportBuffer::Write(const std::string& column)
     if (m_Format == ExportCSV) WriteCSV(column);
     else WriteJSON(column);
 }
+
+#include <crosync.h>
 
 void ExportBuffer::Flush()
 {
