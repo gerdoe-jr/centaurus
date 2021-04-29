@@ -252,12 +252,25 @@ crovalue_parse CroBankParser::NextValue()
     switch (sep)
     {
     case CROVALUE_SEP:
-        if (m_FieldIter++ == m_pBase->EndField())
+        if (++m_FieldIter == m_pBase->EndField())
             return CroRecord_End;
         break;
     }
 
     return CroValue_Next;
+}
+
+void CroBankParser::ReadValue()
+{
+    uint8_t value;
+    do {
+        if (m_Record.Remaining() < 1)
+            break;
+
+        value = m_Record.Read<uint8_t>();
+    } while (value != CROVALUE_SEP);
+
+    m_ValueSize = m_Record.GetPosition() - m_ValueOff;
 }
 
 CroIdent CroBankParser::ReadIdent()

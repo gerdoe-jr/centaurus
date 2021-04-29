@@ -68,13 +68,15 @@ CroSyncFile::CroSyncFile(const std::wstring& path, cronos_size bufferSize)
 
 void CroSyncFile::Flush()
 {
+    if (SyncEmpty()) return;
+
     FILE* fSync = _wfopen(m_FilePath.c_str(), L"ab");
     if (!fSync)
     {
         throw std::runtime_error("failed to sync file");
     }
 
-    fwrite(GetData(), GetSize(), 1, fSync);
+    fwrite(GetData(), SyncSize(), 1, fSync);
     fclose(fSync);
 
     CroSync::Flush();

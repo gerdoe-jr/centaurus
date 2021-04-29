@@ -8,6 +8,10 @@ CroReader::CroReader(CroBank* bank)
     
 }
 
+CroReader::~CroReader()
+{
+}
+
 void CroReader::ReadMap(CroRecordMap* map)
 {
     for (cronos_id id = map->IdStart(); id != map->IdEnd(); id++)
@@ -19,7 +23,7 @@ void CroReader::ReadMap(CroRecordMap* map)
     }
 }
 
-bool CroReader::ReadRecord(cronos_id id, CroBuffer& record)
+void CroReader::ReadRecord(cronos_id id, CroBuffer& record)
 {
     m_Parser.Parse(id, record);
     
@@ -39,4 +43,9 @@ void CroReader::OnRecord()
     }
 
     m_Parser.Reset();
+}
+
+void CroReader::OnValue()
+{
+    m_Parser.ReadValue();
 }

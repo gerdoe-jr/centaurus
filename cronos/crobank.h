@@ -9,6 +9,7 @@
 
 class CroParser;
 
+using CroBaseIter = std::vector<CroBase>::iterator;
 class CroBank
 {
 public:
@@ -29,6 +30,9 @@ public:
     virtual CroFile* File(crobank_file file);
     const std::wstring& FileName(crobank_file file);
 
+    inline unsigned BaseCount() const { return m_Bases.size(); }
+    inline CroBaseIter StartBase() { return m_Bases.begin(); }
+    inline CroBaseIter EndBase() { return m_Bases.end(); }
     CroBase* GetBaseByIndex(unsigned idx);
 
     CroParser* Parser();
@@ -81,6 +85,7 @@ public:
     crovalue_parse ParseValue();
     crovalue_parse NextValue();
 
+    void ReadValue();
     CroIdent ReadIdent();
     CroInteger ReadInteger();
 private:

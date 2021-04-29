@@ -9,6 +9,11 @@ CroExport<F>::CroExport(CroBank* bank)
 }
 
 template<CroExportFormat F>
+CroExport<F>::~CroExport()
+{
+}
+
+template<CroExportFormat F>
 void CroExport<F>::SetIdentOutput(CroIdent ident, CroSync* out)
 {
     m_Outputs[ident] = out;
@@ -41,7 +46,7 @@ void CroExport<F>::OnRecord()
 
 /* CroExportRaw */
 
-CroExportRaw::CroExportRaw(CroBank* bank, CroSync* out)
+CroExportRaw::CroExportRaw(CroBank* bank)
     : CroExport<CroExportFormat::Raw>(bank)
 {
 }
@@ -53,5 +58,7 @@ void CroExportRaw::OnRecord()
 
 void CroExportRaw::OnValue()
 {
+    CroExport::OnValue();
+
     m_pOut->Write(m_Parser.Value(), m_Parser.ValueSize());
 }
