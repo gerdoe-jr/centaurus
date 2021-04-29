@@ -29,7 +29,7 @@ public:
     virtual CroFile* File(crobank_file file);
     const std::wstring& FileName(crobank_file file);
 
-    
+    CroBase* GetBaseByIndex(unsigned idx);
 
     CroParser* Parser();
     virtual void ParserStart(CroParser* parser);
@@ -56,22 +56,31 @@ public:
 };
 
 enum crovalue_parse {
+    CroValue_Read,
     CroValue_Next,
+
     CroMulti_Next,
     CroRecord_End
 };
+
+#define CROVALUE_SEP 0x1E
 
 class CroBankParser : public CroParser
 {
 public:
     CroBankParser(CroBank* bank);
-
-    void Reset();
     void Parse(cronos_id id, CroBuffer& data);
+    void Reset();
 
     uint8_t* Value();
     cronos_size ValueSize();
+    CroType ValueType();
+
     crovalue_parse ParseValue();
+    crovalue_parse NextValue();
+
+    CroIdent ReadIdent();
+    CroInteger ReadInteger();
 private:
     cronos_id m_Id;
     CroBuffer* m_pData;
@@ -82,6 +91,7 @@ private:
 
     cronos_off m_ValueOff;
     cronos_size m_ValueSize;
+    CroType m_ValueType;
 };
 
 #endif

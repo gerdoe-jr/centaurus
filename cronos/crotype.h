@@ -57,4 +57,23 @@ typedef enum : unsigned {
 } crobank_file;
 #endif
 
+enum class CroType : uint16_t {
+    Ident,
+    Integer,
+    String,
+    VocString,
+    Date,
+    Time,
+    File,
+    DirectLink,
+    BacklLink,
+    DirectBackLink,
+    Bind,
+    Access,
+    ExternalFile
+};
+
+typedef uint32_t CroIdent;
+typedef int64_t CroInteger;
+
 #endif

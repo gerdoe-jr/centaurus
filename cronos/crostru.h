@@ -60,22 +60,6 @@ private:
 
 #define CROBASE_LINKED 0x109
 
-enum class CroType : uint16_t {
-    Ident,
-    Integer,
-    String,
-    VocString,
-    Date,
-    Time,
-    File,
-    DirectLink,
-    BacklLink,
-    DirectBackLink,
-    Bind,
-    Access,
-    ExternalFile
-};
-
 class CroField : public ICroParsee
 {
 public:

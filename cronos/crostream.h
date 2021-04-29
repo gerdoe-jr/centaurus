@@ -13,8 +13,12 @@ public:
     bool IsOverflowed() const;
     uint8_t* Read(cronos_size size);
 
-    template<typename T>
-    inline T& Read()
+    template<typename T> inline T& Get()
+    {
+        return *(T*)m_pBuffer->GetData();
+    }
+
+    template<typename T> inline T& Read()
     {
         return *(T*)Read(sizeof(T));
     }

@@ -121,6 +121,17 @@ const std::wstring& CroBank::FileName(crobank_file file)
     return _croFileNames[file];
 }
 
+CroBase* CroBank::GetBaseByIndex(unsigned idx)
+{
+    for (auto& base : m_Bases)
+    {
+        if (base.m_BaseIndex == idx)
+            return &base;
+    }
+
+    return NULL;
+}
+
 CroParser* CroBank::Parser()
 {
     return m_Parser;
@@ -198,8 +209,8 @@ void CroBankParser::Parse(cronos_id id, CroBuffer& data)
     m_pData = &data;
     m_Record = CroStream(*m_pData);
 
-    //Read record prefix
-    m_pBase = NULL;
+    unsigned baseId = ReadIdent();
+    m_pBase = Bank()->GetBaseByIndex(baseId);
     m_FieldIter = m_pBase->StartField();
 }
 
@@ -213,8 +224,47 @@ cronos_size CroBankParser::ValueSize()
     return m_ValueSize;
 }
 
+CroType CroBankParser::ValueType()
+{
+    return m_ValueType;
+}
+
 crovalue_parse CroBankParser::ParseValue()
 {
     if (m_FieldIter == m_pBase->EndField())
         return CroRecord_End;
+    auto& field = *m_FieldIter;
+    
+    m_ValueOff = m_Record.GetPosition();
+    m_ValueSize = 0;
+    m_ValueType = field.m_Type;
+
+    return CroValue_Read;
+}
+
+crovalue_parse CroBankParser::NextValue()
+{
+    if (!m_Record.Remaining())
+        return CroRecord_End;
+    
+    uint8_t sep = m_Record.Read<uint8_t>();
+    switch (sep)
+    {
+    case CROVALUE_SEP:
+        if (m_FieldIter++ == m_pBase->EndField())
+            return CroRecord_End;
+        break;
+    }
+
+    return CroValue_Next;
+}
+
+CroIdent CroBankParser::ReadIdent()
+{
+    return 0;
+}
+
+CroInteger CroBankParser::ReadInteger()
+{
+    return 0;
 }
