@@ -1,6 +1,7 @@
 #ifndef __CROSTRU_H
 #define __CROSTRU_H
 
+#include "crotype.h"
 #include "croparser.h"
 #include "crorecord.h"
 #include <string>
@@ -91,8 +92,11 @@ public:
 
     const std::string& GetName() const;
     
-    CroFieldIter StartField() { return m_Fields.begin(); }
-    CroFieldIter EndField() { return m_Fields.end(); }
+    inline CroFieldIter StartField() { return m_Fields.begin(); }
+    inline CroFieldIter EndField() { return m_Fields.end(); }
+    inline unsigned FieldCount() { return m_Fields.size(); }
+    CroField* GetFieldByIndex(unsigned idx);
+    CroField* GetFieldByDataIndex(unsigned idx);
 
     uint16_t m_VocFlags;
     uint16_t m_BaseVersion;

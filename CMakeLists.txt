@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 project(centaurus)
 
 set(CENTAURUS centaurus CACHE STRING "Centaurus API")
-set(CENTAURUS_EXE centaurus-exe CACHE STRING "Centaurus UI/CLI")
+set(CENTAURUS_EXE centaurus-run CACHE STRING "Centaurus UI/CLI")
 
 set(CENTAURUS_LIBS json win32ctrl blowfish cronos)
 set(CENTAURUS_TARGETS ${CENTAURUS} ${CENTAURUS_EXE})

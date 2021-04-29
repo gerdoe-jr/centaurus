@@ -3,6 +3,7 @@
 #include "cronos_format.h"
 #include "cronos02.h"
 #include "croexception.h"
+#include <win32util.h>
 #include <algorithm>
 #include <string.h>
 
@@ -10,19 +11,6 @@ extern "C"
 {
     #include "blowfish.h"
 }
-
-#ifndef WIN32
-#define _fseeki64 fseeko64
-#define _ftelli64 ftello64
-
-#include "win32util.h"
-
-static FILE* _wfopen(const wchar_t* path, const wchar_t* mode)
-{
-    return fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
-}
-
-#endif
 
 /* CroFile */
 

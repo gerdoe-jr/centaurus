@@ -44,7 +44,7 @@ std::string CroProp::GetString() const
 
 CroField::CroField()
 {
-    m_Type = Index;
+    m_Type = CroType::Ident;
     m_Index = 0;
     m_Flags = 0;
     m_DataIndex = 0;
@@ -56,7 +56,7 @@ void CroField::Parse(CroParser* parser, CroStream& stream)
     uint16_t size = stream.Read<uint16_t>();
     cronos_rel pos = stream.GetPosition();
 
-    m_Type = (CroFieldType)stream.Read<uint16_t>();
+    m_Type = (CroType)stream.Read<uint16_t>();
     m_Index = stream.Read<uint32_t>();
 
     uint8_t nameLen = stream.Read<uint8_t>();
@@ -77,7 +77,7 @@ const std::string& CroField::GetName() const
     return m_Name;
 }
 
-CroFieldType CroField::GetType() const
+CroType CroField::GetType() const
 {
     return m_Type;
 }
@@ -121,7 +121,7 @@ void CroBase::Parse(CroParser* parser, CroStream& base)
     {
         CroField field;
         field.Parse(parser, base);
-        m_Fields.insert(std::make_pair(i, field));
+        m_Fields.push_back(field);
     }
 }
 
@@ -130,22 +130,18 @@ const std::string& CroBase::GetName() const
     return m_Name;
 }
 
-const CroField& CroBase::Field(unsigned idx) const
+CroField* CroBase::GetFieldByIndex(unsigned idx)
 {
-    auto it = m_Fields.find(idx);
-    if (it == m_Fields.end())
-        throw std::runtime_error("invalid field");
-    return it->second;
+    for (auto it = StartField(); it != EndField(); it++)
+        if (it->m_Index == idx) return &*it;
+    return NULL;
 }
 
-unsigned CroBase::FieldCount() const
+CroField* CroBase::GetFieldByDataIndex(unsigned idx)
 {
-    return m_Fields.size();
-}
-
-unsigned CroBase::FieldEnd() const
-{
-    return m_Fields.empty() ? 0 : std::prev(m_Fields.end())->first;
+    for (auto it = StartField(); it != EndField(); it++)
+        if (it->m_DataIndex == idx) return &*it;
+    return NULL;
 }
 
 /* CroPropNS */

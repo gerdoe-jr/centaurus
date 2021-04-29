@@ -1,21 +1,9 @@
 #include "json_file.h"
+#include <win32util.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdexcept>
 #include <memory>
-
-#ifndef WIN32
-#define _fseeki64 fseeko64
-#define _ftelli64 ftello64
-
-#include "win32util.h"
-
-static FILE* _wfopen(const wchar_t* path, const wchar_t* mode)
-{
-    return fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
-}
-
-#endif
 
 json ReadJSONFile(const std::wstring& path)
 {

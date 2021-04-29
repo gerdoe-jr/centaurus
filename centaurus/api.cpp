@@ -17,16 +17,6 @@
 #include <tuple>
 #include <stdio.h>
 
-#ifdef min
-#undef min
-#endif
-
-#ifndef WIN32
-#define CP_UTF7 65000
-#define CP_UTF8 65001
-#endif
-
-#include <algorithm>
 #include <boost/filesystem.hpp>
 
 namespace fs = boost::filesystem;
@@ -108,21 +98,26 @@ void CentaurusAPI::PrepareDataPath(const std::wstring& path)
     fs::create_directory(GetExportPath());
     fs::create_directory(GetTaskPath());
     fs::create_directory(GetBankPath());
+    
+    Log("Prepare data path %s\n", WcharToTerm(path).c_str());
+    Log("Export -> %s\n", WcharToTerm(GetExportPath()).c_str());
+    Log("Task -> %s\n", WcharToTerm(GetTaskPath()).c_str());
+    Log("Bank ->%s\n", WcharToTerm(GetBankPath()).c_str());
 }
 
 std::wstring CentaurusAPI::GetExportPath() const
 {
-    return m_DataPath + L"\\export";
+    return JoinFilePath(m_DataPath, L"export");
 }
 
 std::wstring CentaurusAPI::GetTaskPath() const
 {
-    return m_DataPath + L"\\task";
+    return JoinFilePath(m_DataPath, L"task");
 }
 
 std::wstring CentaurusAPI::GetBankPath() const
 {
-    return m_DataPath + L"\\bank";
+    return JoinFilePath(m_DataPath, L"bank");
 }
 
 void CentaurusAPI::StartWorker(ICentaurusWorker* worker)
@@ -143,8 +138,8 @@ std::wstring CentaurusAPI::BankFile(ICentaurusBank* bank)
     {
         if (_bank.get() == bank)
         {
-            return GetBankPath() + L"\\" + std::to_wstring(
-                bank->BankId()) + L".json";
+            return JoinFilePath(GetBankPath(),
+                std::to_wstring(bank->BankId()) + L".json");
         }
     }
 
@@ -308,8 +303,8 @@ std::wstring CentaurusAPI::TaskFile(ICentaurusTask* task)
     {
         if (_task.get() == task)
         {
-            return GetTaskPath() + L"\\" + AnsiToWchar(
-                m_pScheduler->TaskName(task)) + L".json";
+            return JoinFilePath(GetTaskPath(), AnsiToWchar(
+                m_pScheduler->TaskName(task)) + L".json");
         }
     }
 
@@ -387,21 +382,6 @@ bool CentaurusAPI::IsBankAcquired(ICentaurusBank* bank)
 
 void CentaurusAPI::Run()
 {
-    /*for (auto& bank : m_Banks)
-    {
-        fprintf(m_fOutput, "[CentaurusAPI::Run] Detect \"%s\", ID "
-            "%" PRIu64 "\n", WcharToAnsi(bank->BankName(), 866).c_str(),
-                bank->BankId());
-
-        CentaurusExport* taskExport = new CentaurusExport;
-        taskExport->SetTargetBank(bank.get());
-
-        //StartTask(taskExport);
-        m_Tasks.emplace_back(taskExport);
-
-        m_pScheduler->ScheduleTask(taskExport);
-    }*/
-
     m_pScheduler->Wait();
 }
 
@@ -423,13 +403,13 @@ void CentaurusAPI::Sync(ICentaurusWorker* worker)
         if (bank)
         {
             m_Banks.emplace_back(bank);
-            Log("Loaded bank \"%s\"\n", WcharToAnsi(dir, 866).c_str());
+            Log("Loaded bank \"%s\"\n", WcharToTerm(dir).c_str());
         }
         else if (!dir.empty())
         {
             m_FailedBanks.push_back(dir);
             Error("Failed to load bank at \"%s\"\n",
-                WcharToAnsi(dir, 866).c_str());
+                WcharToTerm(dir).c_str());
         }
     }
 
@@ -473,7 +453,7 @@ std::string CentaurusAPI::SizeToString(centaurus_size size) const
 bool CentaurusAPI::IsBankExported(uint32_t bankId)
 {
     auto lock = scoped_lock(m_ExportLock);
-    std::wstring indexPath = GetExportPath() + L"\\index.json";
+    std::wstring indexPath = JoinFilePath(GetExportPath(), L"index.json");
     try {
         if (fs::exists(indexPath)) m_ExportIndex = ReadJSONFile(indexPath);
         else m_ExportIndex = json::object();
@@ -488,7 +468,7 @@ bool CentaurusAPI::IsBankExported(uint32_t bankId)
 void CentaurusAPI::UpdateBankExportIndex(uint32_t bankId, const std::wstring& path)
 {
     auto lock = scoped_lock(m_ExportLock);
-    std::wstring indexPath = GetExportPath() + L"\\index.json";
+    std::wstring indexPath = JoinFilePath(GetExportPath(), L"index.json");
     try {
         if (fs::exists(indexPath))
         {

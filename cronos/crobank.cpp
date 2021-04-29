@@ -1,5 +1,6 @@
 #include "crobank.h"
 #include <stdexcept>
+#include <win32util.h>
 
 /* CroBank */
 
@@ -25,7 +26,7 @@ bool CroBank::Open()
 {
     for (unsigned i = 0; i < CROFILE_COUNT; i++)
     {
-        std::wstring path = m_Path + L"\\" + FileName((crobank_file)i);
+        std::wstring path = JoinFilePath(m_Path, FileName((crobank_file)i));
         std::unique_ptr<CroFile> file = std::make_unique<CroFile>(path);
         try {
             file->Open();
@@ -60,7 +61,7 @@ bool CroBank::TryBankPath()
 {
     for (unsigned i = 0; i < CROFILE_COUNT; i++)
     {
-        std::wstring path = m_Path + L"\\" + FileName((crobank_file)i);
+        std::wstring path = JoinFilePath(m_Path, FileName((crobank_file)i));
         std::unique_ptr<CroFile> file = std::make_unique<CroFile>(path);
         try {
             if (file->Open() != CROFILE_OK)

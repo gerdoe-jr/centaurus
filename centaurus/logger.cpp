@@ -1,37 +1,17 @@
 #include "logger.h"
 #include "api.h"
 #include <crofile.h>
-#include <croprop.h>
+#include <crostru.h>
 #include <crorecord.h>
 #include <win32util.h>
 #include <cstdarg>
 #include <ctime>
-
-#ifndef WIN32
-#define CP_UTF7 65000
-#define CP_UTF8 65001
-#else
-#include <Windows.h>
-#endif
 
 #ifdef min
 #undef min
 #endif
 
 #include <algorithm>
-
-#ifndef WIN32
-#define _fseeki64 fseeko64
-#define _ftelli64 ftello64
-
-#include "win32util.h"
-
-static FILE* _wfopen(const wchar_t* path, const wchar_t* mode)
-{
-    return fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
-}
-
-#endif
 
 using scoped_lock = boost::mutex::scoped_lock;
 
@@ -185,7 +165,7 @@ void CentaurusLogger::LogPrint(CentaurusLogLevel lvl,
     const char* fmt, va_list ap)
 {
     char szBuf[512] = { 0 };
-    vsnprintf_s(szBuf, 512, fmt, ap);
+    vsnprintf(szBuf, 512, fmt, ap);
     
     auto* log = dynamic_cast<CentaurusLogger*>
         (m_pForward ? m_pForward : this);
@@ -243,13 +223,13 @@ void CentaurusLogger::LogBankStructure(ICentaurusBank* bank)
     fprintf(m_fOutput, "\tm_BankFormSaveVer = %u\n", bank->BankFormSaveVer());
     fprintf(m_fOutput, "\tm_BankId = %u\n", bank->BankId());
     fprintf(m_fOutput, "\tm_BankName = \"%s\"\n",
-        WcharToAnsi(bank->BankName(), 866).c_str());
+        WcharToTerm(bank->BankName()).c_str());
     fprintf(m_fOutput, "\tm_Bases\n");
     for (unsigned i = 0; i <= bank->BaseEnd(); i++)
     {
         auto& base = bank->Base(i);
         fprintf(m_fOutput, "\t\t%03u\t\"%s\"\n", base.m_BaseIndex,
-            WcharToAnsi(TextToWchar(base.m_Name), 866).c_str());
+            WcharToTerm(TextToWchar(base.m_Name)).c_str());
     }
     /*fprintf(m_fOutput, "\tm_Formuls\n");
     for (auto& formula : m_Formuls)
@@ -259,8 +239,8 @@ void CentaurusLogger::LogBankStructure(ICentaurusBank* bank)
     }*/
     fprintf(m_fOutput, "\tm_BankSerial = %u\n", bank->BankSerial());
     fprintf(m_fOutput, "\tm_BankCustomProt = %u\n", bank->BankCustomProt());
-    fprintf(m_fOutput, "\tm_BankSysPass = \"%s\"\n", WcharToAnsi(
-        bank->BankSysPass(), 866).c_str());
+    fprintf(m_fOutput, "\tm_BankSysPass = \"%s\"\n",
+        WcharToTerm(bank->BankSysPass()).c_str());
     fprintf(m_fOutput, "\tm_BankVersion = %d\n", bank->BankVersion());
 }
 

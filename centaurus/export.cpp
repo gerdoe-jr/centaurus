@@ -3,8 +3,10 @@
 #include "win32util.h"
 #include "croexception.h"
 #include <crofile.h>
+#include <crostru.h>
 
 #include <json_file.h>
+#include <win32util.h>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/trim.hpp>
 namespace fs = boost::filesystem;
@@ -15,22 +17,6 @@ namespace sc = boost::system;
 #endif
 
 #include <algorithm>
-
-#ifndef WIN32
-#include <win32util.h>
-
-static FILE* _wfopen(const wchar_t* path, const wchar_t* mode)
-{
-    return fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
-}
-
-static int _wfopen_s(FILE** fpFile, const wchar_t* path, const wchar_t* mode)
-{
-    *fpFile = fopen(WcharToText(path).c_str(), WcharToText(mode).c_str());
-    return !!(*fpFile);
-}
-
-#endif
 
 /* ExportBuffer */
 
@@ -169,7 +155,7 @@ void CentaurusExport::PrepareDirs()
     );
 
     boost::algorithm::trim(dirName);
-    m_ExportPath = centaurus->GetExportPath() + L"\\" + dirName;
+    m_ExportPath = JoinFilePath(centaurus->GetExportPath(), dirName);
     fs::create_directory(m_ExportPath);
 }
 
@@ -188,7 +174,9 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
     char* data = (char*)record.GetData() + 1;
     char* cursor = data;
 
-    unsigned i, field = 0;
+    unsigned i;
+    CroFieldIter field = base.StartField();
+    
     out->Write(std::to_string(id));
     for (i = 1; i < record.GetSize(); i++)
     {
@@ -200,12 +188,12 @@ void CentaurusExport::SaveExportRecord(CroBuffer& record, uint32_t id)
             out->Write(value);
             
             cursor = &data[i+1];
-            if (++field == base.FieldCount() - 1)
+            if (++field == base.EndField())
                 break;
         }
     }
 
-    for (; field < base.FieldCount() - 1; field++)
+    for (; field != base.EndField(); field++)
         out->Write("");
 }
 
@@ -233,24 +221,18 @@ void CentaurusExport::RunTask()
             auto& base = m_pBank->Base(i);
 
             json baseFields = json::array();
-            for (unsigned j = 0; j < base.FieldCount(); j++)
+            for (auto it = base.StartField(); it != base.EndField(); it++)
             {
-                try {
-                    auto& field = base.Field(j);
-                    baseFields.push_back({
-                        {"name", field.GetName()},
-                        {"type", field.GetType()},
-                        {"flags", field.GetFlags()}
-                    });
-                }
-                catch (const std::exception& e) {
-                    _CrtDbgBreak();
-                }
+                baseFields.push_back({
+                    {"name", it->GetName()},
+                    {"type", it->GetType()},
+                    {"flags", it->GetFlags()}
+                });
             }
-
+            
             // Open export
             std::wstring exportName = L"base" + std::to_wstring(i) + L".csv";
-            std::wstring exportPath = m_ExportPath + L"\\" + exportName;
+            std::wstring exportPath = JoinFilePath(m_ExportPath, exportName);
 
             json bankBase = {
                 {"name", base.GetName()},

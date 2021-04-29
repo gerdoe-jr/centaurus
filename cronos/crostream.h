@@ -11,16 +11,25 @@ public:
     CroStream(CroBuffer& buf);
 
     bool IsOverflowed() const;
+    
     uint8_t* Read(cronos_size size);
-
     template<typename T> inline T& Get()
     {
         return *(T*)m_pBuffer->GetData();
     }
-
     template<typename T> inline T& Read()
     {
         return *(T*)Read(sizeof(T));
+    }
+
+    void Write(const uint8_t* src, cronos_size size);
+    template<typename T> inline void Set(const T& val)
+    {
+        *(T*)m_pBuffer->GetData = val;
+    }
+    template<typename T> inline void Write(const T& val)
+    {
+        Write(&val, sizeof(T));
     }
 
     inline cronos_rel GetPosition() const { return m_Pos; }
