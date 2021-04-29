@@ -72,6 +72,8 @@ public:
     void Parse(cronos_id id, CroBuffer& data);
     void Reset();
 
+    inline CroBase* IdentBase() const { return m_pBase; }
+
     uint8_t* Value();
     cronos_size ValueSize();
     CroType ValueType();

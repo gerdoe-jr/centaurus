@@ -22,6 +22,8 @@ set(SOURCES
     crorecord.cpp
     crostru.cpp
     crobank.cpp
+    croreader.cpp
+    croexport.cpp
 )
 
 set(HEADERS
@@ -45,6 +47,8 @@ set(HEADERS
     crorecord.h
     crostru.h
     crobank.h
+    croreader.h
+    croexport.h
 )
 
 add_library(cronos ${SOURCES} ${HEADERS})

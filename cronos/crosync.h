@@ -21,7 +21,7 @@ public:
     {
         Sync(&val, sizeof(val));
     }
-protected:
+
     virtual void Write(const uint8_t* src, cronos_size size);
     virtual void Flush();
 };
