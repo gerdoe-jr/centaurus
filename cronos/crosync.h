@@ -10,7 +10,7 @@ class CroSync : protected CroBuffer, protected CroStream
 public:
     CroSync();
     CroSync(cronos_size bufferSize);
-    ~CroSync();
+    virtual ~CroSync();
 
     void InitSync(cronos_size bufferSize);
     cronos_size SyncSize() const;

@@ -8,35 +8,6 @@
 #include <crotable.h>
 #include <string>
 
-class ExportBuffer : public CroBuffer
-{
-public:
-    ExportBuffer();
-    ExportBuffer(ExportFormat fmt, unsigned columns);
-    ~ExportBuffer();
-
-    void SetExportFilePath(const std::wstring& path);
-    void ReserveSize(cronos_size size);
-    inline const std::wstring& ExportFilePath() { return m_ExportFile; }
-
-    void WriteCSV(const std::string& column);
-    void WriteJSON(const std::string& column);
-
-    void Write(const std::string& column);
-    void Flush();
-    inline unsigned RecordCount() const { return m_uRecordCount; }
-private:
-    ExportFormat m_Format;
-    unsigned m_uIndex;
-    unsigned m_uColumns;
-
-    cronos_size m_Reserve;
-    cronos_off m_TextOffset;
-
-    unsigned m_uRecordCount;
-    std::wstring m_ExportFile;
-};
-
 #include <map>
 #include <json.hpp>
 

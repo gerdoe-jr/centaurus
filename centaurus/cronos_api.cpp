@@ -40,6 +40,9 @@ void CronosAPI::RunTask()
 
 void CronosAPI::Release()
 {
+    FlushBuffers();
+    m_Buffers.clear();
+
     ReleaseMap();
 }
 
@@ -107,4 +110,24 @@ void CronosAPI::ReleaseMap()
 ICentaurusLogger* CronosAPI::CronosLog()
 {
     return dynamic_cast<ICentaurusLogger*>(this);
+}
+
+CroSync* CronosAPI::CreateSyncFile(const std::wstring& path,
+    cronos_size bufferSize)
+{
+    CroSyncFile* file = new CroSyncFile(path, bufferSize);
+    
+    AcquireBuffer(file);
+    return file;
+}
+
+void CronosAPI::AcquireBuffer(CroSync* buffer)
+{
+    m_Buffers.emplace_back(buffer);
+}
+
+void CronosAPI::FlushBuffers()
+{
+    for (auto& buffer : m_Buffers)
+        buffer->Flush();
 }
