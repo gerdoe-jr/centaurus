@@ -40,7 +40,7 @@ void FindBanks(const std::wstring& path)
                 break;
             }
 
-            std::string name = WcharToAnsi(bank->BankName());
+            std::string name = WcharToTerm(bank->BankName());
             findLog->Log("\"%s\", ID %d\n", name.c_str(), bank->BankId());
 
             if (testMode)
@@ -76,12 +76,12 @@ int main(int argc, char** argv)
 {
     if (IsWindowsSystem())
     {
-        rootPath = L"K:\\Centaurus";
+        rootPath = L"K:\\CentaurusData";
         bankPath = L"K:\\Cronos\\TestBanks";
     }
     else if (IsLinuxSystem())
     {
-        rootPath = L"/media/Volume_K/Centaurus";
+        rootPath = L"/media/Volume_K/CentaurusData";
         bankPath = L"/media/Volume_K/Cronos/TestBanks/Test4";
     }
 
