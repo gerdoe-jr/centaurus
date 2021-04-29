@@ -57,6 +57,14 @@ void CentaurusExport::RunTask()
     AcquireBank(m_pBank);
     PrepareDirs();
 
+    switch (m_ExportFormat)
+    {
+    case ExportCSV:
+    case ExportJSON:
+    default:
+        m_Export = std::make_unique<CroExportRaw>(m_pBank);
+    }
+
     m_BankJson = {
         {"id", m_pBank->BankId()},
         {"name", WcharToText(m_pBank->BankName())},
@@ -70,7 +78,6 @@ void CentaurusExport::RunTask()
     SyncBankJson();
 
     try {
-        m_Export = std::make_unique<CroExportRaw>(m_pBank);
         cronos_size baseLimit = m_ExportLimit / m_pBank->BaseCount();
 
         for (auto it = m_pBank->StartBase(); it != m_pBank->EndBase(); it++)
@@ -146,7 +153,7 @@ void CentaurusExport::RunTask()
 
         // !! FINISH EXPORT !!
         m_BankJson["export"] = bankExport;
-        m_Export = NULL;
+        ReleaseBuffers();
     }
     catch (CroException& ce) {
         centaurus->OnException(ce);
@@ -166,14 +173,30 @@ void CentaurusExport::RunTask()
 
     m_BankJson["status"] = !m_BankJson.contains("error");
     SyncBankJson();
+
+    {
+        auto file = SetLoaderFile(CROFILE_BANK);
+        CroExportList list = CroExportList(m_pBank,
+            file->EntryCountFileSize());
+
+        auto bank = GetRecordMap(1, file->EntryCountFileSize());
+        list.ReadMap(bank);
+
+        for (auto it = list.ExportStart(); it != list.ExportEnd(); it++)
+        {
+            Log("RECORD %" FCroId "\n", it->first);
+
+            for (auto& value : it->second)
+                LogBuffer(value, 1251);
+        }
+
+        list.Reset();
+    }
 }
 
 void CentaurusExport::Release()
 {
-    if (m_Export)
-    {
-        m_Export = NULL;
-    }
+    m_Export = NULL;
 
     CronosAPI::Release();
 }
@@ -191,6 +214,8 @@ void CentaurusExport::Export()
 
     file->SetupCrypt(key, m_pBank->BankSerial());
 
+    CroReader* reader = m_Export->GetReader();
+
     cronos_id map_id = 1;
     cronos_idx burst = m_BlockLimit / defSize;
     do {
@@ -203,8 +228,7 @@ void CentaurusExport::Export()
             break;
         }
 
-        auto* exporter = m_Export->GetExport<CroExportFormat::Raw>();
-        exporter->ReadMap(bank);
+        reader->ReadMap(bank);
 
         map_id = bank->IdEnd();
         ReleaseMap();

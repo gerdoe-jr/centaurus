@@ -43,6 +43,7 @@ public:
 
     CroSync* CreateSyncFile(const std::wstring& path, cronos_size bufferSize);
     void FlushBuffers();
+    void ReleaseBuffers();
 protected:
     void AcquireBuffer(CroSync* sync);
 

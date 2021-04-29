@@ -220,6 +220,11 @@ uint8_t* CroBankParser::Value()
     return m_pData->GetData() + m_ValueOff;
 }
 
+cronos_off CroBankParser::ValueOff()
+{
+    return m_ValueOff;
+}
+
 cronos_size CroBankParser::ValueSize()
 {
     return m_ValueSize;
@@ -262,23 +267,43 @@ crovalue_parse CroBankParser::NextValue()
 
 void CroBankParser::ReadValue()
 {
-    uint8_t value;
-    do {
-        if (m_Record.Remaining() < 1)
+    m_ValueOff = m_Record.GetPosition();
+    
+    while (m_Record.Remaining())
+    {
+        uint8_t value = m_Record.Get<uint8_t>();
+        if (value == CROVALUE_SEP)
+        {
             break;
-
-        value = m_Record.Read<uint8_t>();
-    } while (value != CROVALUE_SEP);
+        }
+        else
+        {
+            m_Record.Read<uint8_t>();
+        }
+    }
 
     m_ValueSize = m_Record.GetPosition() - m_ValueOff;
 }
 
 CroIdent CroBankParser::ReadIdent()
 {
-    return 0;
+    uint8_t prefix = m_Record.Get<uint8_t>();
+    if (prefix & 0xF0)
+    {
+        return (CroIdent)ReadInteger();
+    }
+    
+    return m_Record.Read<uint8_t>();
 }
 
 CroInteger CroBankParser::ReadInteger()
 {
+    switch (m_Record.Get<uint8_t>())
+    {
+    case 2: return m_Record.Read<int8_t>();
+    case 3: return m_Record.Read<int16_t>();
+    case 4: return m_Record.Read<int32_t>();
+    }
+
     return 0;
 }

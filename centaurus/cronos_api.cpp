@@ -41,7 +41,7 @@ void CronosAPI::RunTask()
 void CronosAPI::Release()
 {
     FlushBuffers();
-    m_Buffers.clear();
+    ReleaseBuffers();
 
     ReleaseMap();
 }
@@ -130,4 +130,9 @@ void CronosAPI::FlushBuffers()
 {
     for (auto& buffer : m_Buffers)
         buffer->Flush();
+}
+
+void CronosAPI::ReleaseBuffers()
+{
+    m_Buffers.clear();
 }

@@ -37,11 +37,12 @@ void CroExport<F>::OnRecord()
     uint32_t index = m_Parser.IdentBase()->m_BaseIndex;
     auto out = m_Outputs.find(index);
 
-    m_pOut = out == m_Outputs.end() ? NULL : m_Outputs[index];
-    if (m_pOut)
+    if (!m_pOut)
     {
-        CroReader::OnRecord();
+        m_pOut = out == m_Outputs.end() ? NULL : m_Outputs[index];
     }
+
+    CroReader::OnRecord();
 }
 
 /* CroExportRaw */
@@ -61,4 +62,45 @@ void CroExportRaw::OnValue()
     CroExport::OnValue();
 
     m_pOut->Write(m_Parser.Value(), m_Parser.ValueSize());
+}
+
+/* CroExportList */
+
+CroExportList::CroExportList(CroBank* bank, cronos_idx burst)
+    : CroExportRaw(bank), m_pRecord(NULL)
+{
+    CroFile* file = bank->File(CROFILE_BANK);
+    m_Output.InitSync(file->GetDefaultBlockSize() * burst);
+}
+
+void CroExportList::Reset()
+{
+    m_Parser.Reset();
+    m_Output.Flush();
+
+    m_List.clear();
+}
+
+void CroExportList::OnRecord()
+{
+    cronos_id id = m_Parser.RecordId();
+
+    m_List.emplace(id, CroExportRecord {});
+    m_pRecord = &m_List[id];
+
+    m_pOut = &m_Output;
+    CroExportRaw::OnRecord();
+}
+
+void CroExportList::OnValue()
+{
+    CroExport::OnValue();
+
+    CroBuffer value;
+    if (m_Parser.ValueSize())
+    {
+        value.Copy(m_Parser.Value(), m_Parser.ValueSize());
+    }
+
+    m_pRecord->push_back(value);
 }

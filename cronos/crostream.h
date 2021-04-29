@@ -16,7 +16,7 @@ public:
     uint8_t* Read(cronos_size size);
     template<typename T> inline T& Get()
     {
-        return *(T*)m_pBuffer->GetData();
+        return *(T*)(m_pBuffer->GetData() + m_Pos);
     }
     template<typename T> inline T& Read()
     {
