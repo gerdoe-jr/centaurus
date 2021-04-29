@@ -4,6 +4,8 @@ out
 build
 mingw
 vs2019
+*.a
+*.so
 *.exe
 *.dll
 *.bin
