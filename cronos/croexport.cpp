@@ -28,20 +28,19 @@ std::string CroExport<F>::StringValue()
     if (!size) return "";
 
     CroBuffer out;
-    out.Alloc(size);
-
-    std::string ident;
     CroStream str = CroStream(out);
+    std::string ident;
 
     switch (m_Parser.ValueType())
     {
     case CroType::Ident:
         ident = std::to_string(m_Parser.RecordId());
-        out.Alloc(ident.size());
         
+        out.Alloc(ident.size());
         str.Write((const uint8_t*)ident.c_str(), ident.size());
         break;
     case CroType::Integer:
+        out.Alloc(size);
         for (cronos_size i = 0; i < size; i++)
         {
             if (isdigit(value[i]))
@@ -49,6 +48,7 @@ std::string CroExport<F>::StringValue()
         }
         break;
     default:
+        out.Alloc(size);
         for (cronos_size i = 0; i < size; i++)
         {
             uint8_t c = value[i];
@@ -85,6 +85,12 @@ void CroExport<F>::OnRecord()
     }
 
     CroReader::OnRecord();
+}
+
+template<CroExportFormat F>
+void CroExport<F>::OnRecordEnd()
+{
+    m_pOut = NULL;
 }
 
 /* CroExportRaw */
@@ -157,13 +163,18 @@ CroExportCSV::CroExportCSV(CroBank* bank)
 void CroExportCSV::OnRecord()
 {
     CroExport::OnRecord();
+}
 
+void CroExportCSV::OnRecordEnd()
+{
     if (m_pOut)
     {
         uint8_t csvNewLine[] = { '\r', '\n' };
 
         m_pOut->Write(csvNewLine, 2);
     }
+
+    CroExport::OnRecordEnd();
 }
 
 void CroExportCSV::OnValue()
@@ -172,30 +183,36 @@ void CroExportCSV::OnValue()
 
     uint8_t* value = m_Parser.Value();
     cronos_size size = m_Parser.ValueSize();
-    CroType type = m_Parser.ValueType();
 
     uint8_t csvQuote = '"';
-    uint8_t csvComma = ',';
 
     std::string str = StringValue();
+    bool quoted = str.empty() ? true
+        : str.find(csvQuote) != std::string::npos;;
 
-    if (type == CroType::Ident || type == CroType::Integer)
-        m_pOut->Write((const uint8_t*)str.c_str(), str.size());
-    else
+    if (quoted)
+        m_pOut->Write(&csvQuote, 1);
+
+    std::string text = WcharToText(AnsiToWchar(
+        str, m_pBank->GetTextCodePage()));
+    for (cronos_size i = 0; i < text.size(); i++)
     {
-        std::string text = WcharToText(AnsiToWchar(
-            str, m_pBank->GetTextCodePage()));
-
-        m_pOut->Write(&csvQuote, 1);
-        for (cronos_size i = 0; i < text.size(); i++)
-        {
-            if (text[i] == csvQuote)
-                m_pOut->Write(&csvQuote, 1);
-            m_pOut->Write((const uint8_t*)&text[i], 1);
-        }
-        m_pOut->Write(&csvQuote, 1);
+        if (text[i] == csvQuote)
+            m_pOut->Write(&csvQuote, 1);
+        m_pOut->Write((const uint8_t*)&text[i], 1);
     }
 
-    if (!m_Parser.IsLastField())
+    if (quoted)
+        m_pOut->Write(&csvQuote, 1);
+}
+
+void CroExportCSV::OnValueNext()
+{
+    CroExport::OnValueNext();
+    
+    if (m_State == CroValue_Read)
+    {
+        uint8_t csvComma = ',';
         m_pOut->Write(&csvComma, 1);
+    }
 }

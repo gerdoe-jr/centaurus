@@ -262,28 +262,30 @@ crovalue_parse CroBankParser::NextValue()
         break;
     }
 
-    return CroValue_Next;
+    return CroValue_Read;
 }
 
 void CroBankParser::ReadValue()
 {
-    m_ValueOff = m_Record.GetPosition();
-    
-    while (m_Record.Remaining())
+    if (!m_Record.Remaining())
     {
-        uint8_t value = m_Record.Get<uint8_t>();
-        if (value == CROVALUE_SEP)
-        {
-            break;
-        }
-        else
-        {
-            m_Record.Read<uint8_t>();
-        }
+        m_ValueSize = 0;
+        return;
     }
 
-    m_ValueSize = std::min(m_Record.GetPosition() - m_ValueOff,
-        m_pData->GetSize() - m_ValueOff);
+    uint8_t value;
+    m_ValueOff = m_Record.GetPosition();
+
+    while (m_Record.Remaining())
+    {
+        value = m_Record.Get<uint8_t>();
+        if (value == CROVALUE_SEP)
+            break;
+        m_Record.Read<uint8_t>();
+    }
+
+    m_ValueSize = m_Record.GetPosition() - m_ValueOff;
+    m_ValueType = m_FieldIter->m_Type;
 }
 
 CroIdent CroBankParser::ReadIdent()

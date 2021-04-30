@@ -50,6 +50,7 @@ public:
     virtual CroExportFormat GetExportFormat() const;
 protected:
     virtual void OnRecord();
+    virtual void OnRecordEnd();
 
     CroSync* m_pOut;
 private:
@@ -93,7 +94,10 @@ public:
     CroExportCSV(CroBank* bank);
 protected:
     virtual void OnRecord();
+    virtual void OnRecordEnd();
+
     virtual void OnValue();
+    virtual void OnValueNext();
 };
 
 #endif

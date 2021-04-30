@@ -60,11 +60,13 @@ public:
 };
 
 enum crovalue_parse {
+    CroRecord_Start,
+    CroRecord_End,
+
     CroValue_Read,
     CroValue_Next,
 
-    CroMulti_Next,
-    CroRecord_End
+    CroMulti_Next
 };
 
 #define CROVALUE_SEP 0x1E

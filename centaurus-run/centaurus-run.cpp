@@ -49,6 +49,9 @@ void FindBanks(const std::wstring& path)
             }
             else if (exportMode)
             {
+#ifdef CENTAURUS_RELEASE
+                ICentaurusTask* exportTask = CentaurusTask_Export(bank);
+                centaurus->StartTask(exportTask);
                 if (centaurus->IsBankExported(bank->BankId()))
                 {
                     findLog->Log("\"%s\" already exported\n", name.c_str());
@@ -58,6 +61,10 @@ void FindBanks(const std::wstring& path)
                     ICentaurusTask* exportTask = CentaurusTask_Export(bank);
                     centaurus->StartTask(exportTask);
                 }
+#else
+                ICentaurusTask* exportTask = CentaurusTask_Export(bank);
+                centaurus->StartTask(exportTask);
+#endif
             }
             break;
         }

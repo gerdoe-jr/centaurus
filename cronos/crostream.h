@@ -30,7 +30,7 @@ public:
     }
     template<typename T> inline void Write(const T& val)
     {
-        Write(&val, sizeof(T));
+        Write((const uint8_t*)&val, sizeof(T));
     }
 
     inline cronos_rel GetPosition() const { return m_Pos; }
