@@ -20,6 +20,7 @@ public:
     virtual ~ICroExport() {}
 
     virtual void SetIdentOutput(CroIdent ident, CroSync* out) = 0;
+    virtual std::string StringValue() = 0;
 
     virtual CroSync* GetExportOutput() const = 0;
     virtual CroExportFormat GetExportFormat() const = 0;
@@ -43,6 +44,7 @@ public:
     virtual ~CroExport();
     
     void SetIdentOutput(CroIdent ident, CroSync* out) override;
+    std::string StringValue() override;
 
     virtual CroSync* GetExportOutput() const;
     virtual CroExportFormat GetExportFormat() const;
@@ -83,6 +85,15 @@ private:
     std::map<cronos_id, CroExportRecord> m_List;
 
     CroExportRecord* m_pRecord;
+};
+
+class CroExportCSV : public CroExport<CroExportFormat::CSV>
+{
+public:
+    CroExportCSV(CroBank* bank);
+protected:
+    virtual void OnRecord();
+    virtual void OnValue();
 };
 
 #endif

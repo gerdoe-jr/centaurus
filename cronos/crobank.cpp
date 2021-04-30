@@ -282,7 +282,8 @@ void CroBankParser::ReadValue()
         }
     }
 
-    m_ValueSize = m_Record.GetPosition() - m_ValueOff;
+    m_ValueSize = std::min(m_Record.GetPosition() - m_ValueOff,
+        m_pData->GetSize() - m_ValueOff);
 }
 
 CroIdent CroBankParser::ReadIdent()

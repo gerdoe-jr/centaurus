@@ -27,6 +27,7 @@ protected:
 
     CroBank* m_pBank;
     CroBankParser m_Parser;
+    crovalue_parse m_State;
 };
 
 #endif

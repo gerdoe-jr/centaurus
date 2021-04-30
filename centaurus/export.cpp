@@ -60,6 +60,8 @@ void CentaurusExport::RunTask()
     switch (m_ExportFormat)
     {
     case ExportCSV:
+        m_Export = std::make_unique<CroExportCSV>(m_pBank);
+        break;
     case ExportJSON:
     default:
         m_Export = std::make_unique<CroExportRaw>(m_pBank);
@@ -92,8 +94,15 @@ void CentaurusExport::RunTask()
                 });
             }
 
+            std::wstring exportExt;
+            switch (m_ExportFormat)
+            {
+            case ExportCSV: exportExt = L".csv"; break;
+            case ExportJSON: exportExt = L".json"; break;
+            }
+
             std::wstring exportName = L"base"
-                + std::to_wstring(it->m_BaseIndex) + L".dat";
+                + std::to_wstring(it->m_BaseIndex) + exportExt;
             std::wstring exportPath = JoinFilePath(m_ExportPath, exportName);
             json bankBase = {
                 {"name", it->GetName()},
@@ -174,7 +183,7 @@ void CentaurusExport::RunTask()
     m_BankJson["status"] = !m_BankJson.contains("error");
     SyncBankJson();
 
-    {
+    /*{
         auto file = SetLoaderFile(CROFILE_BANK);
         CroExportList list = CroExportList(m_pBank,
             file->EntryCountFileSize());
@@ -191,7 +200,7 @@ void CentaurusExport::RunTask()
         }
 
         list.Reset();
-    }
+    }*/
 }
 
 void CentaurusExport::Release()

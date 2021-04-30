@@ -5,7 +5,7 @@
 CroReader::CroReader(CroBank* bank)
     : m_pBank(bank), m_Parser(bank)
 {
-    
+    m_State = CroRecord_End;
 }
 
 CroReader::~CroReader()
@@ -33,13 +33,13 @@ void CroReader::ReadRecord(cronos_id id, CroBuffer& record)
 void CroReader::OnRecord()
 {
     // Распарсить запись
-    crovalue_parse parse = m_Parser.ParseValue();
+    m_State = m_Parser.ParseValue();
 
-    while (parse != CroRecord_End)
+    while (m_State != CroRecord_End)
     {
         OnValue();
 
-        parse = m_Parser.NextValue();
+        m_State = m_Parser.NextValue();
     }
 
     m_Parser.Reset();

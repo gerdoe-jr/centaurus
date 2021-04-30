@@ -78,6 +78,12 @@ public:
 
     inline cronos_id RecordId() const { return m_Id; }
     inline CroBase* IdentBase() const { return m_pBase; }
+    inline bool IsLastField()
+    {
+        if (!m_pBase) return true;
+
+        return std::next(m_FieldIter) == m_pBase->EndField();
+    }
 
     uint8_t* Value();
     cronos_off ValueOff();
