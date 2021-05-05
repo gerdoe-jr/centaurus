@@ -8,6 +8,9 @@ CronosAPI::CronosAPI()
     m_pBank = NULL;
     m_pFile = NULL;
     m_pMap = NULL;
+
+    m_BlockLimit = 0;
+    m_ExportLimit = 0;
 }
 
 CronosAPI::CronosAPI(const std::string& taskName)
@@ -16,6 +19,9 @@ CronosAPI::CronosAPI(const std::string& taskName)
     m_pBank = NULL;
     m_pFile = NULL;
     m_pMap = NULL;
+
+    m_BlockLimit = 0;
+    m_ExportLimit = 0;
 }
 
 void CronosAPI::Invoke(ICentaurusWorker* invoker)
@@ -40,9 +46,6 @@ void CronosAPI::RunTask()
 
 void CronosAPI::Release()
 {
-    FlushBuffers();
-    ReleaseBuffers();
-
     ReleaseMap();
 }
 
@@ -110,29 +113,4 @@ void CronosAPI::ReleaseMap()
 ICentaurusLogger* CronosAPI::CronosLog()
 {
     return dynamic_cast<ICentaurusLogger*>(this);
-}
-
-CroSync* CronosAPI::CreateSyncFile(const std::wstring& path,
-    cronos_size bufferSize)
-{
-    CroSyncFile* file = new CroSyncFile(path, bufferSize);
-    
-    AcquireBuffer(file);
-    return file;
-}
-
-void CronosAPI::AcquireBuffer(CroSync* buffer)
-{
-    m_Buffers.emplace_back(buffer);
-}
-
-void CronosAPI::FlushBuffers()
-{
-    for (auto& buffer : m_Buffers)
-        buffer->Flush();
-}
-
-void CronosAPI::ReleaseBuffers()
-{
-    m_Buffers.clear();
 }

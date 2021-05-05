@@ -64,12 +64,14 @@ enum crovalue_parse {
     CroRecord_End,
 
     CroValue_Read,
+    CroValue_Comp,
+    CroValue_Multi,
     CroValue_Next,
-
-    CroMulti_Next
 };
 
-#define CROVALUE_SEP 0x1E
+#define CROVALUE_COMP   0x1B
+#define CROVALUE_MULTI  0x1D
+#define CROVALUE_SEP    0x1E
 
 class CroBankParser : public CroParser
 {
@@ -93,9 +95,7 @@ public:
     CroType ValueType();
 
     crovalue_parse ParseValue();
-    crovalue_parse NextValue();
 
-    void ReadValue();
     CroIdent ReadIdent();
     CroInteger ReadInteger();
 private:

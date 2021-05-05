@@ -237,55 +237,41 @@ CroType CroBankParser::ValueType()
 
 crovalue_parse CroBankParser::ParseValue()
 {
-    if (m_FieldIter == m_pBase->EndField())
-        return CroRecord_End;
-    auto& field = *m_FieldIter;
-    
-    m_ValueOff = m_Record.GetPosition();
-    m_ValueSize = 0;
-    m_ValueType = field.m_Type;
-
-    return CroValue_Read;
-}
-
-crovalue_parse CroBankParser::NextValue()
-{
-    if (!m_Record.Remaining())
-        return CroRecord_End;
-    
-    uint8_t sep = m_Record.Read<uint8_t>();
-    switch (sep)
-    {
-    case CROVALUE_SEP:
-        if (++m_FieldIter == m_pBase->EndField())
-            return CroRecord_End;
-        break;
-    }
-
-    return CroValue_Read;
-}
-
-void CroBankParser::ReadValue()
-{
-    if (!m_Record.Remaining())
+    if (!m_Record.Remaining() || m_FieldIter == m_pBase->EndField())
     {
         m_ValueSize = 0;
-        return;
+        return CroRecord_End;
     }
 
-    uint8_t value;
+    uint8_t value = CROVALUE_SEP;
     m_ValueOff = m_Record.GetPosition();
+    m_ValueType = m_FieldIter->m_Type;
 
     while (m_Record.Remaining())
     {
-        value = m_Record.Get<uint8_t>();
-        if (value == CROVALUE_SEP)
-            break;
-        m_Record.Read<uint8_t>();
+        value = m_Record.Read<uint8_t>();
+        if (value == CROVALUE_COMP)
+        {
+            m_ValueSize = m_Record.Read<uint32_t>();
+            m_ValueOff = m_Record.GetPosition();
+
+            m_Record.Read(m_ValueSize);
+        }
+        else if (value == CROVALUE_MULTI)
+        {
+            m_ValueSize = m_Record.GetPosition() - m_ValueOff - 1;
+            return CroValue_Multi;
+        }
+        else if (value == CROVALUE_SEP)
+        {
+            m_ValueSize = m_Record.GetPosition() - m_ValueOff - 1;
+            return ++m_FieldIter != m_pBase->EndField()
+                ? CroValue_Next : CroRecord_End;
+        }
     }
 
     m_ValueSize = m_Record.GetPosition() - m_ValueOff;
-    m_ValueType = m_FieldIter->m_Type;
+    return m_Record.Remaining() ? CroValue_Next : CroRecord_End;
 }
 
 CroIdent CroBankParser::ReadIdent()

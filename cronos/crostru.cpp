@@ -1,6 +1,7 @@
 #include "crostru.h"
 #include "crobank.h"
 #include "cronos02.h"
+#include <algorithm>
 
 /* CroAttr */
 
@@ -123,6 +124,13 @@ void CroBase::Parse(CroParser* parser, CroStream& base)
         field.Parse(parser, base);
         m_Fields.push_back(field);
     }
+
+    std::sort(m_Fields.begin(), m_Fields.end(),
+        [](const CroField& a, const CroField& b) -> bool
+        {
+            return a.m_DataIndex < b.m_DataIndex;
+        }
+    );
 }
 
 const std::string& CroBase::GetName() const
@@ -199,8 +207,8 @@ croblock_type CroStruParser::GetBlockType(cronos_id blockId)
         throw std::runtime_error("invalid block");
     }
 
-    auto map = m_pStru->PartMap();
-    CroRecord& record = map[blockId];
+    auto& map = m_pStru->PartMap();
+    auto& record = map[blockId];
     
     auto& part = record.RecordParts().front();
     CroData block = File()->Read(blockId, CRONOS_DAT,

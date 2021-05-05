@@ -51,7 +51,7 @@ public:
 protected:
     virtual void OnRecord();
     virtual void OnRecordEnd();
-
+    
     CroSync* m_pOut;
 private:
     std::map<CroIdent, CroSync*> m_Outputs;

@@ -57,9 +57,10 @@ private:
     CroBuffer m_Prop;
 };
 
-#define CROBLOCK_PREFIX 0x04
+#define CROBLOCK_PREFIX         0x04
 
-#define CROBASE_LINKED 0x109
+#define CROFIELD_SYSNUM         (1<<0)
+#define CROFIELD_COMPONENT      (1<<13)
 
 class CroField : public ICroParsee
 {
@@ -81,6 +82,8 @@ public:
     uint32_t m_DataIndex;
     uint32_t m_DataLength;
 };
+
+#define CROBASE_LINKED          0x109
 
 using CroFieldIter = std::vector<CroField>::iterator;
 class CroBase : public ICroParsee

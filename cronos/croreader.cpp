@@ -25,13 +25,13 @@ void CroReader::ReadMap(CroRecordMap* map)
 
 void CroReader::ReadRecord(cronos_id id, CroBuffer& record)
 {
-    m_Parser.Parse(id, record);
     m_State = CroRecord_Start;
     
     do {
         switch (m_State)
         {
         case CroRecord_Start:
+            m_Parser.Parse(id, record);
             OnRecord();
             break;
         case CroRecord_End:
@@ -46,26 +46,26 @@ void CroReader::ReadRecord(cronos_id id, CroBuffer& record)
         }
     } while (m_State != CroRecord_End);
     OnRecordEnd();
-
-    m_Parser.Reset();
 }
 
 void CroReader::OnRecord()
 {
-    m_State = m_Parser.ParseValue();
+    m_State = CroValue_Read;
 }
 
 void CroReader::OnRecordEnd()
 {
+    m_Parser.Reset();
 }
 
 void CroReader::OnValue()
 {
-    m_Parser.ReadValue();
-    m_State = CroValue_Next;
+    m_State = m_Parser.ParseValue();
+    if (m_State == CroValue_Multi)
+        m_State = CroValue_Next;
 }
 
 void CroReader::OnValueNext()
 {
-    m_State = m_Parser.NextValue();
+    m_State = CroValue_Read;
 }

@@ -25,13 +25,13 @@ std::string CroExport<F>::StringValue()
 {
     uint8_t* value = m_Parser.Value();
     cronos_size size = m_Parser.ValueSize();
-    if (!size) return "";
+    CroType type = m_Parser.ValueType();
 
     CroBuffer out;
     CroStream str = CroStream(out);
     std::string ident;
 
-    switch (m_Parser.ValueType())
+    switch (type)
     {
     case CroType::Ident:
         ident = std::to_string(m_Parser.RecordId());
@@ -40,15 +40,25 @@ std::string CroExport<F>::StringValue()
         str.Write((const uint8_t*)ident.c_str(), ident.size());
         break;
     case CroType::Integer:
+        if (!size) return "";
         out.Alloc(size);
+
         for (cronos_size i = 0; i < size; i++)
         {
             if (isdigit(value[i]))
                 str.Write<uint8_t>(value[i]);
         }
         break;
+    case CroType::File:
+    case CroType::DirectLink:
+    case CroType::BacklLink:
+    case CroType::DirectBackLink:
+    case CroType::ExternalFile:
+        return "CroType(" + std::to_string((unsigned)type) + ")";
     default:
+        if (!size) return "";
         out.Alloc(size);
+
         for (cronos_size i = 0; i < size; i++)
         {
             uint8_t c = value[i];
@@ -91,6 +101,7 @@ template<CroExportFormat F>
 void CroExport<F>::OnRecordEnd()
 {
     m_pOut = NULL;
+    CroReader::OnRecordEnd();
 }
 
 /* CroExportRaw */
@@ -188,7 +199,7 @@ void CroExportCSV::OnValue()
 
     std::string str = StringValue();
     bool quoted = str.empty() ? true
-        : str.find(csvQuote) != std::string::npos;;
+        : str.find(csvQuote) != std::string::npos;
 
     if (quoted)
         m_pOut->Write(&csvQuote, 1);

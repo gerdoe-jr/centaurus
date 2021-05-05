@@ -90,7 +90,9 @@ void CentaurusExport::RunTask()
                 baseFields.push_back({
                     {"name", ij->GetName()},
                     {"type", ij->GetType()},
-                    {"flags", ij->GetFlags()}
+                    {"flags", ij->GetFlags()},
+                    {"index", ij->m_DataIndex},
+                    {"length", ij->m_DataLength},
                 });
             }
 
@@ -104,8 +106,16 @@ void CentaurusExport::RunTask()
             std::wstring exportName = L"base"
                 + std::to_wstring(it->m_BaseIndex) + exportExt;
             std::wstring exportPath = JoinFilePath(m_ExportPath, exportName);
+            
+            if (fs::exists(exportPath))
+            {
+                fs::remove(exportPath);
+            }
+
             json bankBase = {
                 {"name", it->GetName()},
+                {"index", it->m_BaseIndex},
+                {"mnemocode", it->m_Mnemocode},
                 {"fields", baseFields},
             };
 
@@ -183,7 +193,7 @@ void CentaurusExport::RunTask()
     m_BankJson["status"] = !m_BankJson.contains("error");
     SyncBankJson();
 
-    /*{
+    {
         auto file = SetLoaderFile(CROFILE_BANK);
         CroExportList list = CroExportList(m_pBank,
             file->EntryCountFileSize());
@@ -196,11 +206,11 @@ void CentaurusExport::RunTask()
             Log("RECORD %" FCroId "\n", it->first);
 
             for (auto& value : it->second)
-                LogBuffer(value, 1251);
+                LogBuffer(value, 866);
         }
 
         list.Reset();
-    }*/
+    }
 }
 
 void CentaurusExport::Release()

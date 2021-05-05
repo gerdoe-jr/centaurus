@@ -26,6 +26,7 @@ class CroRecordMap : public CroEntryTable
 public:
     CroBlock ReadBlock(cronos_off off, cronos_size size);
     CroRecord GetRecordMap(cronos_id id);
+    inline auto& PartMap() { return m_Record; }
     inline const auto& PartMap() const { return m_Record; }
 
     void Load();

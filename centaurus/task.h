@@ -3,6 +3,7 @@
 
 #include "centaurus.h"
 #include "logger.h"
+#include <crosync.h>
 #include <crotable.h>
 #include <utility>
 #include <vector>
@@ -35,6 +36,24 @@ public:
         return newTable;
     }
 
+    void AcquireBuffer(CroSync* sync);
+    void ReleaseBuffer(CroSync* sync);
+
+    void FlushBuffers();
+    void ReleaseBuffers();
+
+    template<typename T> inline CroSync* AllocBuffer(cronos_size bufferSize)
+    {
+        T* buffer = new T();
+
+        buffer->InitSync(bufferSize);
+        AcquireBuffer(buffer);
+
+        return dynamic_cast<CroSync*>(buffer);
+    }
+
+    CroSync* CreateSyncFile(const std::wstring& path, cronos_size bufferSize);
+
     ICentaurusWorker* Invoker() const override;
     const std::string& TaskName() const override;
 
@@ -42,8 +61,10 @@ public:
 protected:
     boost::mutex m_DataLock;
     centaurus_size m_Limit;
+
     std::vector<ICentaurusBank*> m_Banks;
     std::vector<std::unique_ptr<CroTable>> m_Tables;
+    std::vector<std::unique_ptr<CroSync>> m_Buffers;
 private:
     std::string m_TaskName;
     ICentaurusWorker* m_pInvoker;

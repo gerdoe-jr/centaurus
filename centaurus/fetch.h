@@ -12,6 +12,7 @@ public:
 
     void RequestBank(const std::wstring& path);
     void RequestBanks(std::vector<std::wstring> dirs);
+    void RequestAll(const std::wstring& path);
 protected:
     void Execute() override;
 

@@ -41,6 +41,9 @@ void CentaurusTask::Release()
     auto lock = boost::mutex::scoped_lock(m_DataLock);
     for (auto& bank : m_Banks) bank->Disconnect();
     
+    FlushBuffers();
+    ReleaseBuffers();
+
     m_Banks.clear();
     m_Tables.clear();
 }
@@ -101,6 +104,45 @@ void CentaurusTask::ReleaseTable(CroTable* table)
             break;
         }
     }
+}
+
+void CentaurusTask::AcquireBuffer(CroSync* buffer)
+{
+    m_Buffers.emplace_back(buffer);
+}
+
+void CentaurusTask::ReleaseBuffer(CroSync* buffer)
+{
+    for (auto it = m_Buffers.begin(); it != m_Buffers.end(); it++)
+    {
+        auto* _buffer = it->get();
+        if (_buffer == buffer)
+        {
+            _buffer->Flush();
+            m_Buffers.erase(it);
+            break;
+        }
+    }
+}
+
+void CentaurusTask::FlushBuffers()
+{
+    for (auto& buffer : m_Buffers)
+        buffer->Flush();
+}
+
+void CentaurusTask::ReleaseBuffers()
+{
+    m_Buffers.clear();
+}
+
+CroSync* CentaurusTask::CreateSyncFile(const std::wstring& path,
+    cronos_size bufferSize)
+{
+    CroSyncFile* file = new CroSyncFile(path, bufferSize);
+
+    AcquireBuffer(file);
+    return file;
 }
 
 ICentaurusWorker* CentaurusTask::Invoker() const
