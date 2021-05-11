@@ -50,12 +50,16 @@ set(HEADERS
     croreader.h
     croexport.h
 )
-
+ 
 add_library(cronos ${SOURCES} ${HEADERS})
 target_include_directories(cronos PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+find_package(ZLIB REQUIRED)
+target_include_directories(cronos PRIVATE ${ZLIB_INCLUDE_DIRS})
+target_link_libraries(cronos PRIVATE ${ZLIB_LIBRARIES})
+
 target_link_libraries(cronos PRIVATE
 	blowfish win32ctrl
 )
-

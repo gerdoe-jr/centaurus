@@ -200,6 +200,7 @@ void CroBankParser::Reset()
 
     m_pBase = NULL;
 
+    m_ValueIndex = 0;
     m_ValueOff = INVALID_CRONOS_OFFSET;
     m_ValueSize = 0;
 }
@@ -213,6 +214,8 @@ void CroBankParser::Parse(cronos_id id, CroBuffer& data)
     unsigned baseId = ReadIdent();
     m_pBase = Bank()->GetBaseByIndex(baseId);
     m_FieldIter = m_pBase->StartField();
+
+    m_ValueIndex = 0;
 }
 
 uint8_t* CroBankParser::Value()
@@ -237,41 +240,56 @@ CroType CroBankParser::ValueType()
 
 crovalue_parse CroBankParser::ParseValue()
 {
-    if (!m_Record.Remaining() || m_FieldIter == m_pBase->EndField())
-    {
-        m_ValueSize = 0;
-        return CroRecord_End;
-    }
-
-    uint8_t value = CROVALUE_SEP;
-    m_ValueOff = m_Record.GetPosition();
+    m_ValueOff = 0;
+    m_ValueSize = 0;
     m_ValueType = m_FieldIter->m_Type;
 
-    while (m_Record.Remaining())
+    int skip = m_FieldIter->m_DataIndex - m_ValueIndex - 1;
+    while (skip-- > 0)
     {
-        value = m_Record.Read<uint8_t>();
-        if (value == CROVALUE_COMP)
-        {
-            m_ValueSize = m_Record.Read<uint32_t>();
-            m_ValueOff = m_Record.GetPosition();
-
-            m_Record.Read(m_ValueSize);
-        }
-        else if (value == CROVALUE_MULTI)
-        {
-            m_ValueSize = m_Record.GetPosition() - m_ValueOff - 1;
-            return CroValue_Multi;
-        }
-        else if (value == CROVALUE_SEP)
-        {
-            m_ValueSize = m_Record.GetPosition() - m_ValueOff - 1;
-            return ++m_FieldIter != m_pBase->EndField()
-                ? CroValue_Next : CroRecord_End;
-        }
+        if (m_Record.Remaining())
+            m_Record.Read<uint8_t>();
     }
 
-    m_ValueSize = m_Record.GetPosition() - m_ValueOff;
-    return m_Record.Remaining() ? CroValue_Next : CroRecord_End;
+    m_ValueIndex = m_FieldIter->m_DataIndex;
+
+    if (m_FieldIter->m_DataLength)
+    {
+        uint8_t value = CROVALUE_SEP;
+        m_ValueOff = m_Record.GetPosition();
+
+        while (m_Record.Remaining())
+        {
+            value = m_Record.Read<uint8_t>();
+            if (value == CROVALUE_COMP)
+            {
+                m_ValueSize = m_Record.Read<uint32_t>();
+                m_ValueOff = m_Record.GetPosition();
+
+                m_Record.Read(m_ValueSize);
+            }
+            else if (value == CROVALUE_MULTI)
+            {
+                m_ValueSize = m_Record.GetPosition() - m_ValueOff - 1;
+                return CroValue_Multi;
+            }
+            else if (value == CROVALUE_SEP)
+            {
+                m_ValueSize = m_Record.GetPosition() - m_ValueOff - 1;
+                return ++m_FieldIter != m_pBase->EndField()
+                    ? CroValue_Next : CroRecord_End;
+            }
+        }
+
+        m_ValueSize = m_Record.GetPosition() - m_ValueOff;
+    }
+
+    if (m_FieldIter != m_pBase->EndField())
+    {
+        return ++m_FieldIter != m_pBase->EndField()
+            ? CroValue_Next : CroRecord_End;
+    }
+    else return CroRecord_End;
 }
 
 CroIdent CroBankParser::ReadIdent()

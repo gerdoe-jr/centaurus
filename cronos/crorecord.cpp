@@ -1,4 +1,5 @@
 #include "crorecord.h"
+#include "croexception.h"
 #include "crofile.h"
 
 /* CroRecord */
@@ -97,6 +98,11 @@ CroBuffer CroRecordMap::LoadRecord(cronos_id id)
 
     if (file->IsEncrypted())
         file->Decrypt(out, id);
+
+    if (file->IsCompressed())
+    {
+        throw CroException(file, "record is compressed");
+    }
 
     return out;
 }

@@ -193,7 +193,7 @@ void CentaurusExport::RunTask()
     m_BankJson["status"] = !m_BankJson.contains("error");
     SyncBankJson();
 
-    {
+    /*{
         auto file = SetLoaderFile(CROFILE_BANK);
         CroExportList list = CroExportList(m_pBank,
             file->EntryCountFileSize());
@@ -210,7 +210,7 @@ void CentaurusExport::RunTask()
         }
 
         list.Reset();
-    }
+    }*/
 }
 
 void CentaurusExport::Release()
@@ -228,11 +228,13 @@ void CentaurusExport::Export()
     }
 
     auto file = SetLoaderFile(CROFILE_BANK);
+    if (file->IsEncrypted())
+    {
+        uint32_t key = file->GetSecretKey(file->GetSecret());
+        file->SetupCrypt(key, m_pBank->BankSerial());
+    }
+
     cronos_size defSize = file->GetDefaultBlockSize();
-    uint32_t key = file->GetSecretKey(file->GetSecret());
-
-    file->SetupCrypt(key, m_pBank->BankSerial());
-
     CroReader* reader = m_Export->GetReader();
 
     cronos_id map_id = 1;

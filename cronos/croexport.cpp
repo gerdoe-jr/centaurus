@@ -29,15 +29,19 @@ std::string CroExport<F>::StringValue()
 
     CroBuffer out;
     CroStream str = CroStream(out);
-    std::string ident;
+    
+    std::string text;
+    char szNum[32] = { 0 };
+    int iYear = 0, iMon = 0, iDay = 0;
+    int iHour = 0, iMin = 0;
 
     switch (type)
     {
     case CroType::Ident:
-        ident = std::to_string(m_Parser.RecordId());
+        text = std::to_string(m_Parser.RecordId());
         
-        out.Alloc(ident.size());
-        str.Write((const uint8_t*)ident.c_str(), ident.size());
+        out.Alloc(text.size());
+        str.Write((const uint8_t*)text.c_str(), text.size());
         break;
     case CroType::Integer:
         if (!size) return "";
@@ -49,13 +53,7 @@ std::string CroExport<F>::StringValue()
                 str.Write<uint8_t>(value[i]);
         }
         break;
-    case CroType::File:
-    case CroType::DirectLink:
-    case CroType::BacklLink:
-    case CroType::DirectBackLink:
-    case CroType::ExternalFile:
-        return "CroType(" + std::to_string((unsigned)type) + ")";
-    default:
+    case CroType::String:
         if (!size) return "";
         out.Alloc(size);
 
@@ -66,6 +64,35 @@ std::string CroExport<F>::StringValue()
 
             str.Write<uint8_t>(value[i]);
         }
+        break;
+    case CroType::VocString:
+        text = "VocString(" + std::string((const char*)value, size) + ")";
+
+        out.Alloc(text.size());
+        str.Write((const uint8_t*)text.c_str(), text.size());
+        break;
+    case CroType::Date:
+        out.Alloc(12);
+
+        memcpy(szNum, value, 7);
+        szNum[7] = '\0';
+        sscanf_s(szNum, "%03d%02d%02d", &iYear, &iMon, &iDay);
+
+        sprintf_s(szNum, "%02d.%02d.%04d", iDay, iMon, iYear + 1900);
+        str.Write((const uint8_t*)szNum, strlen(szNum));
+        break;
+    case CroType::Time:
+        out.Alloc(12);
+
+        memcpy(szNum, value, 4);
+        szNum[4] = '\0';
+        sscanf_s(szNum, "%02d%02d", &iHour, &iMin);
+
+        sprintf(szNum, "%02d:%02d", iHour, iMin);
+        str.Write((const uint8_t*)szNum, 5);
+        break;
+    default:
+        return "CroType(" + std::to_string((unsigned)type) + ")";
     }
 
     return std::string((const char*)out.GetData(), str.GetPosition());

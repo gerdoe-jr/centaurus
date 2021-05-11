@@ -106,6 +106,7 @@ private:
     CroBase* m_pBase;
     CroFieldIter m_FieldIter;
 
+    cronos_idx m_ValueIndex;
     cronos_off m_ValueOff;
     cronos_size m_ValueSize;
     CroType m_ValueType;

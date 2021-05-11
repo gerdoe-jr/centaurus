@@ -5,6 +5,7 @@
 #include "croexception.h"
 #include <win32util.h>
 #include <algorithm>
+#include <stdexcept>
 #include <string.h>
 
 extern "C"

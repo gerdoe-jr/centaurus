@@ -18,8 +18,14 @@ void CroReader::ReadMap(CroRecordMap* map)
     {
         if (!map->HasRecord(id)) continue;
 
-        CroBuffer record = map->LoadRecord(id);
-        ReadRecord(id, record);
+        try {
+            CroBuffer record = map->LoadRecord(id);
+            ReadRecord(id, record);
+        }
+        catch (const std::exception& e) {
+            fprintf(stderr, "CroRedaer record %"
+                FCroId ": %s\n", id, e.what());
+        }
     }
 }
 
