@@ -13,6 +13,8 @@ extern "C"
     #include "blowfish.h"
 }
 
+#include <zlib.h>
+
 /* CroFile */
 
 CroFile::CroFile(const std::wstring& path)
@@ -140,7 +142,7 @@ void CroFile::LoadCrypt(CroData& key, unsigned keyLen)
     }
 }
 
-void CroFile::Decrypt(CroBuffer& block, uint32_t prefix, const CroData* crypt)
+void CroFile::Decrypt(CroBuffer& block, uint32_t offset, const CroData* crypt)
 {
     if (!crypt) crypt = &m_Crypt;
     if (m_Crypt.IsEmpty())
@@ -153,7 +155,7 @@ void CroFile::Decrypt(CroBuffer& block, uint32_t prefix, const CroData* crypt)
     const uint8_t* pTable = GetVersion() <= 4
         ? crypt->GetData() + 0x100 : crypt->GetData();
     for (unsigned i = 0; i < block.GetSize(); i++)
-        pBlock[i] = pTable[pBlock[i]] - (uint8_t)(i + prefix);
+        pBlock[i] = pTable[pBlock[i]] - (uint8_t)(i + offset);
 }
 
 crofile_status CroFile::SetError(crofile_status st,
@@ -415,3 +417,67 @@ CroRecordMap CroFile::LoadRecordMap(cronos_id id, cronos_idx count)
     return map;
 }
 
+CroFileRecord CroFile::ReadFileRecord(const CroEntry& entry)
+{
+    CroFileRecord record;
+
+    cronos_off recordNext = 0;
+    cronos_size recordSize = entry.EntrySize();
+
+    cronos_size hdrSize = 0;
+    if (entry.HasBlock())
+    {
+        CroBlock block = ReadFirstBlock(entry.EntryOffset());
+        recordNext = block.BlockNext();
+        recordSize = block.BlockSize();
+        hdrSize = block.GetSize();
+    }
+
+    cronos_off partOff = entry.EntryOffset() + hdrSize;
+    cronos_size partSize = std::min(recordSize,
+        entry.EntrySize() - hdrSize);
+    
+    record.AddRecordPart(partOff, partSize);
+    recordSize -= partSize;
+
+    cronos_size defSize = GetDefaultBlockSize();
+    while (recordNext && recordSize > 0)
+    {
+        CroBlock block = ReadNextBlock(recordNext);
+        recordNext = block.BlockNext();
+        hdrSize = block.GetSize();
+
+        partOff = block.GetStartOffset() + hdrSize;
+        partSize = std::min(recordSize, defSize - hdrSize);
+        
+        record.AddRecordPart(partOff, partSize);
+        recordSize -= partSize;
+    }
+
+    return record;
+}
+
+#include "crostream.h"
+
+CroBuffer CroFile::ReadRecord(cronos_id id, const CroFileRecord& rec)
+{
+    CroBuffer buffer;
+    buffer.Alloc(rec.GetRecordSize());
+    
+    CroStream out = CroStream(buffer);
+    for (auto it = rec.StartPart(); it != rec.EndPart(); it++)
+    {
+        CroBuffer part = Read(id, CRONOS_DAT, it->m_Pos, it->m_Size);
+        out.Write(part.GetData(), part.GetSize());
+    }
+
+    if (IsEncrypted())
+        Decrypt(buffer, id);
+
+    if (IsCompressed())
+    {
+        /* Decompress */
+    }
+
+    return buffer;
+}

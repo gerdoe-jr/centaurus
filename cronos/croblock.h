@@ -25,7 +25,7 @@ public:
         return BlockNext() != 0;
     }
 
-    inline cronos_off RecordOffset() const
+    inline cronos_off PartOffset() const
     {
         return GetStartOffset() + ABI()->Size(m_bFirst
             ? cronos_first_block_hdr : cronos_block_hdr);

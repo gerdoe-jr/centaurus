@@ -6,6 +6,7 @@
 #include "croentry.h"
 #include "croblock.h"
 #include "crorecord.h"
+#include <memory>
 #include <string>
 
 #define CRONOS_DEFAULT_SERIAL 1
@@ -17,6 +18,33 @@ enum crofile_status {
     CROFILE_FREAD,
     CROFILE_HEADER,
     CROFILE_VERSION
+};
+
+struct crofile_part {
+    cronos_off m_Pos;
+    cronos_size m_Size;
+};
+
+class CroFileRecord
+{
+public:
+    inline void AddRecordPart(cronos_off off, cronos_size size)
+    {
+        m_Parts.emplace_back(off, size);
+    }
+
+    inline auto StartPart() const { return m_Parts.begin(); }
+    inline auto EndPart() const { return m_Parts.end(); }
+
+    inline cronos_size GetRecordSize() const
+    {
+        cronos_size size = 0;
+        for (auto it = StartPart(); it != EndPart(); it++)
+            size += it->m_Size;
+        return size;
+    }
+private:
+    std::vector<struct crofile_part> m_Parts;
 };
 
 class CroFile
@@ -32,7 +60,8 @@ public:
     void SetupCrypt();
     void SetupCrypt(uint32_t secret, uint32_t serial);
     void LoadCrypt(CroData& key, unsigned keyLen = 8);
-    void Decrypt(CroBuffer& data, uint32_t prefix, const CroData* crypt = NULL);
+    void Decrypt(CroBuffer& block, uint32_t offset, const CroData* crypt = NULL);
+    void Decompress(CroBuffer& block, CroBuffer& out);
 
     inline cronos_size GetDefaultBlockSize() const { return m_DefLength; }
     inline bool IsEncrypted() const { return m_bEncrypted; }
@@ -135,6 +164,25 @@ public:
         cronos_id id, cronos_idx count);
 
     CroRecordMap LoadRecordMap(cronos_id id, cronos_idx count);
+
+    inline CroBlock ReadFirstBlock(cronos_pos pos)
+    {
+        CroBlock block = CroBlock(true);
+        Read(block, CRONOS_FILE_ID, CRONOS_DAT, pos,
+            ABI()->Size(cronos_first_block_hdr));
+        return block;
+    }
+
+    inline CroBlock ReadNextBlock(cronos_pos pos)
+    {
+        CroBlock block = CroBlock(false);
+        Read(block, CRONOS_FILE_ID, CRONOS_DAT, pos,
+            ABI()->Size(cronos_block_hdr));
+        return block;
+    }
+
+    CroFileRecord ReadFileRecord(const CroEntry& entry);
+    CroBuffer ReadRecord(cronos_id id, const CroFileRecord& rec);
 private:
     std::wstring m_Path;
 

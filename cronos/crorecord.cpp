@@ -84,12 +84,16 @@ void CroRecordMap::Load()
     }
 }
 
+#include "crostream.h"
+
 CroBuffer CroRecordMap::LoadRecord(cronos_id id)
 {
     auto file = File();
     auto& rec = m_Record[id];
 
+    cronos_size recordSize = rec.RecordSize();
     CroBuffer out;
+    
     for (auto& [off, size] : rec.RecordParts())
     {
         CroData part = file->Read(id, CRONOS_DAT, off, size);
