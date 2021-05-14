@@ -85,30 +85,54 @@ void CroRecordMap::Load()
 }
 
 #include "crostream.h"
+#include <zlib.h>
 
 CroBuffer CroRecordMap::LoadRecord(cronos_id id)
 {
     auto file = File();
     auto& rec = m_Record[id];
 
-    cronos_size recordSize = rec.RecordSize();
-    CroBuffer out;
-    
+    CroBuffer buffer;
+    buffer.Alloc(rec.RecordSize());
+
+    CroStream out = CroStream(buffer);
     for (auto& [off, size] : rec.RecordParts())
     {
-        CroData part = file->Read(id, CRONOS_DAT, off, size);
+        CroBuffer part = file->Read(id, CRONOS_DAT, off, size);
         out.Write(part.GetData(), part.GetSize());
     }
 
     if (file->IsEncrypted())
-        file->Decrypt(out, id);
+        file->Decrypt(buffer, id);
 
     if (file->IsCompressed())
     {
-        throw CroException(file, "record is compressed");
+        /* Decompress */
+        uLongf inLen = buffer.GetSize();
+        uLongf outLen = ((inLen / 128)
+            + (inLen % 128 ? 1 : 0)) * 128;
+
+        CroBuffer unc;
+        unc.Alloc(outLen);
+
+        z_stream inf = { 0 };
+        inflateInit2(&inf, -15);
+
+        inf.avail_in = inLen - 8;
+        inf.next_in = buffer.GetData() + 8;
+
+        inf.avail_out = outLen;
+        inf.next_out = unc.GetData();
+
+        inflate(&inf, Z_NO_FLUSH);
+        inflateEnd(&inf);
+
+        buffer.Free();
+        if (inf.total_out)
+            buffer.Copy(unc.GetData(), inf.total_out);
     }
 
-    return out;
+    return buffer;
 }
 
 bool CroRecordMap::HasRecord(cronos_id id) const

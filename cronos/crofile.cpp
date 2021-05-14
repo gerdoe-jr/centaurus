@@ -1,4 +1,5 @@
 ﻿#include "crofile.h"
+#include "crostream.h"
 #include "cronos_abi.h"
 #include "cronos_format.h"
 #include "cronos02.h"
@@ -457,8 +458,6 @@ CroFileRecord CroFile::ReadFileRecord(const CroEntry& entry)
     return record;
 }
 
-#include "crostream.h"
-
 CroBuffer CroFile::ReadRecord(cronos_id id, const CroFileRecord& rec)
 {
     CroBuffer buffer;
@@ -477,6 +476,14 @@ CroBuffer CroFile::ReadRecord(cronos_id id, const CroFileRecord& rec)
     if (IsCompressed())
     {
         /* Decompress */
+        CroBuffer unc;
+        unc.Alloc(buffer.GetSize() * 4);
+
+        uLongf inLen = buffer.GetSize();
+        uLongf outLen = unc.GetSize();
+        
+        uncompress(unc.GetData(), &outLen, buffer.GetData(), inLen);
+        return unc;
     }
 
     return buffer;

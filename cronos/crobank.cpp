@@ -209,6 +209,9 @@ void CroBankParser::Parse(cronos_id id, CroBuffer& data)
 {
     m_Id = id;
     m_pData = &data;
+    if (data.IsEmpty())
+        return;
+
     m_Record = CroStream(*m_pData);
 
     unsigned baseId = ReadIdent();
