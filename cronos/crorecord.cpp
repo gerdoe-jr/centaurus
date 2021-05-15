@@ -34,6 +34,12 @@ CroRecord CroRecordMap::GetRecordMap(cronos_id id)
     CroEntry entry = GetEntry(id);
     if (!entry.IsActive()) return record;
     
+    if (File()->IsCompressed())
+    {
+        record.AddPart(entry.EntryOffset(), entry.EntrySize());
+        return record;
+    }
+
     bool hasBlock = entry.HasBlock();
     cronos_size blockSize = hasBlock 
         ? ABI()->Size(cronos_first_block_hdr) : 0;
@@ -127,9 +133,7 @@ CroBuffer CroRecordMap::LoadRecord(cronos_id id)
         inflate(&inf, Z_NO_FLUSH);
         inflateEnd(&inf);
 
-        buffer.Free();
-        if (inf.total_out)
-            buffer.Copy(unc.GetData(), inf.total_out);
+        return unc;
     }
 
     return buffer;
