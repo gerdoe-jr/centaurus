@@ -12,5 +12,5 @@ set_target_properties(centaurus-run PROPERTIES
 )
 
 target_link_libraries(centaurus-run
-    PRIVATE centaurus win32ctrl
+    PRIVATE centaurus centaurus-api centaurus-dbms win32ctrl
 )

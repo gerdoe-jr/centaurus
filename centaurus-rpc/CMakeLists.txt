@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
 project(centaurus-rpc)
 
-link_libraries(centaurus)
-include_directories(centaurus)
+link_libraries(centaurus-api)
+include_directories(centaurus-api)
+add_compile_definitions(CENTAURUS_RPC)
 
 set(SOURCES
     rpc.cpp
@@ -21,7 +22,6 @@ link_directories(${Boost_LIBRARY_DIRS})
 link_libraries(${Boost_LIBRARIES})
 
 add_library(centaurus-rpc SHARED ${SOURCES} ${HEADERS})
-target_compile_definitions(centaurus-rpc PRIVATE CENTAURUS_INTERNAL)
 target_include_directories(centaurus-rpc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

@@ -1,7 +1,17 @@
 #ifndef __CENTAURUS_RPC_H
 #define __CENTAURUS_RPC_H
 
-#include "centaurus.h"
+#include <centaurus_api.h>
+
+#ifdef WIN32
+#ifdef CENTAURUS_RPC
+#define CENTAURUS_RPC_API __declspec(dllexport)
+#else
+#define CENTAURUS_RPC_API __declspec(dllimport)
+#endif
+#else
+#define CENTAURUS_RPC_API
+#endif
 
 class ICentaurusRPC : public ICentaurusTask
 {
@@ -22,12 +32,12 @@ public:
     virtual const std::string& TaskName() const = 0;
 };
 
-extern CENTAURUS_API ICentaurusRPC* rpc;
+extern CENTAURUS_RPC_API ICentaurusRPC* rpc;
 
-CENTAURUS_API void CentaurusRPC_InitServer();
-CENTAURUS_API void CentaurusRPC_InitClient();
+CENTAURUS_RPC_API void CentaurusRPC_InitServer();
+CENTAURUS_RPC_API void CentaurusRPC_InitClient();
 
-CENTAURUS_API ICentaurusRPC* CentaurusRPC_Create(std::string host, int port);
-CENTAURUS_API void CentaurusRPC_Destroy(ICentaurusRPC* rpc);
+CENTAURUS_RPC_API ICentaurusRPC* CentaurusRPC_Create(std::string host, int port);
+CENTAURUS_RPC_API void CentaurusRPC_Destroy(ICentaurusRPC* rpc);
 
 #endif

@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.18)
 project(centaurus)
 
-set(CENTAURUS centaurus CACHE STRING "Centaurus API")
+set(CENTAURUS centaurus CACHE STRING "Centaurus System")
+set(CENTAURUS_API centaurus-api CACHE STRING "Centaurus API")
+set(CENTAURUS_DBMS centaurus-dbms CACHE STRING "Centaurus DBMS")
 set(CENTAURUS_EXE centaurus-run CACHE STRING "Centaurus UI/CLI")
 set(CENTAURUS_RPC centaurus-rpc CACHE STRING "Centaurus RPC")
 
 set(CENTAURUS_LIBS json win32ctrl blowfish cronos)
-set(CENTAURUS_TARGETS ${CENTAURUS} ${CENTAURUS_RPC} ${CENTAURUS_EXE})
+set(CENTAURUS_TARGETS ${CENTAURUS_API} ${CENTAURUS_DBMS} ${CENTAURUS_RPC} ${CENTAURUS} ${CENTAURUS_EXE})
 set(CENTAURUS_ALL ${CENTAURUS_LIBS} ${CENTAURUS_TARGETS})
 
 set(CENTAURUS_DEBUG FALSE)

@@ -1,5 +1,8 @@
 ﻿#include <stdio.h>
 #include <centaurus.h>
+#include <centaurus_api.h>
+#include <centaurus_dbms.h>
+#include <logger.h>
 #include <win32util.h>
 
 bool testMode = false;
@@ -62,7 +65,7 @@ void FindBanks(const std::wstring& path)
                     centaurus->StartTask(exportTask);
                 }
 #else
-                ICentaurusTask* exportTask = CentaurusTask_Export(bank);
+                ICentaurusTask* exportTask = CentaurusDBMS_TaskExport(bank);
                 centaurus->StartTask(exportTask);
 #endif
             }
@@ -119,8 +122,8 @@ int main(int argc, char** argv)
     findLog = CentaurusLogger_Forward("FindBanks");
     FindBanks(bankPath);
 
-    Centaurus_RunThread();
-    Centaurus_Idle();
+    CentaurusAPI_RunThread();
+    CentaurusAPI_Idle();
 
     CentaurusLogger_Destroy(findLog);
     Centaurus_Exit();

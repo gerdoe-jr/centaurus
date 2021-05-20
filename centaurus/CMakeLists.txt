@@ -3,30 +3,10 @@ project(centaurus)
 
 set(HEADERS
     centaurus.h
-    cronos_api.h
-    logger.h
-    api.h
-    bank.h
-    task.h
-    worker.h
-    fetch.h
-    export.h
-    job.h
-    scheduler.h
 )
 
 set(SOURCES
     centaurus.cpp
-    cronos_api.cpp
-    logger.cpp
-    api.cpp
-    bank.cpp
-    task.cpp
-    worker.cpp
-    fetch.cpp
-    export.cpp
-    job.cpp
-    scheduler.cpp
 )
 
 if(MSVC)
@@ -41,12 +21,11 @@ find_package(Boost 1.75.0 REQUIRED COMPONENTS
     system filesystem thread
 )
 
+target_compile_definitions(centaurus PRIVATE CENTAURUS_DLL)
 target_include_directories(centaurus PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_directories(centaurus PRIVATE ${Boost_LIBRARY_DIRS})
 target_link_libraries(centaurus PRIVATE ${Boost_LIBRARIES})
-
-target_compile_definitions(centaurus PRIVATE CENTAURUS_INTERNAL)
-target_link_libraries(centaurus PRIVATE cronos win32ctrl json)
+target_link_libraries(centaurus PRIVATE centaurus-api centaurus-dbms)
 
 target_include_directories(centaurus PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
