@@ -7,6 +7,7 @@
 #include <map>
 
 enum class CroExportFormat {
+    File = -1,
     Raw,
     CSV,
     JSON
@@ -27,7 +28,7 @@ public:
     virtual CroExportFormat GetExportFormat() const = 0;
 
     virtual void Export(CroRecordMap* map) = 0;
-    virtual void ExportFile(CroRecordMap* map, cronos_id id) = 0;
+    virtual void ExportFile(cronos_id id) = 0;
 
     inline CroReader* GetReader()
     {
@@ -55,7 +56,7 @@ public:
     virtual CroExportFormat GetExportFormat() const;
 
     void Export(CroRecordMap* map) override;
-    void ExportFile(CroRecordMap* map, cronos_id id) override;
+    void ExportFile(cronos_id id) override;
 protected:
     virtual void OnRecord();
     virtual void OnRecordEnd();

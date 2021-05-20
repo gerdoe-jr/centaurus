@@ -133,9 +133,9 @@ void CroExport<F>::Export(CroRecordMap* map)
 }
 
 template<CroExportFormat F>
-void CroExport<F>::ExportFile(CroRecordMap* map, cronos_id id)
+void CroExport<F>::ExportFile(cronos_id id)
 {
-    CroBuffer fileBuffer = map->LoadRecord(id);
+    CroBuffer fileBuffer = m_pBank->File(CROFILE_BANK)->ReadRecord(id);
 
     std::wstring fileName = JoinFilePath(m_FilePath,
         std::to_wstring(id) + L".bin");
@@ -162,10 +162,17 @@ void CroExport<F>::OnRecord()
 {
     uint32_t index = m_Parser.IdentBase()->m_BaseIndex;
     
-    auto out = m_Outputs.find(index);
-    if (!m_pOut)
+    if (index)
     {
+        auto out = m_Outputs.find(index);
+        if (!m_pOut)
+        {
             m_pOut = out == m_Outputs.end() ? NULL : m_Outputs[index];
+        }
+    }
+    else
+    {
+        ExportFile(m_Parser.m_Id);
     }
 
     CroReader::OnRecord();

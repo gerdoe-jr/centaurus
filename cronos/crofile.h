@@ -181,8 +181,22 @@ public:
         return block;
     }
 
+    inline cronos_pos EntryFileOffset(cronos_id id)
+    {
+        return ABI()->Offset(cronos_tad_entry)
+            + (id - 1) * ABI()->Size(cronos_tad_entry);
+    }
+
+    inline CroEntry ReadFileEntry(cronos_id id)
+    {
+        return Read<CroEntry>(id, CRONOS_TAD,
+            EntryFileOffset(id), ABI()->Size(cronos_tad_entry));
+    }
+
     CroFileRecord ReadFileRecord(const CroEntry& entry);
     CroBuffer ReadRecord(cronos_id id, const CroFileRecord& rec);
+    
+    CroBuffer ReadRecord(cronos_id id);
 private:
     std::wstring m_Path;
 

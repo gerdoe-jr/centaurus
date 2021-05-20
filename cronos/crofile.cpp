@@ -503,17 +503,20 @@ CroBuffer CroFile::ReadRecord(cronos_id id, const CroFileRecord& rec)
         Decrypt(buffer, id);
 
     if (IsCompressed())
-    {
-        /* Decompress */
-        CroBuffer unc;
-        unc.Alloc(buffer.GetSize() * 4);
-
-        uLongf inLen = buffer.GetSize();
-        uLongf outLen = unc.GetSize();
-        
-        uncompress(unc.GetData(), &outLen, buffer.GetData(), inLen);
-        return unc;
-    }
+        return Decompress(buffer);
 
     return buffer;
+}
+
+CroBuffer CroFile::ReadRecord(cronos_id id)
+{
+    CroEntry entry = ReadFileEntry(id);
+    if (!entry.IsActive())
+    {
+        throw CroException(this,
+            "CroFile::ReadRecord not active record");
+    }
+
+    CroFileRecord fileRec = ReadFileRecord(entry);
+    return ReadRecord(id, fileRec);
 }
