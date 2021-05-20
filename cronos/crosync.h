@@ -50,7 +50,7 @@ public:
 
     void Flush() override;
 
-    void AddFile(cronos_id id) override;;">"
+    void AddFile(cronos_id id) override;
     void ExportFile(cronos_id id) override;
 private:
     CroFile* m_pFile;
