@@ -178,8 +178,11 @@ CroBuffer CroFile::Decompress(CroBuffer& zbuffer)
     inflate(&inf, Z_NO_FLUSH);
     inflateEnd(&inf);
 
+    //if (!inf.total_out)
+    //    throw CroException(this, "empty deflate block");
+
     if (!inf.total_out)
-        throw CroException(this, "empty deflate block");
+        return zbuffer;
 
     out.Alloc(inf.total_out);
     return out;
