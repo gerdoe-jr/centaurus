@@ -11,7 +11,7 @@
 #include <boost/atomic.hpp>
 #include <boost/thread/mutex.hpp>
 
-class CentaurusTask : public ICentaurusTask, protected CentaurusLogger
+class CENTAURUS_API CentaurusTask : public ICentaurusTask, protected CentaurusLogger
 {
 public:
     CentaurusTask();

@@ -1,6 +1,10 @@
 #include "croexport.h"
 #include <win32util.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 /* CroExport */
 
 template<CroExportFormat F>
