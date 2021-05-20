@@ -249,10 +249,17 @@ void CentaurusExport::Export()
             break;
         }
 
-        reader->ReadMap(bank);
+        try {
+            m_Export->Export(bank);
 
-        map_id = bank->IdEnd();
+            map_id = bank->IdEnd();
+        }
+        catch (const std::exception& e) {
+            Error("export exception: %s\n", e.what());
+        }
+
         ReleaseMap();
+        FlushBuffers();
     } while (map_id < file->IdEntryEnd());
 
     FlushBuffers();

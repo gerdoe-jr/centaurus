@@ -15,10 +15,8 @@ CroSync::CroSync(cronos_size bufferSize)
 
 CroSync::~CroSync()
 {
-    if (!SyncEmpty())
-    {
-        Flush();
-    }
+    Flush();
+    Free();
 }
 
 void CroSync::InitSync(cronos_size bufferSize)
@@ -46,7 +44,7 @@ void CroSync::Sync(const void* src, cronos_size size)
 
 void CroSync::Write(const uint8_t* src, cronos_size size)
 {
-    if (size > Remaining())
+    if (size >= Remaining())
     {
         Flush();
     }
@@ -68,15 +66,17 @@ CroSyncFile::CroSyncFile(const std::wstring& path, cronos_size bufferSize)
 
 void CroSyncFile::Flush()
 {
-    if (SyncEmpty()) return;
-
     FILE* fSync = _wfopen(m_FilePath.c_str(), L"ab");
     if (!fSync)
     {
         throw std::runtime_error("failed to sync file");
     }
 
-    fwrite(GetData(), SyncSize(), 1, fSync);
+    if (!SyncEmpty())
+    {
+        fwrite(GetData(), SyncSize(), 1, fSync);
+    }
+
     fclose(fSync);
 
     CroSync::Flush();

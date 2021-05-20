@@ -10,6 +10,13 @@ CroBuffer::CroBuffer()
     InitBuffer(NULL, 0, false);
 }
 
+CroBuffer::CroBuffer(cronos_size allocSize)
+{
+    InitBuffer(NULL, 0, false);
+
+    Alloc(allocSize);
+}
+
 CroBuffer::CroBuffer(const uint8_t* data, cronos_size size)
 {
     InitBuffer((uint8_t*)data, size, false);

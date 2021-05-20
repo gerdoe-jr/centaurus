@@ -61,7 +61,7 @@ public:
     void SetupCrypt(uint32_t secret, uint32_t serial);
     void LoadCrypt(CroData& key, unsigned keyLen = 8);
     void Decrypt(CroBuffer& block, uint32_t offset, const CroData* crypt = NULL);
-    void Decompress(CroBuffer& block, CroBuffer& out);
+    CroBuffer Decompress(CroBuffer& zbuffer);
 
     inline cronos_size GetDefaultBlockSize() const { return m_DefLength; }
     inline bool IsEncrypted() const { return m_bEncrypted; }

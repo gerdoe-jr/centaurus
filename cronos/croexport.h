@@ -25,6 +25,8 @@ public:
     virtual CroSync* GetExportOutput() const = 0;
     virtual CroExportFormat GetExportFormat() const = 0;
 
+    virtual void Export(CroRecordMap* map) = 0;
+
     inline CroReader* GetReader()
     {
         return dynamic_cast<CroReader*>(this);
@@ -48,6 +50,8 @@ public:
 
     virtual CroSync* GetExportOutput() const;
     virtual CroExportFormat GetExportFormat() const;
+
+    void Export(CroRecordMap* map) override;
 protected:
     virtual void OnRecord();
     virtual void OnRecordEnd();

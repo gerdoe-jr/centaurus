@@ -159,6 +159,32 @@ void CroFile::Decrypt(CroBuffer& block, uint32_t offset, const CroData* crypt)
         pBlock[i] = pTable[pBlock[i]] - (uint8_t)(i + offset);
 }
 
+CroBuffer CroFile::Decompress(CroBuffer& zbuffer)
+{
+    uLongf inLen = zbuffer.GetSize();
+    uLongf outLen = ((inLen / 128)
+        + (inLen % 128 ? 1 : 0)) * 128;
+
+    z_stream inf = { 0 };
+    CroBuffer out = CroBuffer(outLen);
+    
+    inf.avail_in = inLen - 8;
+    inf.next_in = zbuffer.GetData() + 8;
+
+    inf.avail_out = outLen;
+    inf.next_out = out.GetData();
+
+    inflateInit2(&inf, -15);
+    inflate(&inf, Z_NO_FLUSH);
+    inflateEnd(&inf);
+
+    if (!inf.total_out)
+        throw CroException(this, "empty deflate block");
+
+    out.Alloc(inf.total_out);
+    return out;
+}
+
 crofile_status CroFile::SetError(crofile_status st,
         const std::string& msg)
 {

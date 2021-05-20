@@ -216,8 +216,10 @@ void CroBankParser::Parse(cronos_id id, CroBuffer& data)
 
     unsigned baseId = ReadIdent();
     m_pBase = Bank()->GetBaseByIndex(baseId);
-    m_FieldIter = m_pBase->StartField();
+    if (!m_pBase)
+        throw CroException(File(), "invalid record prefix");
 
+    m_FieldIter = m_pBase->StartField();
     m_ValueIndex = 0;
 }
 

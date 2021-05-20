@@ -1,5 +1,6 @@
 #include "crorecord.h"
 #include "croexception.h"
+#include "crostream.h"
 #include "crofile.h"
 
 /* CroRecord */
@@ -90,9 +91,6 @@ void CroRecordMap::Load()
     }
 }
 
-#include "crostream.h"
-#include <zlib.h>
-
 CroBuffer CroRecordMap::LoadRecord(cronos_id id)
 {
     auto file = File();
@@ -112,29 +110,7 @@ CroBuffer CroRecordMap::LoadRecord(cronos_id id)
         file->Decrypt(buffer, id);
 
     if (file->IsCompressed())
-    {
-        /* Decompress */
-        uLongf inLen = buffer.GetSize();
-        uLongf outLen = ((inLen / 128)
-            + (inLen % 128 ? 1 : 0)) * 128;
-
-        CroBuffer unc;
-        unc.Alloc(outLen);
-
-        z_stream inf = { 0 };
-        inflateInit2(&inf, -15);
-
-        inf.avail_in = inLen - 8;
-        inf.next_in = buffer.GetData() + 8;
-
-        inf.avail_out = outLen;
-        inf.next_out = unc.GetData();
-
-        inflate(&inf, Z_NO_FLUSH);
-        inflateEnd(&inf);
-
-        return unc;
-    }
+        return file->Decompress(buffer);
 
     return buffer;
 }

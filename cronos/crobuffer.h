@@ -7,6 +7,7 @@ class CroBuffer
 {
 public:
     CroBuffer();
+    CroBuffer(cronos_size allocSize);
     CroBuffer(const uint8_t* data, cronos_size size);
     CroBuffer(uint8_t* data, cronos_size size, bool owner = true);
     CroBuffer(const CroBuffer&);

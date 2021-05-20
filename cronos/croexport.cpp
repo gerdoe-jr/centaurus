@@ -103,6 +103,30 @@ std::string CroExport<F>::StringValue()
 }
 
 template<CroExportFormat F>
+void CroExport<F>::Export(CroRecordMap* map)
+{
+    for (cronos_id id = map->IdStart(); id != map->IdEnd(); id++)
+    {
+        if (!map->HasRecord(id)) continue;
+        try {
+            CroBuffer buffer = map->LoadRecord(id);
+            if (buffer.IsEmpty())
+                continue;
+            
+            ReadRecord(id, buffer);
+        }
+        catch (const CroException& ce) {
+            fprintf(stderr, "record %" FCroId ": %s\n",
+                id, ce.what() ? ce.what() : "");
+        }
+        catch (const std::exception& e) {
+            fprintf(stderr, "record %" FCroId ": %s\n",
+                id, e.what() ? e.what() : "");
+        }
+    }
+}
+
+template<CroExportFormat F>
 CroSync* CroExport<F>::GetExportOutput() const
 {
     return m_pOut;
