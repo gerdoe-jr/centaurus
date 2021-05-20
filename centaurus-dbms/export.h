@@ -27,8 +27,10 @@ public:
 
     void Export();
 private:
-    std::wstring m_ExportPath;
     ExportFormat m_ExportFormat;
+
+    std::wstring m_ExportPath;
+    std::wstring m_FilePath;
 
     nlohmann::json m_BankJson;
     std::unique_ptr<ICroExport> m_Export;

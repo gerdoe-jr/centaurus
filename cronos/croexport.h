@@ -19,6 +19,7 @@ class ICroExport
 public:
     virtual ~ICroExport() {}
 
+    virtual void SetFilePath(const std::wstring& path) = 0;
     virtual void SetIdentOutput(CroIdent ident, CroSync* out) = 0;
     virtual std::string StringValue() = 0;
 
@@ -26,6 +27,7 @@ public:
     virtual CroExportFormat GetExportFormat() const = 0;
 
     virtual void Export(CroRecordMap* map) = 0;
+    virtual void ExportFile(CroRecordMap* map, cronos_id id) = 0;
 
     inline CroReader* GetReader()
     {
@@ -45,6 +47,7 @@ public:
     CroExport(CroBank* bank);
     virtual ~CroExport();
     
+    void SetFilePath(const std::wstring& path) override;
     void SetIdentOutput(CroIdent ident, CroSync* out) override;
     std::string StringValue() override;
 
@@ -52,6 +55,7 @@ public:
     virtual CroExportFormat GetExportFormat() const;
 
     void Export(CroRecordMap* map) override;
+    void ExportFile(CroRecordMap* map, cronos_id id) override;
 protected:
     virtual void OnRecord();
     virtual void OnRecordEnd();
@@ -59,6 +63,8 @@ protected:
     CroSync* m_pOut;
 private:
     std::map<CroIdent, CroSync*> m_Outputs;
+    std::wstring m_FilePath;
+    std::vector<cronos_id> m_Files;
 };
 
 class CroExportRaw : public CroExport<CroExportFormat::Raw>

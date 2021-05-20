@@ -49,7 +49,10 @@ void CentaurusExport::PrepareDirs()
 
     boost::algorithm::trim(dirName);
     m_ExportPath = JoinFilePath(centaurus->GetExportPath(), dirName);
+    m_FilePath = JoinFilePath(m_ExportPath, L"file");
+
     fs::create_directory(m_ExportPath);
+    fs::create_directory(m_FilePath);
 }
 
 void CentaurusExport::RunTask()
@@ -80,6 +83,7 @@ void CentaurusExport::RunTask()
     SyncBankJson();
 
     try {
+        m_Export->SetFilePath(m_FilePath);
         cronos_size baseLimit = m_ExportLimit / m_pBank->BaseCount();
 
         for (auto it = m_pBank->StartBase(); it != m_pBank->EndBase(); it++)

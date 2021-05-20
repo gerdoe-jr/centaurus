@@ -19,6 +19,12 @@ CroExport<F>::~CroExport()
 }
 
 template<CroExportFormat F>
+void CroExport<F>::SetFilePath(const std::wstring& path)
+{
+    m_FilePath = path;
+}
+
+template<CroExportFormat F>
 void CroExport<F>::SetIdentOutput(CroIdent ident, CroSync* out)
 {
     m_Outputs[ident] = out;
@@ -127,6 +133,19 @@ void CroExport<F>::Export(CroRecordMap* map)
 }
 
 template<CroExportFormat F>
+void CroExport<F>::ExportFile(CroRecordMap* map, cronos_id id)
+{
+    CroBuffer fileBuffer = map->LoadRecord(id);
+
+    std::wstring fileName = JoinFilePath(m_FilePath,
+        std::to_wstring(id) + L".bin");
+    CroSyncFile fileSync = CroSyncFile(fileName, fileBuffer.GetSize());
+
+    fileSync.Write(fileBuffer.GetData(), fileBuffer.GetSize());
+    fileSync.Flush();
+}
+
+template<CroExportFormat F>
 CroSync* CroExport<F>::GetExportOutput() const
 {
     return m_pOut;
@@ -142,11 +161,11 @@ template<CroExportFormat F>
 void CroExport<F>::OnRecord()
 {
     uint32_t index = m_Parser.IdentBase()->m_BaseIndex;
+    
     auto out = m_Outputs.find(index);
-
     if (!m_pOut)
     {
-        m_pOut = out == m_Outputs.end() ? NULL : m_Outputs[index];
+            m_pOut = out == m_Outputs.end() ? NULL : m_Outputs[index];
     }
 
     CroReader::OnRecord();

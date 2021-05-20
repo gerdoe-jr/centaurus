@@ -98,7 +98,7 @@ public:
 
     CroIdent ReadIdent();
     CroInteger ReadInteger();
-private:
+
     cronos_id m_Id;
     CroBuffer* m_pData;
     CroStream m_Record;
