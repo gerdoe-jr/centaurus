@@ -43,19 +43,4 @@ public:
     virtual void ExportFile(cronos_id id) = 0;
 };
 
-class CroFileExport : public CroSync, ICroFileExport
-{
-public:
-    CroFileExport(CroFile* bank, const std::wstring& filePath);
-
-    void Flush() override;
-
-    void AddFile(cronos_id id) override;
-    void ExportFile(cronos_id id) override;
-private:
-    CroFile* m_pFile;
-    std::wstring m_FilePath;
-    std::vector<cronos_id> m_Files;
-};
-
 #endif

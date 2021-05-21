@@ -10,6 +10,10 @@ set(HEADERS
     export.h
 )
 
+set(PRECOMPILE_HEADERS
+    centaurus_dbms_pch.h
+)
+
 set(SOURCES
     centaurus_dbms.cpp
     cronos_api.cpp
@@ -26,6 +30,7 @@ else()
 endif()
 
 add_library(centaurus-dbms SHARED ${SOURCES} ${HEADERS})
+target_precompile_headers(centaurus-dbms PRIVATE ${PRECOMPILE_HEADERS})
 
 find_package(Boost 1.75.0 REQUIRED COMPONENTS
     system filesystem thread

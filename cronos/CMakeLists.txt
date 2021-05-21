@@ -26,6 +26,10 @@ set(SOURCES
     croexport.cpp
 )
 
+set(PRECOMPILE_HEADERS
+    cronos.h
+)
+
 set(HEADERS
     cronos_format.h
     crotype.h
@@ -52,7 +56,7 @@ set(HEADERS
 )
  
 add_library(cronos ${SOURCES} ${HEADERS})
-target_precompile_headers(cronos PUBLIC cronos.h)
+target_precompile_headers(cronos PUBLIC ${PRECOMPILE_HEADERS})
 target_include_directories(cronos PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 )

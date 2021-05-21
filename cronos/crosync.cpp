@@ -81,29 +81,3 @@ void CroSyncFile::Flush()
 
     CroSync::Flush();
 }
-
-/* CroFileExport */
-
-CroFileExport::CroFileExport(CroFile* bank, const std::wstring& filePath)
-{
-    m_pFile = bank;
-    m_FilePath = filePath;
-}
-
-void CroFileExport::Flush()
-{
-    for (auto fileId : m_Files)
-    {
-
-    }
-}
-
-void CroFileExport::AddFile(cronos_id id)
-{
-    m_Files.emplace_back(id);
-}
-
-void CroFileExport::ExportFile(cronos_id id)
-{
-    
-}

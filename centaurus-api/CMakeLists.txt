@@ -12,6 +12,10 @@ set(SOURCES
 	logger.cpp
 )
 
+set(PRECOMPILE_HEADERS
+	centaurus_api_pch.h
+)
+
 set(HEADERS
 	centaurus_api.h
     task.h
@@ -34,6 +38,7 @@ link_directories(${Boost_LIBRARY_DIRS})
 link_libraries(${Boost_LIBRARIES})
 
 add_library(centaurus-api SHARED ${SOURCES} ${HEADERS})
+target_precompile_headers(centaurus-api PRIVATE ${PRECOMPILE_HEADERS})
 target_link_libraries(centaurus-api PRIVATE cronos win32ctrl json)
 target_compile_definitions(centaurus-api PRIVATE CENTAURUS_INTERNAL)
 target_include_directories(centaurus-api PRIVATE centaurus PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

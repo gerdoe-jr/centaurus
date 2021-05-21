@@ -162,17 +162,10 @@ void CroExport<F>::OnRecord()
 {
     uint32_t index = m_Parser.IdentBase()->m_BaseIndex;
     
-    if (index)
+    auto out = m_Outputs.find(index);
+    if (!m_pOut)
     {
-        auto out = m_Outputs.find(index);
-        if (!m_pOut)
-        {
-            m_pOut = out == m_Outputs.end() ? NULL : m_Outputs[index];
-        }
-    }
-    else
-    {
-        ExportFile(m_Parser.m_Id);
+        m_pOut = out == m_Outputs.end() ? NULL : m_Outputs[index];
     }
 
     CroReader::OnRecord();
